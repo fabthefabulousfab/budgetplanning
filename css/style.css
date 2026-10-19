@@ -76,3 +76,6 @@ tr.ligne-erreur td, .erreur-ligne { color: var(--negatif); background: var(--neg
 .aide-btn { font: inherit; font-weight: 700; width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); background: var(--carte); cursor: pointer; padding: 0; }
 .bulle { display: none; position: absolute; z-index: 5; left: 2rem; top: -.25rem; width: 22rem; max-width: 80vw; white-space: pre-line; background: var(--carte); color: var(--encre); border: 1px solid var(--trait); border-radius: 6px; padding: .6rem .8rem; box-shadow: 0 4px 14px rgba(0,0,0,.18); font-size: .85rem; }
 .aide:hover .bulle, .aide:focus-within .bulle { display: block; }
+.champ-param { display: flex; flex-direction: column; gap: .25rem; flex: 1 1 14rem; }
+.champ-param label { font-weight: 600; font-size: .9rem; }
+.champ-param input { width: 100%; }
