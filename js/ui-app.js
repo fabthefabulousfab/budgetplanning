@@ -105,7 +105,15 @@
     dessiner();
   }
 
-  async function persist(kind) {
+  // Écritures sérialisées par type de fichier : chaque appel attend la fin du précédent.
+  const files = {};
+  function persist(kind) {
+    const run = (files[kind] || Promise.resolve()).catch(function () {}).then(function () { return persistNow(kind); });
+    files[kind] = run;
+    return run;
+  }
+
+  async function persistNow(kind) {
     const fn = { donnees: B.saveDonnees, evenements: B.saveEvenements, parametres: B.saveParametres }[kind];
     if (!fn) throw new Error('Type de fichier inconnu : ' + kind);
     try {
