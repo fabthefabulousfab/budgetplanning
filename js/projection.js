@@ -65,7 +65,7 @@
     return out;
   }
 
-  const api = { project: project, PARAMETRES_DEFAUT: PARAMETRES_DEFAUT };
+  const api = { project: project, PARAMETRES_DEFAUT: PARAMETRES_DEFAUT, normaliser: normaliser };
   if (typeof module !== 'undefined') module.exports = api;
   else root.Budget = Object.assign(root.Budget || {}, api);
 })(this);
