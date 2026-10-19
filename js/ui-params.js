@@ -6,7 +6,6 @@
   // État conservé hors du DOM : les onglets sont redessinés à chaque activation.
   const brouillons = {}; // champ -> texte saisi (tant qu'il n'est pas accepté)
   const erreurs = {};    // champ -> message
-  let erreurEcriture = '';
 
   const CHAMPS = [
     { cle: 'depart', label: 'Départ (AAAA-MM)', aide: 'Premier mois de la projection.', placeholder: 'AAAA-MM' },
@@ -78,7 +77,6 @@
       return;
     }
     delete brouillons[cle];
-    erreurEcriture = '';
     state().parametres = copie;
     B.refresh();
     try {
@@ -118,7 +116,6 @@
       if (erreurs[ch.cle]) bloc.appendChild(el('p', erreurs[ch.cle], { id: id + '-err', class: 'erreur-ligne', role: 'alert' }));
       f.appendChild(bloc);
     });
-    if (erreurEcriture) f.appendChild(el('p', erreurEcriture, { class: 'erreur-ligne', role: 'alert' }));
     c.appendChild(f);
     panneau.appendChild(c);
 

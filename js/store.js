@@ -29,6 +29,9 @@
     } else if (typeof l.categorie !== 'string' || l.categorie === '') {
       throw new Error('Catégorie manquante.');
     }
+    if (l.revalorise != null && typeof l.revalorise !== 'boolean') {
+      throw new Error('« revalorise » doit valoir true ou false (écrire true ou false, pas « ' + l.revalorise + ' »).');
+    }
     validerMois(l.debut, 'Début');
     validerMois(l.fin, 'Fin');
     if (l.debut && l.fin && S.monthIndex(l.fin) < S.monthIndex(l.debut)) throw new Error('La fin (' + l.fin + ') précède le début (' + l.debut + ').');
@@ -99,6 +102,25 @@
     return out;
   }
 
+  const CLES_PARAMETRES = ['depart', 'horizon_annees', 'revalorisation'];
+  const CLES_OBSOLETES = ['prets_etudiants'];
+
+  function estObjet(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
+
+  // Contrôle de la structure du fichier lu (avant fusion avec les défauts) : rien n'est ignoré en silence.
+  function validerContenuParametres(c) {
+    if (c === null) return;
+    if (!estObjet(c)) throw new Error('contenu invalide (un objet « clé: valeur » est attendu).');
+    Object.keys(c).forEach(function (k) {
+      if (CLES_PARAMETRES.indexOf(k) < 0 && CLES_OBSOLETES.indexOf(k) < 0) {
+        throw new Error('clé inconnue « ' + k + ' » (attendues : ' + CLES_PARAMETRES.join(', ') + ').');
+      }
+    });
+    if (c.revalorisation != null && !estObjet(c.revalorisation)) {
+      throw new Error('revalorisation doit être un objet (taux, mois).');
+    }
+  }
+
   async function lire(dir, nom) {
     let handle;
     try {
@@ -137,7 +159,9 @@
     if (evenements === null) evenements = [];
     enFichier(FICHIERS.evenements, function () { validerEvenements(evenements); });
 
-    const parametres = fusionnerParametres(await lire(dir, FICHIERS.parametres));
+    const brut = await lire(dir, FICHIERS.parametres);
+    enFichier(FICHIERS.parametres, function () { validerContenuParametres(brut); });
+    const parametres = fusionnerParametres(brut);
     enFichier(FICHIERS.parametres, function () { validerParametres(parametres); });
 
     return { donnees: donnees, evenements: evenements, parametres: parametres };

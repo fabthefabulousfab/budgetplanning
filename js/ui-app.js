@@ -31,6 +31,16 @@
     return e;
   }
 
+  async function ouvrirDossier() {
+    try {
+      const dir = await root.showDirectoryPicker({ mode: 'readwrite' });
+      await start(dir);
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      erreur(e && e.message ? e.message : String(e));
+    }
+  }
+
   function ecranAccueil() {
     if (!B.supported()) {
       accueil([
@@ -40,15 +50,7 @@
       return;
     }
     const bouton = el('button', 'Ouvrir le dossier data/', { type: 'button', class: 'btn' });
-    bouton.addEventListener('click', async function () {
-      try {
-        const dir = await root.showDirectoryPicker({ mode: 'readwrite' });
-        await start(dir);
-      } catch (e) {
-        if (e && e.name === 'AbortError') return;
-        erreur(e && e.message ? e.message : String(e));
-      }
-    });
+    bouton.addEventListener('click', ouvrirDossier);
     accueil([
       el('h2', 'Bienvenue'),
       el('p', 'Choisissez le dossier data/ du projet : les fichiers YAML y sont lus et enregistrés directement, rien ne quitte votre ordinateur.'),
@@ -155,7 +157,7 @@
   function ecranAccueilBouton() {
     const a = $('accueil');
     const b = el('button', 'Ouvrir le dossier data/', { type: 'button', class: 'btn' });
-    b.addEventListener('click', function () { ecranAccueil(); });
+    b.addEventListener('click', ouvrirDossier);
     a.appendChild(b);
   }
 

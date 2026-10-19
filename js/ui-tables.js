@@ -109,13 +109,16 @@
     }
     delete erreursAjout[nature];
     liste.push(ligne);
-    brouillons[nature === 'mensuel' ? 'mensuel' : 'annuel'] = {};
+    const cleBrouillon = nature === 'mensuel' ? 'mensuel' : 'annuel';
+    const brouillonAvant = brouillons[cleBrouillon];
+    brouillons[cleBrouillon] = {};
     B.refresh();
     try {
       await B.persist('donnees');
     } catch (e) {
       const j = liste.indexOf(ligne);
       if (j >= 0) liste.splice(j, 1);
+      brouillons[cleBrouillon] = brouillonAvant; // l'utilisateur ne perd pas sa saisie
       erreursAjout[nature] = e.message;
       B.refresh();
     }

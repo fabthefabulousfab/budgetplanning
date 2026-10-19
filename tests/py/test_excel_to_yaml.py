@@ -150,3 +150,27 @@ def test_vrai_budget():
     assert len(d["mensuel"]) == n
     leader = [a for a in d["annuel"] if a["libelle"] == "Prime Leader"]
     assert leader and leader[0]["debut"] == "2029-01"
+
+
+@pytest.mark.parametrize("montant", [0, -50])
+def test_mensuel_montant_non_positif(tmp_path, montant):
+    p = make_xlsx(tmp_path / "b.xlsx", mensuel=[
+        ["revenu", "Salaire", "Paie", 3000, "oui", None],
+        ["dépense", "Logement", "Loyer", montant, "non", None],
+    ])
+    with pytest.raises(ExcelError) as ei:
+        convert(p)
+    assert "Feuille Mensuel, ligne 3" in str(ei.value)
+
+
+def test_entete_accents_decomposes(tmp_path):
+    import unicodedata
+    h = [unicodedata.normalize("NFD", x) for x in H_ANNUEL]
+    p = make_xlsx(tmp_path / "b.xlsx", h_annuel=h)
+    assert len(convert(p)["annuel"]) == 2
+
+
+def test_debut_fin_un_chiffre_normalises(tmp_path):
+    p = make_xlsx(tmp_path / "b.xlsx", annuel=[["dépense", "A", "B", "3-300", "non", "2029-1", "2031-6"]])
+    a = convert(p)["annuel"][0]
+    assert a["debut"] == "2029-01" and a["fin"] == "2031-06"

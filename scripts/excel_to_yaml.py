@@ -17,7 +17,7 @@ H_EXC = ["Type", "Catégorie", "Libellé", "Échéances"]
 
 _MENSUEL_RE = re.compile(r"^\d+(\.\d+)?$")
 _ITEM_RE = re.compile(r"^(?:(\d{4})-)?(\d{1,2})[-:](\d+(?:\.\d+)?)$")
-_MOIS_RE = re.compile(r"^(\d{4})-(\d{2})$")
+_MOIS_RE = re.compile(r"^(\d{4})-(\d{1,2})$")
 
 
 class ExcelError(Exception):
@@ -61,11 +61,11 @@ def _rows(wb, nom, entetes):
         raise ExcelError(f"Feuille {nom} : feuille absente")
     it = wb[nom].iter_rows(values_only=True)
     head = next(it, None)
-    head = [str(c).strip() if c is not None else "" for c in (head or [])]
-    manquants = [h for h in entetes if h not in head]
+    head = [_norm(c) if c is not None else "" for c in (head or [])]
+    manquants = [h for h in entetes if _norm(h) not in head]
     if manquants:
         raise ExcelError(f"Feuille {nom}, ligne 1 : en-tête(s) manquant(s) : {', '.join(manquants)}")
-    idx = {h: head.index(h) for h in entetes}
+    idx = {h: head.index(_norm(h)) for h in entetes}
     for n, row in enumerate(it, start=2):
         if all(_vide(c) for c in row):
             continue
@@ -105,12 +105,19 @@ def _mois(nom, n, champ, v):
     m = _MOIS_RE.match(s)
     if not m or not 1 <= int(m.group(2)) <= 12:
         raise ExcelError(f"Feuille {nom}, ligne {n} : {champ} invalide « {s} » (AAAA-MM attendu)")
-    return s
+    return f"{m.group(1)}-{int(m.group(2)):02d}"
 
 
 def _nombre(nom, n, champ, v):
     if isinstance(v, bool) or not isinstance(v, (int, float)):
         raise ExcelError(f"Feuille {nom}, ligne {n} : {champ} doit être un nombre")
+    return v
+
+
+def _montant_positif(nom, n, champ, v):
+    v = _nombre(nom, n, champ, v)
+    if v <= 0:
+        raise ExcelError(f"Feuille {nom}, ligne {n} : {champ} doit être supérieur à 0")
     return v
 
 
@@ -150,7 +157,7 @@ def convert(xlsx_path):
                 "type": _type("Mensuel", n, r["Type"]),
                 "categorie": _texte("Mensuel", n, "Catégorie", r["Catégorie"]),
                 "libelle": _texte("Mensuel", n, "Libellé", r["Libellé"]),
-                "montant": _nombre("Mensuel", n, "Montant", r["Montant"]),
+                "montant": _montant_positif("Mensuel", n, "Montant", r["Montant"]),
                 "revalorise": _bool("Mensuel", n, r["Revalorisé"]),
                 "fin": _mois("Mensuel", n, "Fin", r["Fin"]),
             })

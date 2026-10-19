@@ -105,3 +105,32 @@ test('donnees: aller-retour et validation', async () => {
   assert.deepStrictEqual(r.donnees, donnees);
   await assert.rejects(store.saveDonnees(d, { mensuel: [{ type: 'depense', categorie: 'M', libelle: 'x', montant: -1 }] }));
 });
+
+test('parametres.yaml: contenu scalaire ou liste refuse, fichier inchange', async () => {
+  for (const bad of ['horizon_annees 12\n', '- 12\n- 13\n']) {
+    const d = fakeDir({ 'parametres.yaml': bad });
+    await assert.rejects(store.loadAll(d), /parametres\.yaml/);
+    assert.strictEqual(d.files.get('parametres.yaml'), bad);
+  }
+});
+
+test('parametres.yaml: cle inconnue refusee, prets_etudiants obsolete accepte', async () => {
+  const bad = 'horizon: 12\n';
+  const d = fakeDir({ 'parametres.yaml': bad });
+  await assert.rejects(store.loadAll(d), /parametres\.yaml.*horizon/);
+  assert.strictEqual(d.files.get('parametres.yaml'), bad);
+  const ok = fakeDir({ 'parametres.yaml': 'horizon_annees: 12\nprets_etudiants: []\n' });
+  const r = await store.loadAll(ok);
+  assert.strictEqual(r.parametres.horizon_annees, 12);
+});
+
+test('parametres.yaml: revalorisation non objet refusee', async () => {
+  const d = fakeDir({ 'parametres.yaml': 'revalorisation: 2\n' });
+  await assert.rejects(store.loadAll(d), /parametres\.yaml.*revalorisation/);
+});
+
+test('revalorise doit etre un booleen', () => {
+  const ok = { type: 'revenu', categorie: 'A', libelle: 'x', montant: 1000 };
+  ['non', 'oui'].forEach((v) => assert.throws(() => store.validerLigne(Object.assign({}, ok, { revalorise: v }), 'mensuel'), /true ou false/));
+  [true, false, undefined, null].forEach((v) => store.validerLigne(Object.assign({}, ok, { revalorise: v }), 'mensuel'));
+});

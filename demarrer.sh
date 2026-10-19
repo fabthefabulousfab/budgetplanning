@@ -38,6 +38,10 @@ elif [ ! -f "$COURANT" ]; then
 fi
 
 if [ "$convertir" -eq 1 ]; then
+  if ! command -v uv >/dev/null 2>&1; then
+    echo "uv est introuvable : installez-le (https://docs.astral.sh/uv/) pour convertir $XLSX. Les fichiers YAML existants sont inchangés." >&2
+    exit 1
+  fi
   if ! uv run python scripts/excel_to_yaml.py "$XLSX"; then
     echo "La conversion de $XLSX a échoué : les fichiers YAML existants sont inchangés." >&2
     exit 1

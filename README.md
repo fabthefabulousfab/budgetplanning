@@ -51,6 +51,13 @@ Le mois va de 1 à 12. Ne pas mélanger des échéances avec année et sans ann�
 
 Ces fichiers sont ignorés par git.
 
+Si vous modifiez ces fichiers à la main :
+
+- Dans `evenements-futurs.yaml`, chaque événement décrit ses montants avec la clé `echeances` (même syntaxe que ci-dessus).
+- `revalorise` doit valoir `true` ou `false` (pas `oui`/`non`).
+- `parametres.yaml` n'accepte que les clés `depart`, `horizon_annees` et `revalorisation` (`taux`, `mois`).
+- En cas de YAML invalide, le message d'erreur nomme le fichier concerné et rien n'est écrasé : corrigez le fichier puis rouvrez le dossier.
+
 ## Modéliser un prêt à la main
 
 Un prêt = un revenu ponctuel à la date du versement (par exemple `2027-9-20000`) et une dépense mensuelle avec début et fin pour les remboursements. Aucun calcul d'intérêts n'est fait : saisissez la mensualité.
