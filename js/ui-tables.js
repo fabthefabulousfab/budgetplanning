@@ -16,7 +16,7 @@
   const TYPES = [['depense', 'Dépense'], ['revenu', 'Revenu']];
 
   // État d'édition conservé hors du DOM (les onglets sont redessinés à chaque activation).
-  const erreurs = new Map(); // "nature:index" -> message
+  const erreurs = new Map(); // ligne (objet) -> message
   const brouillons = { mensuel: {}, annuel: {} };
   const erreursAjout = {};
 
@@ -51,42 +51,49 @@
 
   // ---- Modification, suppression, ajout --------------------------------------------------
 
-  async function modifier(nature, index, champ, valeur) {
+  async function modifier(nature, ligne, champ, valeur) {
     const liste = B.state.donnees[nature];
-    const ancienne = liste[index];
-    const cle = nature + ':' + index;
-    const copie = B.appliquerEdition(ancienne, champ, valeur, nature);
-    if (JSON.stringify(copie) === JSON.stringify(ancienne)) { // rien de changé (NaN -> null en JSON : on laisse valider)
-      if (!(champ === 'montant' && Number.isNaN(copie.montant))) return;
+    const idx = liste.indexOf(ligne); // par identité : les index changent après suppression/ajout
+    if (idx < 0) return;
+    const copie = B.appliquerEdition(ligne, champ, valeur, nature);
+    if (JSON.stringify(copie) === JSON.stringify(ligne) && !(champ === 'montant' && Number.isNaN(copie.montant))) {
+      if (erreurs.delete(ligne)) B.refresh(); // valeur enregistrée ressaisie : l'erreur n'a plus lieu d'être
+      return;
     }
     try {
       B.validerLigne(copie, nature);
     } catch (e) {
-      erreurs.set(cle, e.message);
+      erreurs.set(ligne, e.message);
       B.refresh(); // la cellule revient à la valeur enregistrée
       return;
     }
-    erreurs.delete(cle);
-    liste[index] = copie;
+    erreurs.delete(ligne);
+    liste[idx] = copie;
+    B.refresh(); // les gestionnaires se relient aux nouvelles lignes avant toute écriture en attente
     try {
       await B.persist('donnees');
     } catch (e) {
-      if (liste[index] === copie) liste[index] = ancienne;
-      erreurs.set(cle, e.message);
+      const j = liste.indexOf(copie);
+      if (j >= 0) {
+        liste[j] = ligne;
+        erreurs.set(ligne, e.message);
+      }
       B.refresh();
     }
   }
 
-  async function supprimer(nature, index) {
+  async function supprimer(nature, ligne) {
     const liste = B.state.donnees[nature];
-    const ligne = liste[index];
+    const idx = liste.indexOf(ligne);
+    if (idx < 0) return;
     if (!root.confirm('Supprimer la ligne « ' + ligne.libelle + ' » ?')) return;
-    erreurs.clear();
-    liste.splice(index, 1);
+    erreurs.delete(ligne);
+    liste.splice(idx, 1);
+    B.refresh();
     try {
       await B.persist('donnees');
     } catch (e) {
-      liste.splice(index, 0, ligne);
+      liste.splice(Math.min(idx, liste.length), 0, ligne);
       B.refresh();
     }
   }
@@ -101,14 +108,14 @@
       return;
     }
     delete erreursAjout[nature];
-    erreurs.clear();
     liste.push(ligne);
+    brouillons[nature === 'mensuel' ? 'mensuel' : 'annuel'] = {};
+    B.refresh();
     try {
       await B.persist('donnees');
-      brouillons[nature === 'mensuel' ? 'mensuel' : 'annuel'] = {};
-      B.refresh();
     } catch (e) {
-      liste.pop();
+      const j = liste.indexOf(ligne);
+      if (j >= 0) liste.splice(j, 1);
       erreursAjout[nature] = e.message;
       B.refresh();
     }
@@ -121,7 +128,7 @@
       type: 'text', 'aria-label': label + ' — ' + ligne.libelle, 'data-cle': nature + ':' + index + ':' + champ,
     }, extra || {}));
     i.value = B.valeurCellule(ligne, champ);
-    i.addEventListener('change', function () { modifier(nature, index, champ, i.value); });
+    i.addEventListener('change', function () { modifier(nature, ligne, champ, i.value); });
     return i;
   }
 
@@ -132,20 +139,20 @@
       if (ligne[champ] === o[0]) op.selected = true;
       s.appendChild(op);
     });
-    s.addEventListener('change', function () { modifier(nature, index, champ, s.value); });
+    s.addEventListener('change', function () { modifier(nature, ligne, champ, s.value); });
     return s;
   }
 
   function champCase(nature, index, ligne) {
     const c = el('input', '', { type: 'checkbox', 'aria-label': 'Revalorisé — ' + ligne.libelle, 'data-cle': nature + ':' + index + ':revalorise' });
     c.checked = ligne.revalorise === true;
-    c.addEventListener('change', function () { modifier(nature, index, 'revalorise', c.checked); });
+    c.addEventListener('change', function () { modifier(nature, ligne, 'revalorise', c.checked); });
     return c;
   }
 
   function boutonSupprimer(nature, index, ligne) {
     const b = el('button', 'Supprimer', { type: 'button', class: 'btn-lien', 'aria-label': 'Supprimer la ligne ' + ligne.libelle, 'data-cle': nature + ':' + index + ':suppr' });
-    b.addEventListener('click', function () { supprimer(nature, index); });
+    b.addEventListener('click', function () { supprimer(nature, ligne); });
     return b;
   }
 
@@ -163,8 +170,8 @@
     return th;
   }
 
-  function ligneErreur(nature, index, nbCols) {
-    const msg = erreurs.get(nature + ':' + index);
+  function ligneErreur(ligne, nbCols) {
+    const msg = erreurs.get(ligne);
     if (!msg) return null;
     const tr = el('tr', '', { class: 'ligne-erreur' });
     tr.appendChild(el('td', msg, { colspan: String(nbCols), role: 'alert' }));
@@ -259,11 +266,11 @@
     const tb = el('tbody');
     B.grouperParCategorie(lignes).forEach(function (g) {
       const th = el('tr', '', { class: 'groupe' });
-      th.appendChild(el('th', g.categorie, { colspan: String(cols.length), scope: 'colgroup' }));
+      th.appendChild(el('th', g.categorie || 'Sans catégorie', { colspan: String(cols.length), scope: 'colgroup' }));
       tb.appendChild(th);
       g.items.forEach(function (it) {
         const l = it.ligne;
-        const tr = el('tr', '', erreurs.has('mensuel:' + it.index) ? { class: 'invalide' } : {});
+        const tr = el('tr', '', erreurs.has(l) ? { class: 'invalide' } : {});
         tr.appendChild(td(champTexte('mensuel', it.index, l, 'libelle', 'Libellé')));
         tr.appendChild(td(champSelect('mensuel', it.index, l, 'type', 'Type', TYPES)));
         tr.appendChild(td(champTexte('mensuel', it.index, l, 'montant', 'Montant mensuel', { inputmode: 'decimal', class: 'num' }), 'num'));
@@ -271,7 +278,7 @@
         tr.appendChild(td(champTexte('mensuel', it.index, l, 'fin', 'Fin', { placeholder: 'AAAA-MM' })));
         tr.appendChild(td(boutonSupprimer('mensuel', it.index, l)));
         tb.appendChild(tr);
-        const e = ligneErreur('mensuel', it.index, cols.length);
+        const e = ligneErreur(l, cols.length);
         if (e) tb.appendChild(e);
       });
     });
@@ -301,19 +308,24 @@
     t.appendChild(entetes(cols));
     const tb = el('tbody');
     lignes.forEach(function (l, i) {
-      const tr = el('tr', '', erreurs.has(nature + ':' + i) ? { class: 'invalide' } : {});
+      const tr = el('tr', '', erreurs.has(l) ? { class: 'invalide' } : {});
       tr.appendChild(td(champTexte(nature, i, l, 'libelle', 'Libellé')));
       tr.appendChild(td(champTexte(nature, i, l, 'categorie', 'Catégorie')));
       tr.appendChild(td(champSelect(nature, i, l, 'type', 'Type', TYPES)));
       tr.appendChild(td(champTexte(nature, i, l, 'echeances', 'Échéances', { placeholder: '6-500, 10-500' })));
-      tr.appendChild(td(champTexte(nature, i, l, 'debut', 'Début', { placeholder: 'AAAA-MM' })));
-      tr.appendChild(td(champTexte(nature, i, l, 'fin', 'Fin', { placeholder: 'AAAA-MM' })));
-      tr.appendChild(td(champCase(nature, i, l)));
+      // Les lignes exceptionnelles sont datées par leurs échéances : pas de début/fin/revalorisé.
+      if (nature === 'annuel') {
+        tr.appendChild(td(champTexte(nature, i, l, 'debut', 'Début', { placeholder: 'AAAA-MM' })));
+        tr.appendChild(td(champTexte(nature, i, l, 'fin', 'Fin', { placeholder: 'AAAA-MM' })));
+        tr.appendChild(td(champCase(nature, i, l)));
+      } else {
+        for (let k = 0; k < 3; k++) tr.appendChild(td(el('span', '—', { class: 'vide', 'aria-label': 'Non applicable' })));
+      }
       const imp = impacts[i] ? impacts[i].impact_mensuel : 0;
       tr.appendChild(td(el('span', signe(imp), { class: imp < 0 ? 'neg' : '' }), 'num'));
       tr.appendChild(td(boutonSupprimer(nature, i, l)));
       tb.appendChild(tr);
-      const e = ligneErreur(nature, i, cols.length);
+      const e = ligneErreur(l, cols.length);
       if (e) tb.appendChild(e);
     });
     if (!lignes.length) {
