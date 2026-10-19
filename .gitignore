@@ -1,0 +1,8 @@
+*.xlsx
+data/*.yaml
+prototypes/
+node_modules/
+.venv/
+.pytest_cache/
+__pycache__/
+.superpowers/
