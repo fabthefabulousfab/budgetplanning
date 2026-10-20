@@ -1,5 +1,6 @@
 *.xlsx
 data/*.yaml
+data/*.csv
 prototypes/
 node_modules/
 .venv/

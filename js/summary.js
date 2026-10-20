@@ -21,7 +21,7 @@
   }
 
   function restantMensuel(donnees) {
-    return (donnees.mensuel || []).reduce(function (acc, l) {
+    return (donnees.mensuel || []).filter(Pj.estActif).reduce(function (acc, l) {
       return acc + (l.type === 'revenu' ? 1 : -1) * Number(l.montant);
     }, 0);
   }
@@ -30,7 +30,7 @@
     const p = Object.assign({}, Pj.PARAMETRES_DEFAUT, params);
     const d = S.monthIndex(p.depart);
     const win = { debut: p.depart, fin: S.ym(Math.floor((d + 11) / 12), ((d + 11) % 12) + 1) };
-    return (lignes || []).map(function (l) {
+    return (lignes || []).filter(Pj.estActif).map(function (l) {
       const total = occurrencesSignees(l, win).reduce(function (a, o) { return a + o.montant; }, 0);
       return { libelle: l.libelle, total_annuel: total, impact_mensuel: total / 12 };
     });
@@ -44,7 +44,7 @@
   function syntheseEvenements(evenements, params) {
     const win = fenetre(params);
     const groupes = new Map();
-    (evenements || []).forEach(function (e) {
+    (evenements || []).filter(Pj.estActif).forEach(function (e) {
       const cle = e.type + '\u0000' + e.categorie;
       if (!groupes.has(cle)) groupes.set(cle, { type: e.type, categorie: e.categorie, par_annee: {}, total: 0 });
       const g = groupes.get(cle);
@@ -77,7 +77,7 @@
 
   function finsDePret(donnees) {
     return (donnees.mensuel || [])
-      .filter(function (l) { return l.type === 'depense' && l.fin; })
+      .filter(function (l) { return Pj.estActif(l) && l.type === 'depense' && l.fin; })
       .map(function (l) { return { libelle: l.libelle, fin: l.fin, libere_par_mois: Number(l.montant) }; })
       .sort(function (a, b) { return S.monthIndex(a.fin) - S.monthIndex(b.fin); });
   }
@@ -87,17 +87,17 @@
     const p = Object.assign({}, Pj.PARAMETRES_DEFAUT, params);
     const debutIdx = S.monthIndex(p.depart);
     const idx = S.monthIndex(ym);
-    const out = { ym: ym, mensuel: { revenus: 0, depenses: 0 }, annuel: [], exceptionnel: [], futurs: [], net: 0 };
+    const out = { ym: ym, mensuel: { revenus: 0, depenses: 0 }, annuel: [], exceptionnel: [], futurs: [], prets: [], net: 0 };
     if (idx < debutIdx || idx >= debutIdx + p.horizon_annees * 12) return out;
     const facteur = Pj.facteurReval(p, idx);
     const win = { debut: ym, fin: ym };
     function lignes(liste, mensuelNumerique, groupe) {
-      (liste || []).forEach(function (ligne) {
+      (liste || []).filter(Pj.estActif).forEach(function (ligne) {
         const l = Pj.normaliser(ligne, mensuelNumerique);
         S.occurrences(l.schedule, l.bornes, win).forEach(function (o) {
           const montant = l.revalorise ? o.montant * facteur : o.montant;
           if (groupe === null) out.mensuel[l.type === 'revenu' ? 'revenus' : 'depenses'] += montant;
-          else groupe.push({ libelle: ligne.libelle, type: l.type, montant: (l.type === 'revenu' ? 1 : -1) * montant });
+          else (ligne.pret ? out.prets : groupe).push({ libelle: ligne.libelle, type: l.type, montant: (l.type === 'revenu' ? 1 : -1) * montant });
         });
       });
     }
@@ -106,7 +106,7 @@
     lignes(donnees.exceptionnel, false, out.exceptionnel);
     lignes(evenements, false, out.futurs);
     const somme = function (a) { return a.reduce(function (x, l) { return x + l.montant; }, 0); };
-    out.net = out.mensuel.revenus - out.mensuel.depenses + somme(out.annuel) + somme(out.exceptionnel) + somme(out.futurs);
+    out.net = out.mensuel.revenus - out.mensuel.depenses + somme(out.annuel) + somme(out.exceptionnel) + somme(out.futurs) + somme(out.prets);
     return out;
   }
 
@@ -115,12 +115,20 @@
     const signe = function (v) { return (v > 0 ? '+' : '') + fmt(v); };
     const court = function (t) { return t.length > 36 ? t.slice(0, 35) + '…' : t; };
     const corps = ['Mensuel (régulier)', '  Revenus : ' + signe(d.mensuel.revenus), '  Dépenses : ' + signe(-d.mensuel.depenses)];
-    [['Annuel', d.annuel], ['Exceptionnel / futur', d.exceptionnel.concat(d.futurs)]].forEach(function (g) {
+    [['Annuel', d.annuel], ['Exceptionnel / futur', d.exceptionnel.concat(d.futurs)], ['Prêts', d.prets || []]].forEach(function (g) {
       if (!g[1].length) return;
       corps.push(g[0]);
       g[1].forEach(function (l) { corps.push('  ' + court(String(l.libelle)) + ' : ' + signe(l.montant)); });
     });
     return { corps: corps, pied: ['────────────────', 'Net du mois : ' + signe(m.net), 'Solde fin de mois : ' + fmt(m.solde)] };
+  }
+
+  // Historique synthétique des comptes (une ligne par mois, euros arrondis), pensé pour être relu par un LLM avec peu de tokens.
+  function historiqueCsv(mois) {
+    const r = Math.round;
+    return 'mois,revenus,depenses,solde\n' + (mois || []).map(function (m) {
+      return m.ym + ',' + r(m.revenus) + ',' + r(m.depenses) + ',' + r(m.solde);
+    }).join('\n') + '\n';
   }
 
   // Options du sélecteur de période : 12 prochains mois, puis une option par année civile couverte.
@@ -145,6 +153,7 @@
   const api = {
     detailMois: detailMois,
     lignesInfobulle: lignesInfobulle,
+    historiqueCsv: historiqueCsv,
     optionsPeriode: optionsPeriode,
     moisDePeriode: moisDePeriode,
     restantMensuel: restantMensuel,

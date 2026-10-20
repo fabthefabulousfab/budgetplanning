@@ -4,10 +4,12 @@
   const isNode = typeof module !== 'undefined';
   const S = isNode ? require('./schedule.js') : root.Budget;
   const P = isNode ? require('./projection.js') : root.Budget;
+  const Su = isNode ? require('./summary.js') : root.Budget;
+  const Pr = isNode ? require('./prets.js') : root.Budget;
   const yaml = isNode ? require('../vendor/js-yaml.min.js') : root.jsyaml;
   const PARAMETRES_DEFAUT = P.PARAMETRES_DEFAUT;
 
-  const FICHIERS = { donnees: 'donnees-courantes.yaml', evenements: 'evenements-futurs.yaml', parametres: 'parametres.yaml' };
+  const FICHIERS = { donnees: 'donnees-courantes.yaml', evenements: 'evenements-futurs.yaml', parametres: 'parametres.yaml', historique: 'historique-comptes.csv' };
   const CATEGORIES_EVENEMENT = ['Études', 'Prêt', 'Achat', 'Revenu', 'Autre'];
   const NATURES = ['mensuel', 'annuel', 'exceptionnel', 'evenement'];
 
@@ -32,6 +34,7 @@
     if (l.revalorise != null && typeof l.revalorise !== 'boolean') {
       throw new Error('« revalorise » doit valoir true ou false (écrire true ou false, pas « ' + l.revalorise + ' »).');
     }
+    if (l.actif != null && typeof l.actif !== 'boolean') throw new Error('« actif » doit valoir true ou false.');
     validerMois(l.debut, 'Début');
     validerMois(l.fin, 'Fin');
     if (l.debut && l.fin && S.monthIndex(l.fin) < S.monthIndex(l.debut)) throw new Error('La fin (' + l.fin + ') précède le début (' + l.debut + ').');
@@ -73,6 +76,15 @@
       try { validerLigne(l, 'evenement'); } catch (e) { throw new Error('événement #' + (i + 1) + ' : ' + e.message); }
     });
   }
+
+  function validerPrets(prets) {
+    if (!Array.isArray(prets)) throw new Error('Les prêts doivent former une liste.');
+    prets.forEach(function (p, i) {
+      try { Pr.validerPret(p); } catch (e) { throw new Error('prêt #' + (i + 1) + ' : ' + e.message); }
+    });
+  }
+
+  const estPret = function (l) { return l !== null && typeof l === 'object' && l.nature === 'pret'; };
 
   function num(v) { return typeof v === 'number' && Number.isFinite(v); }
 
@@ -171,16 +183,20 @@
     const donnees = await lire(dir, FICHIERS.donnees);
     if (donnees !== null) enFichier(FICHIERS.donnees, function () { validerDonnees(donnees); });
 
-    let evenements = await lire(dir, FICHIERS.evenements);
-    if (evenements === null) evenements = [];
-    enFichier(FICHIERS.evenements, function () { validerEvenements(evenements); });
+    // evenements-futurs.yaml contient les événements et les prêts (nature: pret), séparés à la lecture.
+    let brutEv = await lire(dir, FICHIERS.evenements);
+    if (brutEv === null) brutEv = [];
+    if (!Array.isArray(brutEv)) throw new Error(FICHIERS.evenements + ' : les événements doivent former une liste.');
+    const evenements = brutEv.filter(function (l) { return !estPret(l); });
+    const prets = brutEv.filter(estPret);
+    enFichier(FICHIERS.evenements, function () { validerEvenements(evenements); validerPrets(prets); });
 
     const brut = await lire(dir, FICHIERS.parametres);
     enFichier(FICHIERS.parametres, function () { validerContenuParametres(brut); });
     const parametres = fusionnerParametres(brut);
     enFichier(FICHIERS.parametres, function () { validerParametres(parametres); });
 
-    return { donnees: donnees, evenements: evenements, parametres: parametres };
+    return { donnees: donnees, evenements: evenements, prets: prets, parametres: parametres };
   }
 
   async function saveDonnees(dir, donnees) {
@@ -188,9 +204,18 @@
     await ecrire(dir, FICHIERS.donnees, donnees);
   }
 
-  async function saveEvenements(dir, evenements) {
-    enFichier(FICHIERS.evenements, function () { validerEvenements(evenements); });
-    await ecrire(dir, FICHIERS.evenements, evenements);
+  async function saveEvenements(dir, evenements, prets) {
+    const lesPrets = (prets || []).map(function (p) { return Object.assign({}, p, { nature: 'pret' }); });
+    enFichier(FICHIERS.evenements, function () { validerEvenements(evenements); validerPrets(lesPrets); });
+    await ecrire(dir, FICHIERS.evenements, evenements.concat(lesPrets));
+  }
+
+  // Historique synthétique des comptes, regénéré après chaque enregistrement (jamais à l'ouverture).
+  async function ecrireHistorique(dir, mois) {
+    const handle = await dir.getFileHandle(FICHIERS.historique, { create: true });
+    const w = await handle.createWritable();
+    await w.write(Su.historiqueCsv(mois));
+    await w.close();
   }
 
   async function saveParametres(dir, params) {
@@ -205,7 +230,7 @@
 
   const api = {
     FICHIERS: FICHIERS, CATEGORIES_EVENEMENT: CATEGORIES_EVENEMENT, validerLigne: validerLigne,
-    loadAll: loadAll, saveDonnees: saveDonnees, saveEvenements: saveEvenements, saveParametres: saveParametres, supported: supported,
+    loadAll: loadAll, saveDonnees: saveDonnees, saveEvenements: saveEvenements, ecrireHistorique: ecrireHistorique, saveParametres: saveParametres, supported: supported,
   };
   if (typeof module !== 'undefined') module.exports = api;
   else root.Budget = Object.assign(root.Budget || {}, api);

@@ -58,6 +58,7 @@
     const c = Object.assign({}, ev);
     const t = typeof v === 'string' ? v.trim() : v;
     if (champ === 'debut' || champ === 'fin') c[champ] = t === '' ? null : t;
+    else if (champ === 'actif') { if (t === false) c.actif = false; else delete c.actif; }
     else if (champ === 'echeances') { c.echeances = t; delete c.montant; }
     else c[champ] = t;
     return c;
@@ -178,7 +179,7 @@
     t.appendChild(th);
     const tb = el('tbody');
     evs.forEach(function (l) {
-      const tr = el('tr', '', erreurs.has(l) ? { class: 'invalide' } : {});
+      const tr = el('tr', '', { class: (erreurs.has(l) ? 'invalide ' : '') + (l.actif === false ? 'masque' : '') });
       tr.appendChild(td(champTexte(l, 'libelle', 'Libellé')));
       tr.appendChild(td(champSelect(l, 'type', 'Type', TYPES)));
       tr.appendChild(td(champSelect(l, 'categorie', 'Catégorie', categories(l.categorie))));
@@ -187,7 +188,10 @@
       tr.appendChild(td(champTexte(l, 'fin', 'Fin', { placeholder: 'AAAA-MM' })));
       const b = el('button', 'Supprimer', { type: 'button', class: 'btn-lien', 'aria-label': 'Supprimer l’événement ' + l.libelle, 'data-cle': l.id + ':suppr' });
       b.addEventListener('click', function () { supprimer(l); });
-      tr.appendChild(td(b));
+      const act = el('span', '', { class: 'actions' });
+      act.appendChild(B.boutonOeil(l.actif !== false, l.libelle, function () { modifier(l, 'actif', l.actif === false); }, l.id + ':actif'));
+      act.appendChild(b);
+      tr.appendChild(td(act));
       tb.appendChild(tr);
       if (erreurs.has(l)) {
         const e = el('tr', '', { class: 'ligne-erreur' });

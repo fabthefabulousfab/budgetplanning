@@ -46,7 +46,9 @@ Le mois va de 1 à 12. Ne pas mélanger des échéances avec année et sans ann�
 ## Les trois fichiers YAML (dossier `data/`)
 
 - `donnees-courantes.yaml` : situation, lignes mensuelles, annuelles et exceptionnelles. Il est régénéré à chaque import Excel : les modifications faites dans la page sur ces lignes sont alors perdues.
-- `evenements-futurs.yaml` : revenus et dépenses futurs ajoutés dans l'onglet dédié. Jamais écrasé par l'import Excel.
+- `evenements-futurs.yaml` : revenus et dépenses futurs ajoutés dans l'onglet dédié, et prêts de l'onglet Prêts (entrées `nature: pret`, `statut: simule` ou `en_cours`). Jamais écrasé par l'import Excel.
+- `historique-comptes.csv` : historique synthétique mois par mois (revenus, dépenses, solde, euros arrondis), regénéré après chaque enregistrement, à donner tel quel à un LLM pour un avis financier.
+- Une ligne peut être masquée avec l'icône œil (`actif: false`) : elle est ignorée dans toute la projection. Un nouvel import Excel remet les lignes de `donnees-courantes.yaml` à l'état actif.
 - `parametres.yaml` : départ, horizon, revalorisation, solde de départ (onglet Paramètres). Jamais écrasé par l'import Excel.
 
 Ces fichiers sont ignorés par git.

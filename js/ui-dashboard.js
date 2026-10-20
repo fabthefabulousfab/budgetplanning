@@ -76,7 +76,7 @@
     const infos = function (items) { return items.length ? getMois()[items[0].dataIndex] : null; };
     const lignes = function (m) {
       const s = B.state;
-      return B.lignesInfobulle(B.detailMois(s.donnees, s.evenements, s.parametres, m.ym), m, fmt);
+      return B.lignesInfobulle(B.detailMois(s.donnees, B.lignesFutures(s.evenements, s.prets), s.parametres, m.ym), m, fmt);
     };
     return {
       displayColors: false,

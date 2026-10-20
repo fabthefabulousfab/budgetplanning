@@ -71,6 +71,12 @@ table.edition tr.groupe th { background: var(--fond); color: var(--encre); font-
 table.edition tr.invalide input, table.edition tr.invalide select { border-color: var(--negatif); }
 tr.ligne-erreur td, .erreur-ligne { color: var(--negatif); background: var(--negatif-fond); font-size: .85rem; }
 .erreur-ligne { flex-basis: 100%; margin: 0; padding: .3rem .5rem; border-radius: 4px; }
+.actions { display: inline-flex; align-items: center; gap: .4rem; }
+.oeil { display: inline-flex; color: var(--encre-2); background: none; border: 0; cursor: pointer; padding: .2rem; border-radius: 4px; }
+.oeil:hover { color: var(--encre); }
+.oeil:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.oeil-ferme { color: var(--negatif); }
+table.edition tr.masque td:not(:last-child), table.edition tr.masque input, table.edition tr.masque select { opacity: .5; }
 .btn-lien { font: inherit; font-size: .85rem; color: var(--negatif); background: none; border: 0; cursor: pointer; text-decoration: underline; padding: .2rem; }
 .ajout { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
 .ajout input, .ajout select { width: auto; flex: 1 1 10rem; }

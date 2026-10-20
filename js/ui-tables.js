@@ -153,6 +153,21 @@
     return c;
   }
 
+  function boutonOeil(nature, index, ligne) {
+    return B.boutonOeil(ligne.actif !== false, ligne.libelle, function () { modifier(nature, ligne, 'actif', ligne.actif === false); }, nature + ':' + index + ':actif');
+  }
+
+  function actions(nature, index, ligne) {
+    const w = el('span', '', { class: 'actions' });
+    w.appendChild(boutonOeil(nature, index, ligne));
+    w.appendChild(boutonSupprimer(nature, index, ligne));
+    return w;
+  }
+
+  function classeLigne(ligne) {
+    return (erreurs.has(ligne) ? 'invalide ' : '') + (ligne.actif === false ? 'masque' : '');
+  }
+
   function boutonSupprimer(nature, index, ligne) {
     const b = el('button', 'Supprimer', { type: 'button', class: 'btn-lien', 'aria-label': 'Supprimer la ligne ' + ligne.libelle, 'data-cle': nature + ':' + index + ':suppr' });
     b.addEventListener('click', function () { supprimer(nature, ligne); });
@@ -273,13 +288,13 @@
       tb.appendChild(th);
       g.items.forEach(function (it) {
         const l = it.ligne;
-        const tr = el('tr', '', erreurs.has(l) ? { class: 'invalide' } : {});
+        const tr = el('tr', '', { class: classeLigne(l) });
         tr.appendChild(td(champTexte('mensuel', it.index, l, 'libelle', 'Libellé')));
         tr.appendChild(td(champSelect('mensuel', it.index, l, 'type', 'Type', TYPES)));
         tr.appendChild(td(champTexte('mensuel', it.index, l, 'montant', 'Montant mensuel', { inputmode: 'decimal', class: 'num' }), 'num'));
         tr.appendChild(td(champCase('mensuel', it.index, l)));
         tr.appendChild(td(champTexte('mensuel', it.index, l, 'fin', 'Fin', { placeholder: 'AAAA-MM' })));
-        tr.appendChild(td(boutonSupprimer('mensuel', it.index, l)));
+        tr.appendChild(td(actions('mensuel', it.index, l)));
         tb.appendChild(tr);
         const e = ligneErreur(l, cols.length);
         if (e) tb.appendChild(e);
@@ -311,7 +326,7 @@
     t.appendChild(entetes(cols));
     const tb = el('tbody');
     lignes.forEach(function (l, i) {
-      const tr = el('tr', '', erreurs.has(l) ? { class: 'invalide' } : {});
+      const tr = el('tr', '', { class: classeLigne(l) });
       tr.appendChild(td(champTexte(nature, i, l, 'libelle', 'Libellé')));
       tr.appendChild(td(champTexte(nature, i, l, 'categorie', 'Catégorie')));
       tr.appendChild(td(champSelect(nature, i, l, 'type', 'Type', TYPES)));
@@ -326,7 +341,7 @@
       }
       const imp = impacts[i] ? impacts[i].impact_mensuel : 0;
       tr.appendChild(td(el('span', signe(imp), { class: imp < 0 ? 'neg' : '' }), 'num'));
-      tr.appendChild(td(boutonSupprimer(nature, i, l)));
+      tr.appendChild(td(actions(nature, i, l)));
       tb.appendChild(tr);
       const e = ligneErreur(l, cols.length);
       if (e) tb.appendChild(e);

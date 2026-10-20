@@ -75,7 +75,7 @@
     return out;
   }
 
-  const api = { parseEcheances: parseEcheances, ym: ym, parseYm: parseYm, monthIndex: monthIndex, occurrences: occurrences };
+  const api = { parseEcheances: parseEcheances, ym: ym, parseYm: parseYm, monthIndex: monthIndex, fromIndex: fromIndex, occurrences: occurrences };
   if (typeof module !== 'undefined') module.exports = api;
   else root.Budget = Object.assign(root.Budget || {}, api);
 })(this);

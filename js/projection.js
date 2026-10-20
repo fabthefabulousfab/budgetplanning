@@ -18,6 +18,9 @@
     return { compte_courant: cc, epargne: ep, total: cc + ep };
   }
 
+  // Une ligne masquée (actif: false) n'est prise en compte nulle part.
+  function estActif(ligne) { return ligne.actif !== false; }
+
   function normaliser(ligne, mensuelNumerique) {
     let schedule;
     if (mensuelNumerique && typeof ligne.montant === 'number') {
@@ -55,10 +58,10 @@
     const fenetre = { debut: p.depart, fin: S.ym(Math.floor((debutIdx + n - 1) / 12), ((debutIdx + n - 1) % 12) + 1) };
 
     const lignes = []
-      .concat((donnees.mensuel || []).map(function (l) { return normaliser(l, true); }))
-      .concat((donnees.annuel || []).map(function (l) { return normaliser(l, false); }))
-      .concat((donnees.exceptionnel || []).map(function (l) { return normaliser(l, false); }))
-      .concat((evenements || []).map(function (l) { return normaliser(l, false); }));
+      .concat((donnees.mensuel || []).filter(estActif).map(function (l) { return normaliser(l, true); }))
+      .concat((donnees.annuel || []).filter(estActif).map(function (l) { return normaliser(l, false); }))
+      .concat((donnees.exceptionnel || []).filter(estActif).map(function (l) { return normaliser(l, false); }))
+      .concat((evenements || []).filter(estActif).map(function (l) { return normaliser(l, false); }));
 
     const revenus = new Array(n).fill(0);
     const depenses = new Array(n).fill(0);
@@ -85,7 +88,7 @@
     return out;
   }
 
-  const api = { project: project, PARAMETRES_DEFAUT: PARAMETRES_DEFAUT, normaliser: normaliser, facteurReval: facteurReval, soldeDepart: soldeDepart };
+  const api = { project: project, PARAMETRES_DEFAUT: PARAMETRES_DEFAUT, normaliser: normaliser, estActif: estActif, facteurReval: facteurReval, soldeDepart: soldeDepart };
   if (typeof module !== 'undefined') module.exports = api;
   else root.Budget = Object.assign(root.Budget || {}, api);
 })(this);

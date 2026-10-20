@@ -30,6 +30,9 @@
     } else if (champ === 'debut' || champ === 'fin') {
       const t = String(valeur == null ? '' : valeur).trim();
       copie[champ] = t === '' ? null : t;
+    } else if (champ === 'actif') {
+      if (valeur === false || valeur === 'false') copie.actif = false;
+      else delete copie.actif; // actif par défaut : la clé disparaît du fichier
     } else if (champ === 'revalorise') {
       copie.revalorise = valeur === true || valeur === 'true';
     } else {

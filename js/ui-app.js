@@ -2,7 +2,8 @@
   'use strict';
 
   const B = root.Budget;
-  const state = { dir: null, donnees: null, evenements: [], parametres: null, mois: [] };
+  const state = { dir: null, donnees: null, evenements: [], prets: [], parametres: null, mois: [] };
+  const FICHIER_HISTORIQUE = 'historique-comptes.csv';
   const tabs = [];
   let actif = null;
 
@@ -103,29 +104,67 @@
 
   function refresh() {
     if (!state.donnees) return;
-    state.mois = B.project(state.donnees, state.evenements, state.parametres);
+    state.mois = B.project(state.donnees, B.lignesFutures(state.evenements, state.prets), state.parametres);
     dessiner();
   }
 
   // Écritures sérialisées par type de fichier : chaque appel attend la fin du précédent.
   const files = {};
+  // Les prêts sont enregistrés dans evenements-futurs.yaml : même file d'écriture que les événements.
   function persist(kind) {
-    const run = (files[kind] || Promise.resolve()).catch(function () {}).then(function () { return persistNow(kind); });
-    files[kind] = run;
+    const cle = kind === 'prets' ? 'evenements' : kind;
+    const run = (files[cle] || Promise.resolve()).catch(function () {}).then(function () { return persistNow(kind); });
+    files[cle] = run;
     return run;
   }
 
   async function persistNow(kind) {
-    const fn = { donnees: B.saveDonnees, evenements: B.saveEvenements, parametres: B.saveParametres }[kind];
+    const fn = {
+      donnees: function () { return B.saveDonnees(state.dir, state.donnees); },
+      evenements: function () { return B.saveEvenements(state.dir, state.evenements, state.prets); },
+      prets: function () { return B.saveEvenements(state.dir, state.evenements, state.prets); },
+      parametres: function () { return B.saveParametres(state.dir, state.parametres); },
+    }[kind];
     if (!fn) throw new Error('Type de fichier inconnu : ' + kind);
     try {
-      await fn(state.dir, state[kind]);
+      await fn();
       erreur('');
     } catch (e) {
       erreur(e.message);
       throw e;
     }
     refresh();
+    // Historique synthétique : une erreur d'écriture n'invalide pas l'enregistrement qui vient de réussir.
+    try {
+      await B.ecrireHistorique(state.dir, state.mois);
+    } catch (e) {
+      erreur('Historique non enregistré (' + FICHIER_HISTORIQUE + ') : ' + e.message);
+    }
+  }
+
+  // Bouton « œil » : masque ou réaffiche une ligne (actif: false = ignorée par la projection).
+  function boutonOeil(actifLigne, libelle, onClick, cle) {
+    const b = el('button', '', { type: 'button', class: 'oeil' + (actifLigne ? '' : ' oeil-ferme'), 'aria-pressed': String(!actifLigne), 'aria-label': (actifLigne ? 'Masquer la ligne ' : 'Afficher la ligne ') + libelle, title: actifLigne ? 'Masquer (ignorée dans la projection)' : 'Masquée : cliquer pour la reprendre en compte' });
+    if (cle) b.setAttribute('data-cle', cle);
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '18');
+    svg.setAttribute('height', '18');
+    svg.setAttribute('aria-hidden', 'true');
+    ['M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z', 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'].concat(actifLigne ? [] : ['M3 3l18 18']).forEach(function (d) {
+      const p = document.createElementNS(ns, 'path');
+      p.setAttribute('d', d);
+      p.setAttribute('fill', 'none');
+      p.setAttribute('stroke', 'currentColor');
+      p.setAttribute('stroke-width', '2');
+      p.setAttribute('stroke-linecap', 'round');
+      p.setAttribute('stroke-linejoin', 'round');
+      svg.appendChild(p);
+    });
+    b.appendChild(svg);
+    b.addEventListener('click', onClick);
+    return b;
   }
 
   async function start(dir) {
@@ -140,6 +179,7 @@
     state.dir = dir;
     state.donnees = r.donnees;
     state.evenements = r.evenements;
+    state.prets = r.prets;
     state.parametres = r.parametres;
     if (r.donnees === null) {
       accueil([
@@ -150,7 +190,7 @@
       return;
     }
     $('accueil').hidden = true;
-    state.mois = B.project(state.donnees, state.evenements, state.parametres);
+    state.mois = B.project(state.donnees, B.lignesFutures(state.evenements, state.prets), state.parametres);
     construireOnglets();
   }
 
@@ -161,7 +201,7 @@
     a.appendChild(b);
   }
 
-  Object.assign(B, { state: state, refresh: refresh, persist: persist, registerTab: registerTab, start: start });
+  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, registerTab: registerTab, start: start });
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ecranAccueil);
     else ecranAccueil();
