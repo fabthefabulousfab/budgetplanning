@@ -82,7 +82,57 @@
       .sort(function (a, b) { return S.monthIndex(a.fin) - S.monthIndex(b.fin); });
   }
 
+  // Détail d'un seul mois, calculé à la volée (mêmes règles que project()).
+  function detailMois(donnees, evenements, params, ym) {
+    const p = Object.assign({}, Pj.PARAMETRES_DEFAUT, params);
+    const debutIdx = S.monthIndex(p.depart);
+    const idx = S.monthIndex(ym);
+    const out = { ym: ym, mensuel: { revenus: 0, depenses: 0 }, annuel: [], exceptionnel: [], futurs: [], net: 0 };
+    if (idx < debutIdx || idx >= debutIdx + p.horizon_annees * 12) return out;
+    const facteur = Pj.facteurReval(p, idx);
+    const win = { debut: ym, fin: ym };
+    function lignes(liste, mensuelNumerique, groupe) {
+      (liste || []).forEach(function (ligne) {
+        const l = Pj.normaliser(ligne, mensuelNumerique);
+        S.occurrences(l.schedule, l.bornes, win).forEach(function (o) {
+          const montant = l.revalorise ? o.montant * facteur : o.montant;
+          if (groupe === null) out.mensuel[l.type === 'revenu' ? 'revenus' : 'depenses'] += montant;
+          else groupe.push({ libelle: ligne.libelle, type: l.type, montant: (l.type === 'revenu' ? 1 : -1) * montant });
+        });
+      });
+    }
+    lignes(donnees.mensuel, true, null);
+    lignes(donnees.annuel, false, out.annuel);
+    lignes(donnees.exceptionnel, false, out.exceptionnel);
+    lignes(evenements, false, out.futurs);
+    const somme = function (a) { return a.reduce(function (x, l) { return x + l.montant; }, 0); };
+    out.net = out.mensuel.revenus - out.mensuel.depenses + somme(out.annuel) + somme(out.exceptionnel) + somme(out.futurs);
+    return out;
+  }
+
+  // Options du sélecteur de période : 12 prochains mois, puis une option par année civile couverte.
+  function optionsPeriode(mois) {
+    const opts = [{ valeur: '12', libelle: '12 prochains mois' }];
+    const vues = [];
+    (mois || []).forEach(function (m) {
+      const an = m.ym.slice(0, 4);
+      if (vues.indexOf(an) < 0) vues.push(an);
+    });
+    vues.forEach(function (an) { opts.push({ valeur: an, libelle: an }); });
+    return opts;
+  }
+
+  // Mois de la période choisie ; null si la période n'existe pas (l'appelant retombe sur '12').
+  function moisDePeriode(mois, periode) {
+    if (periode === '12') return (mois || []).slice(0, 12);
+    const r = (mois || []).filter(function (m) { return m.ym.slice(0, 4) === periode; });
+    return r.length ? r : null;
+  }
+
   const api = {
+    detailMois: detailMois,
+    optionsPeriode: optionsPeriode,
+    moisDePeriode: moisDePeriode,
     restantMensuel: restantMensuel,
     impactMensuel: impactMensuel,
     restantMoyen: restantMoyen,

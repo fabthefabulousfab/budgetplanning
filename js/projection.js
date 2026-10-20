@@ -27,6 +27,13 @@
     return k;
   }
 
+  // Facteur de revalorisation appliqué au mois d'indice `idx` (même règle que project()).
+  function facteurReval(params, idx) {
+    const p = Object.assign({}, PARAMETRES_DEFAUT, params);
+    const reval = Object.assign({}, PARAMETRES_DEFAUT.revalorisation, p.revalorisation);
+    return Math.pow(1 + reval.taux, passages(S.monthIndex(p.depart), idx, reval.mois));
+  }
+
   function project(donnees, evenements, params) {
     const p = Object.assign({}, PARAMETRES_DEFAUT, params);
     const reval = Object.assign({}, PARAMETRES_DEFAUT.revalorisation, p.revalorisation);
@@ -48,7 +55,7 @@
         const pos = idx - debutIdx;
         if (pos < 0 || pos >= n) return;
         let montant = o.montant;
-        if (l.revalorise) montant *= Math.pow(1 + reval.taux, passages(debutIdx, idx, reval.mois));
+        if (l.revalorise) montant *= facteurReval(p, idx);
         if (l.type === 'revenu') revenus[pos] += montant;
         else depenses[pos] += montant;
       });
@@ -65,7 +72,7 @@
     return out;
   }
 
-  const api = { project: project, PARAMETRES_DEFAUT: PARAMETRES_DEFAUT, normaliser: normaliser };
+  const api = { project: project, PARAMETRES_DEFAUT: PARAMETRES_DEFAUT, normaliser: normaliser, facteurReval: facteurReval };
   if (typeof module !== 'undefined') module.exports = api;
   else root.Budget = Object.assign(root.Budget || {}, api);
 })(this);

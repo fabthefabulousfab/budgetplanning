@@ -53,6 +53,9 @@ th { color: var(--encre-2); font-weight: 600; font-size: .85rem; }
 td.num, th.num { text-align: right; }
 .neg { color: var(--negatif); font-weight: 600; }
 .vide { color: var(--encre-2); font-style: italic; }
+.choix-periode { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; font-size: .9rem; color: var(--encre-2); }
+.choix-periode select { font: inherit; color: var(--encre); background: var(--fond); border: 1px solid var(--trait); border-radius: 4px; padding: .25rem .4rem; }
+.choix-periode select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .legende { display: flex; gap: 1rem; font-size: .85rem; color: var(--encre-2); margin-bottom: .5rem; }
 .legende i { display: inline-block; width: .8rem; height: .8rem; border-radius: 2px; margin-right: .35rem; vertical-align: -1px; }
 .avertissement { margin: 0 0 1rem; padding: .6rem .9rem; background: var(--negatif-fond); border-left: 3px solid var(--negatif); border-radius: 4px; font-size: .9rem; }

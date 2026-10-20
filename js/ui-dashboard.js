@@ -62,7 +62,92 @@
     };
   }
 
+  let periode = '12'; // période du Focus mensuel : survit aux redessins
+  const moisFr = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const signe = function (v) { return (v > 0 ? '+' : '') + fmt(v); };
+  const court = function (t) { return t.length > 36 ? t.slice(0, 35) + '…' : t; };
+
+  function titreMois(ym) { return moisFr.format(new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1, 1))); }
+
+  // Détail du seul mois survolé, calculé à l'affichage de l'infobulle.
+  function lignesDetail(ym) {
+    const s = B.state;
+    const d = B.detailMois(s.donnees, s.evenements, s.parametres, ym);
+    const out = ['Mensuel (régulier)', '  Revenus : ' + signe(d.mensuel.revenus), '  Dépenses : ' + signe(-d.mensuel.depenses)];
+    [['Annuel', d.annuel], ['Exceptionnel / futur', d.exceptionnel.concat(d.futurs)]].forEach(function (g) {
+      if (!g[1].length) return;
+      out.push(g[0]);
+      g[1].forEach(function (l) { out.push('  ' + court(String(l.libelle)) + ' : ' + signe(l.montant)); });
+    });
+    return out;
+  }
+
+  function optionsFocus(getMois) {
+    const o = optionsCommunes();
+    o.scales.x.stacked = true;
+    o.scales.y.stacked = true;
+    const infos = function (items) { return items.length ? getMois()[items[0].dataIndex] : null; };
+    o.plugins.tooltip = {
+      displayColors: false,
+      bodyFont: { family: 'ui-monospace, Menlo, monospace', size: 12 },
+      footerFont: { family: 'ui-monospace, Menlo, monospace', size: 12 },
+      callbacks: {
+        title: function (items) { const m = infos(items); return m ? titreMois(m.ym) : ''; },
+        label: function () { return null; }, // le détail par origine remplace une ligne par série
+        beforeBody: function (items) { const m = infos(items); return m ? lignesDetail(m.ym) : []; },
+        footer: function (items) {
+          const m = infos(items);
+          if (!m) return [];
+          return ['────────────────', 'Net du mois : ' + signe(m.net), 'Solde fin de mois : ' + fmt(m.solde)];
+        },
+      },
+    };
+    return o;
+  }
+
+  function donneesFocus(sel) {
+    return {
+      labels: sel.map(function (m) { return m.ym; }),
+      datasets: [
+        { label: 'Revenus', data: sel.map(function (m) { return m.revenus; }), backgroundColor: css('--positif'), borderRadius: 2 },
+        { label: 'Dépenses', data: sel.map(function (m) { return -m.depenses; }), backgroundColor: css('--negatif'), borderRadius: 2 },
+      ],
+    };
+  }
+
+  function focus(root_, mois) {
+    const opts = B.optionsPeriode(mois);
+    if (!opts.some(function (x) { return x.valeur === periode; })) periode = '12';
+    let sel = B.moisDePeriode(mois, periode);
+    const c = carte('Focus mensuel', 'Survolez un mois pour voir son détail : régulier, annuel, exceptionnel et futur.');
+    const ligne = el('div', '', { class: 'choix-periode' });
+    ligne.appendChild(el('label', 'Période', { for: 'focus-periode' }));
+    const select = el('select', '', { id: 'focus-periode' });
+    opts.forEach(function (x) {
+      const op = el('option', x.libelle, { value: x.valeur });
+      if (x.valeur === periode) op.setAttribute('selected', '');
+      select.appendChild(op);
+    });
+    ligne.appendChild(select);
+    c.appendChild(ligne);
+    c.appendChild(legende([{ couleur: css('--positif'), texte: 'Revenus' }, { couleur: css('--negatif'), texte: 'Dépenses' }]));
+    const chart = new Chart(canvas(c, 'Histogramme des revenus et des dépenses sur la période choisie'), {
+      type: 'bar',
+      data: donneesFocus(sel),
+      options: optionsFocus(function () { return sel; }),
+    });
+    charts.push(chart);
+    select.addEventListener('change', function () {
+      periode = select.value;
+      sel = B.moisDePeriode(mois, periode) || B.moisDePeriode(mois, '12');
+      chart.data = donneesFocus(sel);
+      chart.update();
+    });
+    root_.appendChild(c);
+  }
+
   function graphes(root_, mois) {
+    focus(root_, mois);
     const pos = css('--positif');
     const neg = css('--negatif');
     const labels = mois.map(function (m) { return m.ym; });
