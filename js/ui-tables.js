@@ -3,8 +3,7 @@
 
   const B = root.Budget;
   const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-  const fmt = function (v) { return eur.format(Math.round(v)); };
-  const AVERTISSEMENT = 'Les modifications des lignes importées sont perdues au prochain import Excel — reportez-les dans budget.xlsx';
+  const fmt = function (v) { return eur.format(Math.round(v) + 0); }; // + 0 : évite « -0 € »
   const AIDE = [
     'Syntaxe des échéances (séparées par des virgules) :',
     '800 : 800 € chaque mois',
@@ -33,8 +32,6 @@
     if (note) c.appendChild(el('p', note, { class: 'note' }));
     return c;
   }
-
-  function avertissement() { return el('p', AVERTISSEMENT, { class: 'avertissement', role: 'note' }); }
 
   function signe(v) { return fmt(v); }
 
@@ -266,16 +263,21 @@
   function renderMensuel(panneau) {
     const d = B.state.donnees;
     const lignes = d.mensuel || (d.mensuel = []);
-    panneau.appendChild(avertissement());
 
     const somme = function (type) {
-      return lignes.filter(function (l) { return l.type === type; }).reduce(function (a, l) { return a + Number(l.montant); }, 0);
+      return lignes.filter(function (l) { return l.type === type && l.actif !== false; }).reduce(function (a, l) { return a + Number(l.montant); }, 0);
     };
-    const c = carte('Mensuel', 'Montants de départ (hors revalorisation), par catégorie.');
+    // Mensualités des prêts (en cours et simulés) : moyenne sur les 12 premiers mois, montants de départ.
+    const prets = B.bilanLignes(B.lignesPret(B.state.prets), B.state.parametres, 12);
+    const moyennePrets = -prets.depenses / 12;
+    const restant = B.restantMensuel(d);
+    const c = carte('Mensuel', 'Montants de départ (hors revalorisation), par catégorie. Les prêts sont ceux de l’onglet Prêts (moyenne des mensualités des 12 premiers mois).');
     c.appendChild(totaux([
       { t: 'Total revenus', v: somme('revenu') },
       { t: 'Total dépenses', v: -somme('depense') },
-      { t: 'Restant mensuel (montants de départ)', v: B.restantMensuel(d) },
+      { t: 'Restant mensuel (montants de départ)', v: restant },
+      { t: 'Mensualités de prêts (moyenne)', v: moyennePrets },
+      { t: 'Restant mensuel après prêts', v: restant + moyennePrets },
     ]));
 
     const cols = [{ t: 'Libellé' }, { t: 'Type' }, { t: 'Montant (€/mois)', num: true }, { t: 'Revalorisé' }, { t: 'Fin (AAAA-MM)' }, { t: 'Actions' }];
@@ -362,11 +364,11 @@
     const annuel = d.annuel || (d.annuel = []);
     const exc = d.exceptionnel || (d.exceptionnel = []);
     const params = B.state.parametres;
-    panneau.appendChild(avertissement());
 
     const iA = B.impactMensuel(annuel, params);
     const iE = B.impactMensuel(exc, params);
     const total = iA.concat(iE).reduce(function (a, x) { return a + x.impact_mensuel; }, 0);
+    const bilan = B.bilanLignes(annuel.concat(exc), params, 12);
 
     const resume = carte('Annuel & exceptionnel', 'Impact mensuel = total des douze premiers mois projetés ÷ 12, calculé sur les montants de départ (hors revalorisation).');
     const tete = el('div', '', { class: 'aide-ligne' });
@@ -374,6 +376,9 @@
     tete.appendChild(aide());
     resume.appendChild(tete);
     resume.appendChild(totaux([
+      { t: 'Revenus sur 12 mois', v: bilan.revenus },
+      { t: 'Dépenses sur 12 mois', v: -bilan.depenses },
+      { t: 'Impact bilan sur 12 mois (revenus − dépenses)', v: bilan.net },
       { t: 'Impact mensuel total', v: total },
       { t: 'Restant moyen mensuel (montants de départ)', v: B.restantMoyen(d, params) },
     ]));

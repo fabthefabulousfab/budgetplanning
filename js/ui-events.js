@@ -3,7 +3,7 @@
 
   const B = root.Budget;
   const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-  const fmt = function (v) { return eur.format(Math.round(v)); };
+  const fmt = function (v) { return eur.format(Math.round(v) + 0); }; // + 0 : évite « -0 € »
   const TYPES = [['depense', 'Dépense'], ['revenu', 'Revenu']];
   const NOM_TYPE = { depense: 'Dépenses', revenu: 'Revenus' };
   const AIDE = [
@@ -211,6 +211,21 @@
     panneau.appendChild(c);
   }
 
+  // Impact bilan des événements (hors prêts) sur les 10 prochaines années, montants de départ.
+  function bilan(panneau) {
+    const b = B.bilanLignes(B.state.evenements, B.state.parametres, 120);
+    const c = carte('Impact bilan sur les 10 prochaines années', 'Revenus − dépenses des événements ci-dessous, montants de départ (hors revalorisation, hors prêts).');
+    const w = el('div', '', { class: 'totaux' });
+    [['Revenus', b.revenus], ['Dépenses', -b.depenses], ['Impact bilan (revenus − dépenses)', b.net]].forEach(function (it) {
+      const d = el('div', '', { class: 'total' });
+      d.appendChild(el('span', it[0], { class: 'total-lib' }));
+      d.appendChild(el('strong', fmt(it[1]), { class: it[1] < 0 ? 'neg' : '' }));
+      w.appendChild(d);
+    });
+    c.appendChild(w);
+    panneau.appendChild(c);
+  }
+
   function synthese(panneau) {
     const c = carte('Synthèse par type, catégorie et année', 'Montants de départ (hors revalorisation), sur l’horizon de projection.');
     const groupes = B.syntheseEvenements(B.state.evenements, B.state.parametres);
@@ -315,6 +330,7 @@
     const cle = actif && panneau.contains(actif) && actif.getAttribute ? actif.getAttribute('data-cle') : null;
     panneau.textContent = '';
     if (!B.state.donnees) return;
+    bilan(panneau);
     formulaire(panneau);
     liste(panneau);
     synthese(panneau);

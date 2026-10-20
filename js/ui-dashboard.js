@@ -2,9 +2,9 @@
   'use strict';
 
   const B = root.Budget;
-  const charts = []; // ordre : [0] focus mensuel, [1] solde sur la période, [2] revenus/dépenses, [3] solde cumulé
+  const charts = []; // ordre : [0] solde sur la période (menu Période), [1] solde cumulé sur N ans (menu Durée)
   const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-  const fmt = function (v) { return eur.format(Math.round(v)); };
+  const fmt = function (v) { return eur.format(Math.round(v) + 0); }; // + 0 : évite « -0 € »
 
   function css(nom) { return getComputedStyle(document.documentElement).getPropertyValue(nom).trim(); }
 
@@ -64,7 +64,7 @@
 
   const ANNEES_SOLDE = [5, 8, 10, 15];
   let anneesSolde = 8; // durée du graphe Solde cumulé : survit aux redessins
-  let periode = '12'; // période du Focus mensuel : survit aux redessins
+  let periode = '12'; // période du premier graphe : survit aux redessins
   const moisFr = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
   const signe = function (v) { return (v > 0 ? '+' : '') + fmt(v); };
 
@@ -73,6 +73,21 @@
   // Infobulle HTML (hors canvas) : jamais rognée par le graphe, repositionnée pour rester dans la fenêtre.
   let bulle = null;
   function masquerBulle() { if (bulle) bulle.style.display = 'none'; }
+
+  // Beaucoup de lignes (ex. un mois chargé) : le détail passe sur plusieurs colonnes, puis la police diminue,
+  // jusqu'à tenir dans la fenêtre sans couper de ligne.
+  function ajusterBulle(corps) {
+    const maxH = root.innerHeight - 16;
+    const maxL = root.innerWidth - 16;
+    for (const taille of [12, 11, 10, 9]) {
+      bulle.style.fontSize = taille + 'px';
+      for (let n = 1; n <= 6; n++) {
+        corps.style.columnCount = String(n);
+        if (bulle.offsetWidth > maxL) break; // plus de colonnes = encore plus large
+        if (bulle.offsetHeight <= maxH) return;
+      }
+    }
+  }
 
   function afficherBulle(ctx) {
     const t = ctx.tooltip;
@@ -83,9 +98,12 @@
     if (t.opacity === 0) { masquerBulle(); return; }
     bulle.textContent = '';
     bulle.appendChild(el('div', t.title.join(' '), { class: 'bulle-titre' }));
-    t.beforeBody.forEach(function (l) { bulle.appendChild(el('div', l)); });
+    const corps = el('div', '', { class: 'bulle-corps' });
+    t.beforeBody.forEach(function (l) { corps.appendChild(el('div', l)); });
+    bulle.appendChild(corps);
     t.footer.forEach(function (l, i) { bulle.appendChild(el('div', l, i === 0 ? {} : { class: 'bulle-total' })); });
     bulle.style.display = 'block';
+    ajusterBulle(corps);
     const r = ctx.chart.canvas.getBoundingClientRect();
     const w = bulle.offsetWidth;
     const h = bulle.offsetHeight;
@@ -116,24 +134,6 @@
     };
   }
 
-  function optionsFocus(getMois) {
-    const o = optionsCommunes();
-    o.scales.x.stacked = true;
-    o.scales.y.stacked = true;
-    o.plugins.tooltip = tooltipDetail(getMois);
-    return o;
-  }
-
-  function donneesFocus(sel) {
-    return {
-      labels: sel.map(function (m) { return m.ym; }),
-      datasets: [
-        { label: 'Revenus', data: sel.map(function (m) { return m.revenus; }), backgroundColor: css('--positif'), borderRadius: 2 },
-        { label: 'Dépenses', data: sel.map(function (m) { return -m.depenses; }), backgroundColor: css('--negatif'), borderRadius: 2 },
-      ],
-    };
-  }
-
   function donneesSolde(sel) {
     return {
       labels: sel.map(function (m) { return m.ym; }),
@@ -146,15 +146,15 @@
     };
   }
 
-  // Ajoute les cartes Focus mensuel puis Solde cumulé sur la période, pilotées par le même sélecteur.
-  function focus(root_, mois) {
+  // Carte « Solde cumulé sur la période » : choix de la période (12 prochains mois ou une année civile).
+  function soldePeriode(root_, mois) {
     const opts = B.optionsPeriode(mois);
     if (!opts.some(function (x) { return x.valeur === periode; })) periode = '12';
     let sel = B.moisDePeriode(mois, periode);
-    const c = carte('Focus mensuel', 'Survolez un mois pour voir son détail : régulier, annuel, exceptionnel et futur.');
+    const c = carte('Solde cumulé sur la période', 'Solde en fin de mois sur la période choisie ; survolez un mois pour son détail : régulier, annuel, exceptionnel, futur et prêts.');
     const ligne = el('div', '', { class: 'choix-periode' });
-    ligne.appendChild(el('label', 'Période', { for: 'focus-periode' }));
-    const select = el('select', '', { id: 'focus-periode' });
+    ligne.appendChild(el('label', 'Période', { for: 'solde-periode' }));
+    const select = el('select', '', { id: 'solde-periode' });
     opts.forEach(function (x) {
       const op = el('option', x.libelle, { value: x.valeur });
       if (x.valeur === periode) op.setAttribute('selected', '');
@@ -162,58 +162,29 @@
     });
     ligne.appendChild(select);
     c.appendChild(ligne);
-    c.appendChild(legende([{ couleur: css('--positif'), texte: 'Revenus' }, { couleur: css('--negatif'), texte: 'Dépenses' }]));
-    const chart = new Chart(canvas(c, 'Histogramme des revenus et des dépenses sur la période choisie'), {
+    c.appendChild(legende([{ couleur: css('--positif'), texte: 'Solde positif' }, { couleur: css('--negatif'), texte: 'Solde négatif' }]));
+    const o = optionsCommunes();
+    o.plugins.tooltip = tooltipDetail(function () { return sel; });
+    const chart = new Chart(canvas(c, 'Histogramme du solde cumulé en fin de mois sur la période choisie'), {
       type: 'bar',
-      data: donneesFocus(sel),
-      options: optionsFocus(function () { return sel; }),
+      data: donneesSolde(sel),
+      options: o,
     });
     charts.push(chart);
     root_.appendChild(c);
 
-    const c2 = carte('Solde cumulé sur la période', 'Solde en fin de mois sur la période choisie ci-dessus ; survolez un mois pour son détail.');
-    c2.appendChild(legende([{ couleur: css('--positif'), texte: 'Solde positif' }, { couleur: css('--negatif'), texte: 'Solde négatif' }]));
-    const o2 = optionsCommunes();
-    o2.plugins.tooltip = tooltipDetail(function () { return sel; });
-    const chartSolde = new Chart(canvas(c2, 'Histogramme du solde cumulé en fin de mois sur la période choisie'), {
-      type: 'bar',
-      data: donneesSolde(sel),
-      options: o2,
-    });
-    charts.push(chartSolde);
-    root_.appendChild(c2);
-
     select.addEventListener('change', function () {
       periode = select.value;
       sel = B.moisDePeriode(mois, periode) || B.moisDePeriode(mois, '12');
-      chart.data = donneesFocus(sel);
+      chart.data = donneesSolde(sel);
       chart.update();
-      chartSolde.data = donneesSolde(sel);
-      chartSolde.update();
     });
   }
 
   function graphes(root_, mois) {
-    focus(root_, mois);
+    soldePeriode(root_, mois);
     const pos = css('--positif');
     const neg = css('--negatif');
-    const labels = mois.map(function (m) { return m.ym; });
-
-    const c1 = carte('Revenus et dépenses par mois', 'Revenus au-dessus de zéro, dépenses en dessous.');
-    c1.appendChild(legende([{ couleur: pos, texte: 'Revenus' }, { couleur: neg, texte: 'Dépenses' }]));
-    const o1 = optionsCommunes();
-    o1.scales.x.stacked = true;
-    o1.scales.y.stacked = true;
-    o1.plugins.tooltip = tooltipDetail(function () { return mois; });
-    charts.push(new Chart(canvas(c1, 'Histogramme mensuel des revenus et des dépenses'), {
-      type: 'bar',
-      data: { labels: labels, datasets: [
-        { label: 'Revenus', data: mois.map(function (m) { return m.revenus; }), backgroundColor: pos, borderRadius: 2 },
-        { label: 'Dépenses', data: mois.map(function (m) { return -m.depenses; }), backgroundColor: neg, borderRadius: 2 },
-      ] },
-      options: o1,
-    }));
-    root_.appendChild(c1);
 
     const c2 = carte('Solde cumulé', 'Compte courant + épargne de départ, puis résultat de chaque mois.');
     const ligneA = el('div', '', { class: 'choix-periode' });

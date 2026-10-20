@@ -36,6 +36,21 @@
     });
   }
 
+  // Bilan (revenus, dépenses, net) des lignes sur les nbMois premiers mois de la projection, montants de départ (hors revalorisation).
+  function bilanLignes(lignes, params, nbMois) {
+    const p = Object.assign({}, Pj.PARAMETRES_DEFAUT, params);
+    const d = S.monthIndex(p.depart);
+    const win = { debut: p.depart, fin: S.fromIndex(d + nbMois - 1) };
+    let revenus = 0;
+    let depenses = 0;
+    (lignes || []).filter(Pj.estActif).forEach(function (l) {
+      occurrencesSignees(l, win).forEach(function (o) {
+        if (o.montant > 0) revenus += o.montant; else depenses -= o.montant;
+      });
+    });
+    return { revenus: revenus, depenses: depenses, net: revenus - depenses };
+  }
+
   function restantMoyen(donnees, params) {
     const lignes = (donnees.annuel || []).concat(donnees.exceptionnel || []);
     return restantMensuel(donnees) + impactMensuel(lignes, params).reduce(function (a, x) { return a + x.impact_mensuel; }, 0);
@@ -113,12 +128,11 @@
   // Lignes de l'infobulle détaillée d'un mois : d = detailMois(), m = mois de project(), fmt = formateur monétaire.
   function lignesInfobulle(d, m, fmt) {
     const signe = function (v) { return (v > 0 ? '+' : '') + fmt(v); };
-    const court = function (t) { return t.length > 36 ? t.slice(0, 35) + '…' : t; };
     const corps = ['Mensuel (régulier)', '  Revenus : ' + signe(d.mensuel.revenus), '  Dépenses : ' + signe(-d.mensuel.depenses)];
     [['Annuel', d.annuel], ['Exceptionnel / futur', d.exceptionnel.concat(d.futurs)], ['Prêts', d.prets || []]].forEach(function (g) {
       if (!g[1].length) return;
       corps.push(g[0]);
-      g[1].forEach(function (l) { corps.push('  ' + court(String(l.libelle)) + ' : ' + signe(l.montant)); });
+      g[1].forEach(function (l) { corps.push('  ' + String(l.libelle) + ' : ' + signe(l.montant)); });
     });
     return { corps: corps, pied: ['────────────────', 'Net du mois : ' + signe(m.net), 'Solde fin de mois : ' + fmt(m.solde)] };
   }
@@ -154,6 +168,7 @@
     detailMois: detailMois,
     lignesInfobulle: lignesInfobulle,
     historiqueCsv: historiqueCsv,
+    bilanLignes: bilanLignes,
     optionsPeriode: optionsPeriode,
     moisDePeriode: moisDePeriode,
     restantMensuel: restantMensuel,
