@@ -83,6 +83,9 @@ table.edition tr.masque td:not(:last-child), table.edition tr.masque input, tabl
 .aide-ligne { display: flex; align-items: center; gap: .5rem; color: var(--encre-2); font-size: .85rem; margin-bottom: .5rem; }
 .aide { position: relative; display: inline-block; }
 .aide-btn { font: inherit; font-weight: 700; width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); background: var(--carte); cursor: pointer; padding: 0; }
+.bulle-graphe { display: none; position: fixed; z-index: 20; pointer-events: none; max-width: calc(100vw - 16px); background: var(--carte); color: var(--encre); border: 1px solid var(--trait); border-radius: 6px; padding: .5rem .7rem; box-shadow: 0 4px 14px rgba(0,0,0,.25); font: 12px/1.45 ui-monospace, Menlo, monospace; white-space: pre; }
+.bulle-graphe .bulle-titre { font-weight: 700; margin-bottom: .2rem; }
+.bulle-graphe .bulle-total { font-weight: 700; }
 .bulle { display: none; position: absolute; z-index: 5; left: 2rem; top: -.25rem; width: 22rem; max-width: 80vw; white-space: pre-line; background: var(--carte); color: var(--encre); border: 1px solid var(--trait); border-radius: 6px; padding: .6rem .8rem; box-shadow: 0 4px 14px rgba(0,0,0,.18); font-size: .85rem; }
 .aide:hover .bulle, .aide:focus-within .bulle { display: block; }
 .champ-param { display: flex; flex-direction: column; gap: .25rem; flex: 1 1 14rem; }

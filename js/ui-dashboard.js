@@ -70,6 +70,32 @@
 
   function titreMois(ym) { return moisFr.format(new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1, 1))); }
 
+  // Infobulle HTML (hors canvas) : jamais rognée par le graphe, repositionnée pour rester dans la fenêtre.
+  let bulle = null;
+  function masquerBulle() { if (bulle) bulle.style.display = 'none'; }
+
+  function afficherBulle(ctx) {
+    const t = ctx.tooltip;
+    if (!bulle) {
+      bulle = el('div', '', { class: 'bulle-graphe', role: 'tooltip' });
+      document.body.appendChild(bulle);
+    }
+    if (t.opacity === 0) { masquerBulle(); return; }
+    bulle.textContent = '';
+    bulle.appendChild(el('div', t.title.join(' '), { class: 'bulle-titre' }));
+    t.beforeBody.forEach(function (l) { bulle.appendChild(el('div', l)); });
+    t.footer.forEach(function (l, i) { bulle.appendChild(el('div', l, i === 0 ? {} : { class: 'bulle-total' })); });
+    bulle.style.display = 'block';
+    const r = ctx.chart.canvas.getBoundingClientRect();
+    const w = bulle.offsetWidth;
+    const h = bulle.offsetHeight;
+    let x = r.left + t.caretX + 14;
+    if (x + w > root.innerWidth - 8) x = r.left + t.caretX - w - 14;
+    const y = Math.min(Math.max(8, r.top + t.caretY - h / 2), Math.max(8, root.innerHeight - h - 8));
+    bulle.style.left = Math.max(8, x) + 'px';
+    bulle.style.top = y + 'px';
+  }
+
   // Infobulle détaillée partagée par les graphes de la période : le détail du seul mois survolé
   // est calculé à l'affichage. getMois() renvoie les mois actuellement affichés.
   function tooltipDetail(getMois) {
@@ -79,9 +105,8 @@
       return B.lignesInfobulle(B.detailMois(s.donnees, B.lignesFutures(s.evenements, s.prets), s.parametres, m.ym), m, fmt);
     };
     return {
-      displayColors: false,
-      bodyFont: { family: 'ui-monospace, Menlo, monospace', size: 12 },
-      footerFont: { family: 'ui-monospace, Menlo, monospace', size: 12 },
+      enabled: false, // l'infobulle canvas serait rognée par le graphe : affichage HTML via external
+      external: afficherBulle,
       callbacks: {
         title: function (items) { const m = infos(items); return m ? titreMois(m.ym) : ''; },
         label: function () { return null; }, // le détail par origine remplace une ligne par série
@@ -262,6 +287,7 @@
 
   function render(panneau) {
     charts.splice(0).forEach(function (ch) { ch.destroy(); });
+    masquerBulle();
     panneau.textContent = '';
     const s = B.state;
     if (!s.donnees) return;
