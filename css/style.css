@@ -30,7 +30,7 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body { margin: 0; background: var(--fond); color: var(--encre); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-.entete { display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem; padding: .75rem 1.5rem; background: var(--carte); border-bottom: 1px solid var(--trait); }
+.entete { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem; padding: .75rem 1.5rem; background: var(--carte); border-bottom: 1px solid var(--trait); }
 .entete h1 { font-size: 1.15rem; margin: 0; font-weight: 650; }
 .onglets { display: flex; gap: .25rem; }
 .onglets button { font: inherit; color: var(--encre-2); background: none; border: 0; border-bottom: 2px solid transparent; padding: .4rem .8rem; cursor: pointer; }
