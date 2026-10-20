@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { project, PARAMETRES_DEFAUT } = require('../../js/projection.js');
+const { project, PARAMETRES_DEFAUT, soldeDepart } = require('../../js/projection.js');
 
 const P = { depart: '2026-10', horizon_annees: 1, revalorisation: { taux: 0.02, mois: 1 } };
 function donnees(over) {
@@ -9,7 +9,31 @@ function donnees(over) {
 function mois(res, k) { return res.find((m) => m.ym === k); }
 
 test('defauts', () => {
-  assert.deepEqual(PARAMETRES_DEFAUT, { depart: '2026-10', horizon_annees: 15, revalorisation: { taux: 0.02, mois: 1 } });
+  assert.deepEqual(PARAMETRES_DEFAUT, { depart: '2026-10', horizon_annees: 15, revalorisation: { taux: 0.02, mois: 1 }, solde_depart: { compte_courant: null, epargne: null } });
+});
+
+test('soldeDepart: sans surcharge, valeurs Excel', () => {
+  assert.deepEqual(soldeDepart(donnees(), PARAMETRES_DEFAUT), { compte_courant: 1000, epargne: 500, total: 1500 });
+  assert.deepEqual(soldeDepart(donnees(), {}), { compte_courant: 1000, epargne: 500, total: 1500 });
+});
+
+test('soldeDepart: surcharges independantes, negatif, null', () => {
+  const d = donnees();
+  assert.deepEqual(soldeDepart(d, { solde_depart: { compte_courant: 200, epargne: null } }), { compte_courant: 200, epargne: 500, total: 700 });
+  assert.deepEqual(soldeDepart(d, { solde_depart: { compte_courant: null, epargne: 0 } }), { compte_courant: 1000, epargne: 0, total: 1000 });
+  assert.deepEqual(soldeDepart(d, { solde_depart: { compte_courant: -300, epargne: 50 } }), { compte_courant: -300, epargne: 50, total: -250 });
+  assert.deepEqual(soldeDepart(d, { solde_depart: {} }), { compte_courant: 1000, epargne: 500, total: 1500 });
+});
+
+test('soldeDepart: situation absente = 0', () => {
+  assert.deepEqual(soldeDepart({}, {}), { compte_courant: 0, epargne: 0, total: 0 });
+  assert.deepEqual(soldeDepart(null, { solde_depart: { compte_courant: 10, epargne: null } }), { compte_courant: 10, epargne: 0, total: 10 });
+});
+
+test('project: solde initial avec et sans surcharge', () => {
+  const d = donnees({ mensuel: [{ type: 'depense', categorie: 'c', libelle: 'l', montant: 100 }] });
+  assert.equal(project(d, [], P)[0].solde, 1400);
+  assert.equal(project(d, [], Object.assign({}, P, { solde_depart: { compte_courant: -50, epargne: null } }))[0].solde, 350);
 });
 
 test('(a) depense mensuelle sans fin', () => {

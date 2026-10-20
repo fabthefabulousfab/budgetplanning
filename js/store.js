@@ -76,6 +76,8 @@
 
   function num(v) { return typeof v === 'number' && Number.isFinite(v); }
 
+  const CLES_SOLDE = ['compte_courant', 'epargne'];
+
   function validerParametres(p) {
     if (!p || typeof p !== 'object') throw new Error('Paramètres invalides.');
     validerMois(p.depart, 'Départ');
@@ -86,12 +88,16 @@
     const r = p.revalorisation;
     if (!r || !num(r.taux)) throw new Error('revalorisation.taux doit être un nombre.');
     if (!num(r.mois) || !Number.isInteger(r.mois) || r.mois < 1 || r.mois > 12) throw new Error('revalorisation.mois doit être un entier entre 1 et 12.');
+    CLES_SOLDE.forEach(function (k) {
+      const v = p.solde_depart ? p.solde_depart[k] : null;
+      if (v != null && !num(v)) throw new Error('solde_depart.' + k + ' doit être un nombre (ou vide pour reprendre la valeur Excel).');
+    });
   }
 
   // Fusion profonde des défauts avec le contenu ; clés inconnues (ex. prets_etudiants) ignorées ; undefined/null ignorés.
   function fusionnerParametres(contenu) {
     const c = contenu && typeof contenu === 'object' && !Array.isArray(contenu) ? contenu : {};
-    const out = { depart: PARAMETRES_DEFAUT.depart, horizon_annees: PARAMETRES_DEFAUT.horizon_annees, revalorisation: Object.assign({}, PARAMETRES_DEFAUT.revalorisation) };
+    const out = { depart: PARAMETRES_DEFAUT.depart, horizon_annees: PARAMETRES_DEFAUT.horizon_annees, revalorisation: Object.assign({}, PARAMETRES_DEFAUT.revalorisation), solde_depart: Object.assign({}, PARAMETRES_DEFAUT.solde_depart) };
     if (c.depart != null) out.depart = c.depart;
     if (c.horizon_annees != null) out.horizon_annees = c.horizon_annees;
     const r = c.revalorisation;
@@ -99,10 +105,14 @@
       if (r.taux != null) out.revalorisation.taux = r.taux;
       if (r.mois != null) out.revalorisation.mois = r.mois;
     }
+    const s = c.solde_depart;
+    if (s && typeof s === 'object') {
+      CLES_SOLDE.forEach(function (k) { if (s[k] != null) out.solde_depart[k] = s[k]; });
+    }
     return out;
   }
 
-  const CLES_PARAMETRES = ['depart', 'horizon_annees', 'revalorisation'];
+  const CLES_PARAMETRES = ['depart', 'horizon_annees', 'revalorisation', 'solde_depart'];
   const CLES_OBSOLETES = ['prets_etudiants'];
 
   function estObjet(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
@@ -118,6 +128,12 @@
     });
     if (c.revalorisation != null && !estObjet(c.revalorisation)) {
       throw new Error('revalorisation doit être un objet (taux, mois).');
+    }
+    if (c.solde_depart != null) {
+      if (!estObjet(c.solde_depart)) throw new Error('solde_depart doit être un objet (' + CLES_SOLDE.join(', ') + ').');
+      Object.keys(c.solde_depart).forEach(function (k) {
+        if (CLES_SOLDE.indexOf(k) < 0) throw new Error('clé inconnue « solde_depart.' + k + ' » (attendues : ' + CLES_SOLDE.join(', ') + ').');
+      });
     }
   }
 

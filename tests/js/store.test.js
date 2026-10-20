@@ -134,3 +134,38 @@ test('revalorise doit etre un booleen', () => {
   ['non', 'oui'].forEach((v) => assert.throws(() => store.validerLigne(Object.assign({}, ok, { revalorise: v }), 'mensuel'), /true ou false/));
   [true, false, undefined, null].forEach((v) => store.validerLigne(Object.assign({}, ok, { revalorise: v }), 'mensuel'));
 });
+
+test('solde_depart: ancien fichier sans la cle -> null', async () => {
+  const r = await store.loadAll(fakeDir({ 'parametres.yaml': 'horizon_annees: 12\n' }));
+  assert.deepStrictEqual(r.parametres.solde_depart, { compte_courant: null, epargne: null });
+  const r2 = await store.loadAll(fakeDir({ 'parametres.yaml': 'solde_depart: {epargne: 12.5}\n' }));
+  assert.deepStrictEqual(r2.parametres.solde_depart, { compte_courant: null, epargne: 12.5 });
+});
+
+test('solde_depart: aller-retour save/load', async () => {
+  for (const sd of [{ compte_courant: -120.5, epargne: 3000 }, { compte_courant: null, epargne: null }, { compte_courant: 0, epargne: null }]) {
+    const d = fakeDir();
+    const p = Object.assign({}, PARAMETRES_DEFAUT, { solde_depart: sd });
+    await store.saveParametres(d, p);
+    const r = await store.loadAll(d);
+    assert.deepStrictEqual(r.parametres, p);
+  }
+});
+
+test('solde_depart: valeurs invalides refusees (nom du parametre)', async () => {
+  for (const bad of ['compte_courant: abc', 'compte_courant: .nan', 'epargne: .inf', 'epargne: "12"']) {
+    const d = fakeDir({ 'parametres.yaml': 'solde_depart: {' + bad + '}\n' });
+    await assert.rejects(store.loadAll(d), /parametres\.yaml.*solde_depart\.(compte_courant|epargne)/);
+  }
+  const d = fakeDir();
+  await assert.rejects(store.saveParametres(d, { solde_depart: { compte_courant: NaN } }), /solde_depart\.compte_courant/);
+  assert.ok(!d.files.has('parametres.yaml'));
+});
+
+test('solde_depart: cle imbriquee inconnue refusee, autres cles toujours refusees', async () => {
+  await assert.rejects(store.loadAll(fakeDir({ 'parametres.yaml': 'solde_depart: {compte: 1}\n' })), /parametres\.yaml.*solde_depart.*compte/);
+  await assert.rejects(store.loadAll(fakeDir({ 'parametres.yaml': 'solde_depart: 5\n' })), /parametres\.yaml.*solde_depart/);
+  await assert.rejects(store.loadAll(fakeDir({ 'parametres.yaml': 'solde: 5\n' })), /parametres\.yaml.*solde/);
+  const r = await store.loadAll(fakeDir({ 'parametres.yaml': 'solde_depart: ~\n' }));
+  assert.deepStrictEqual(r.parametres.solde_depart, { compte_courant: null, epargne: null });
+});

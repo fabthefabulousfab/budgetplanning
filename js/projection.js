@@ -3,7 +3,20 @@
 
   const S = typeof module !== 'undefined' ? require('./schedule.js') : root.Budget;
 
-  const PARAMETRES_DEFAUT = { depart: '2026-10', horizon_annees: 15, revalorisation: { taux: 0.02, mois: 1 } };
+  const PARAMETRES_DEFAUT = { depart: '2026-10', horizon_annees: 15, revalorisation: { taux: 0.02, mois: 1 }, solde_depart: { compte_courant: null, epargne: null } };
+
+  // Solde de départ : chaque champ surchargé (nombre) remplace la valeur Excel (donnees.situation), sinon Excel, sinon 0.
+  function soldeDepart(donnees, params) {
+    const sit = (donnees && donnees.situation) || {};
+    const sd = (params && params.solde_depart) || {};
+    function val(k) {
+      if (typeof sd[k] === 'number' && Number.isFinite(sd[k])) return sd[k];
+      return typeof sit[k] === 'number' && Number.isFinite(sit[k]) ? sit[k] : 0;
+    }
+    const cc = val('compte_courant');
+    const ep = val('epargne');
+    return { compte_courant: cc, epargne: ep, total: cc + ep };
+  }
 
   function normaliser(ligne, mensuelNumerique) {
     let schedule;
@@ -61,7 +74,7 @@
       });
     });
 
-    let solde = ((donnees.situation && donnees.situation.compte_courant) || 0) + ((donnees.situation && donnees.situation.epargne) || 0);
+    let solde = soldeDepart(donnees, p).total;
     const out = [];
     for (let pos = 0; pos < n; pos++) {
       const idx = debutIdx + pos;
@@ -72,7 +85,7 @@
     return out;
   }
 
-  const api = { project: project, PARAMETRES_DEFAUT: PARAMETRES_DEFAUT, normaliser: normaliser, facteurReval: facteurReval };
+  const api = { project: project, PARAMETRES_DEFAUT: PARAMETRES_DEFAUT, normaliser: normaliser, facteurReval: facteurReval, soldeDepart: soldeDepart };
   if (typeof module !== 'undefined') module.exports = api;
   else root.Budget = Object.assign(root.Budget || {}, api);
 })(this);

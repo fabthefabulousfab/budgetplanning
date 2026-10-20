@@ -47,7 +47,7 @@ Le mois va de 1 à 12. Ne pas mélanger des échéances avec année et sans ann�
 
 - `donnees-courantes.yaml` : situation, lignes mensuelles, annuelles et exceptionnelles. Il est régénéré à chaque import Excel : les modifications faites dans la page sur ces lignes sont alors perdues.
 - `evenements-futurs.yaml` : revenus et dépenses futurs ajoutés dans l'onglet dédié. Jamais écrasé par l'import Excel.
-- `parametres.yaml` : départ, horizon, revalorisation (onglet Paramètres). Jamais écrasé par l'import Excel.
+- `parametres.yaml` : départ, horizon, revalorisation, solde de départ (onglet Paramètres). Jamais écrasé par l'import Excel.
 
 Ces fichiers sont ignorés par git.
 
@@ -55,7 +55,8 @@ Si vous modifiez ces fichiers à la main :
 
 - Dans `evenements-futurs.yaml`, chaque événement décrit ses montants avec la clé `echeances` (même syntaxe que ci-dessus).
 - `revalorise` doit valoir `true` ou `false` (pas `oui`/`non`).
-- `parametres.yaml` n'accepte que les clés `depart`, `horizon_annees` et `revalorisation` (`taux`, `mois`).
+- `parametres.yaml` n'accepte que les clés `depart`, `horizon_annees`, `revalorisation` (`taux`, `mois`) et `solde_depart` (`compte_courant`, `epargne`).
+- `solde_depart` fixe ce qu'il reste sur les comptes au premier mois de la projection, à la place des montants de l'Excel (section `situation` de `donnees-courantes.yaml`). Chaque champ est indépendant : `null` (ou absent) reprend la valeur de l'Excel, un nombre la remplace (les négatifs sont acceptés). Cette valeur est conservée lors d'un nouvel import Excel. Pour revenir aux valeurs de l'Excel, videz le champ dans l'onglet Paramètres, ou mettez `null` dans le fichier.
 - En cas de YAML invalide, le message d'erreur nomme le fichier concerné et rien n'est écrasé : corrigez le fichier puis rouvrez le dossier.
 
 ## Modéliser un prêt à la main

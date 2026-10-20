@@ -12,7 +12,11 @@
     { cle: 'horizon', label: 'Horizon (années, de 10 à 15)', aide: 'Durée de la projection.', type: 'number', min: '10', max: '15', step: '1' },
     { cle: 'taux', label: 'Revalorisation : taux annuel (%)', aide: 'Appliqué aux lignes « revalorisé », par exemple 2 pour 2 %.', type: 'text', placeholder: '2' },
     { cle: 'mois', label: 'Revalorisation : mois (de 1 à 12)', aide: 'Mois de l’année où la revalorisation s’applique (1 = janvier).', type: 'number', min: '1', max: '12', step: '1' },
+    { cle: 'solde_compte_courant', label: 'Solde de départ : compte courant (€)', aide: 'Vide = valeur de l’Excel. Un nombre la remplace (négatif accepté), même après un nouvel import.', type: 'text', solde: 'compte_courant' },
+    { cle: 'solde_epargne', label: 'Solde de départ : épargne (€)', aide: 'Vide = valeur de l’Excel. Un nombre la remplace, même après un nouvel import.', type: 'text', solde: 'epargne' },
   ];
+
+  const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 });
 
   function el(tag, texte, attrs) {
     const e = document.createElement(tag);
@@ -22,6 +26,10 @@
   }
 
   function lire(cle, p) {
+    if (cle.indexOf('solde_') === 0) {
+      const v = p.solde_depart[cle.slice(6)];
+      return v == null ? '' : String(v);
+    }
     if (cle === 'depart') return p.depart;
     if (cle === 'horizon') return String(p.horizon_annees);
     if (cle === 'taux') return String(Math.round(p.revalorisation.taux * 100000) / 1000);
@@ -36,8 +44,17 @@
   function appliquer(cle, texte) {
     const t = String(texte).trim();
     const p = state().parametres;
-    const c = { depart: p.depart, horizon_annees: p.horizon_annees, revalorisation: { taux: p.revalorisation.taux, mois: p.revalorisation.mois } };
-    if (cle === 'depart') {
+    const c = { depart: p.depart, horizon_annees: p.horizon_annees, revalorisation: { taux: p.revalorisation.taux, mois: p.revalorisation.mois }, solde_depart: { compte_courant: p.solde_depart.compte_courant, epargne: p.solde_depart.epargne } };
+    if (cle.indexOf('solde_') === 0) {
+      const k = cle.slice(6);
+      if (t === '') {
+        c.solde_depart[k] = null;
+      } else {
+        const n = /^-?\d+([.,]\d+)?$/.test(t.replace(/[\s  ]/g, '')) ? Number(t.replace(/[\s  ]/g, '').replace(',', '.')) : NaN;
+        if (!Number.isFinite(n)) throw new Error('Le solde de départ doit être un nombre (par exemple 1250 ou -300,50), ou vide pour reprendre la valeur de l’Excel.');
+        c.solde_depart[k] = n;
+      }
+    } else if (cle === 'depart') {
       const m = /^(\d{4})-(\d{2})$/.exec(t);
       if (!m || Number(m[2]) < 1 || Number(m[2]) > 12) throw new Error('Départ invalide : « ' + t + ' » (attendu AAAA-MM, mois de 01 à 12).');
       c.depart = t;
@@ -107,6 +124,12 @@
       bloc.appendChild(el('label', ch.label, { for: id }));
       const attrs = { id: id, type: ch.type || 'text', 'aria-label': ch.label, 'data-cle': ch.cle, 'aria-describedby': id + '-aide' };
       ['min', 'max', 'step', 'placeholder'].forEach(function (k) { if (ch[k]) attrs[k] = ch[k]; });
+      if (ch.solde) {
+        attrs.inputmode = 'decimal';
+        const sit = state().donnees.situation;
+        const x = sit ? sit[ch.solde] : null;
+        if (typeof x === 'number' && Number.isFinite(x)) attrs.placeholder = 'Excel : ' + eur.format(x);
+      }
       if (erreurs[ch.cle]) { attrs['aria-invalid'] = 'true'; attrs['aria-describedby'] = id + '-aide ' + id + '-err'; }
       const i = el('input', '', attrs);
       i.value = brouillons[ch.cle] !== undefined ? brouillons[ch.cle] : lire(ch.cle, state().parametres);
@@ -117,6 +140,8 @@
       f.appendChild(bloc);
     });
     c.appendChild(f);
+    const total = B.soldeDepart(state().donnees, state().parametres).total;
+    c.appendChild(el('p', 'Solde de départ : ' + eur.format(total), { class: 'note', 'data-total-solde': '1' }));
     panneau.appendChild(c);
 
     if (cleActive) {
