@@ -62,6 +62,8 @@
     };
   }
 
+  const ANNEES_SOLDE = [5, 8, 10, 15];
+  let anneesSolde = 8; // durée du graphe Solde cumulé : survit aux redessins
   let periode = '12'; // période du Focus mensuel : survit aux redessins
   const moisFr = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
   const signe = function (v) { return (v > 0 ? '+' : '') + fmt(v); };
@@ -189,19 +191,32 @@
     root_.appendChild(c1);
 
     const c2 = carte('Solde cumulé', 'Compte courant + épargne de départ, puis résultat de chaque mois.');
+    const ligneA = el('div', '', { class: 'choix-periode' });
+    ligneA.appendChild(el('label', 'Durée affichée', { for: 'solde-annees' }));
+    const selectA = el('select', '', { id: 'solde-annees' });
+    ANNEES_SOLDE.forEach(function (a) {
+      const op = el('option', a + ' ans', { value: String(a) });
+      if (a === anneesSolde) op.setAttribute('selected', '');
+      selectA.appendChild(op);
+    });
+    ligneA.appendChild(selectA);
+    c2.appendChild(ligneA);
     c2.appendChild(legende([{ couleur: pos, texte: 'Solde positif' }, { couleur: neg, texte: 'Solde négatif' }]));
+    let selSolde = mois.slice(0, anneesSolde * 12);
     const o3 = optionsCommunes();
-    o3.plugins.tooltip = tooltipDetail(function () { return mois; });
-    charts.push(new Chart(canvas(c2, 'Histogramme du solde cumulé'), {
+    o3.plugins.tooltip = tooltipDetail(function () { return selSolde; });
+    const chartLong = new Chart(canvas(c2, 'Histogramme du solde cumulé'), {
       type: 'bar',
-      data: { labels: labels, datasets: [{
-        label: 'Solde',
-        data: mois.map(function (m) { return m.solde; }),
-        backgroundColor: mois.map(function (m) { return m.solde < 0 ? neg : pos; }),
-        borderRadius: 2,
-      }] },
+      data: donneesSolde(selSolde),
       options: o3,
-    }));
+    });
+    charts.push(chartLong);
+    selectA.addEventListener('change', function () {
+      anneesSolde = Number(selectA.value);
+      selSolde = mois.slice(0, anneesSolde * 12);
+      chartLong.data = donneesSolde(selSolde);
+      chartLong.update();
+    });
     root_.appendChild(c2);
   }
 
