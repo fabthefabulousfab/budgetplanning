@@ -2,7 +2,7 @@
   'use strict';
 
   const B = root.Budget;
-  const charts = [];
+  const charts = []; // ordre : [0] focus mensuel, [1] solde sur la période, [2] revenus/dépenses, [3] solde cumulé
   const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
   const fmt = function (v) { return eur.format(Math.round(v)); };
 
@@ -65,43 +65,35 @@
   let periode = '12'; // période du Focus mensuel : survit aux redessins
   const moisFr = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
   const signe = function (v) { return (v > 0 ? '+' : '') + fmt(v); };
-  const court = function (t) { return t.length > 36 ? t.slice(0, 35) + '…' : t; };
 
   function titreMois(ym) { return moisFr.format(new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1, 1))); }
 
-  // Détail du seul mois survolé, calculé à l'affichage de l'infobulle.
-  function lignesDetail(ym) {
-    const s = B.state;
-    const d = B.detailMois(s.donnees, s.evenements, s.parametres, ym);
-    const out = ['Mensuel (régulier)', '  Revenus : ' + signe(d.mensuel.revenus), '  Dépenses : ' + signe(-d.mensuel.depenses)];
-    [['Annuel', d.annuel], ['Exceptionnel / futur', d.exceptionnel.concat(d.futurs)]].forEach(function (g) {
-      if (!g[1].length) return;
-      out.push(g[0]);
-      g[1].forEach(function (l) { out.push('  ' + court(String(l.libelle)) + ' : ' + signe(l.montant)); });
-    });
-    return out;
-  }
-
-  function optionsFocus(getMois) {
-    const o = optionsCommunes();
-    o.scales.x.stacked = true;
-    o.scales.y.stacked = true;
+  // Infobulle détaillée partagée par les graphes de la période : le détail du seul mois survolé
+  // est calculé à l'affichage. getMois() renvoie les mois actuellement affichés.
+  function tooltipDetail(getMois) {
     const infos = function (items) { return items.length ? getMois()[items[0].dataIndex] : null; };
-    o.plugins.tooltip = {
+    const lignes = function (m) {
+      const s = B.state;
+      return B.lignesInfobulle(B.detailMois(s.donnees, s.evenements, s.parametres, m.ym), m, fmt);
+    };
+    return {
       displayColors: false,
       bodyFont: { family: 'ui-monospace, Menlo, monospace', size: 12 },
       footerFont: { family: 'ui-monospace, Menlo, monospace', size: 12 },
       callbacks: {
         title: function (items) { const m = infos(items); return m ? titreMois(m.ym) : ''; },
         label: function () { return null; }, // le détail par origine remplace une ligne par série
-        beforeBody: function (items) { const m = infos(items); return m ? lignesDetail(m.ym) : []; },
-        footer: function (items) {
-          const m = infos(items);
-          if (!m) return [];
-          return ['────────────────', 'Net du mois : ' + signe(m.net), 'Solde fin de mois : ' + fmt(m.solde)];
-        },
+        beforeBody: function (items) { const m = infos(items); return m ? lignes(m).corps : []; },
+        footer: function (items) { const m = infos(items); return m ? lignes(m).pied : []; },
       },
     };
+  }
+
+  function optionsFocus(getMois) {
+    const o = optionsCommunes();
+    o.scales.x.stacked = true;
+    o.scales.y.stacked = true;
+    o.plugins.tooltip = tooltipDetail(getMois);
     return o;
   }
 
@@ -115,6 +107,19 @@
     };
   }
 
+  function donneesSolde(sel) {
+    return {
+      labels: sel.map(function (m) { return m.ym; }),
+      datasets: [{
+        label: 'Solde',
+        data: sel.map(function (m) { return m.solde; }),
+        backgroundColor: sel.map(function (m) { return m.solde < 0 ? css('--negatif') : css('--positif'); }),
+        borderRadius: 2,
+      }],
+    };
+  }
+
+  // Ajoute les cartes Focus mensuel puis Solde cumulé sur la période, pilotées par le même sélecteur.
   function focus(root_, mois) {
     const opts = B.optionsPeriode(mois);
     if (!opts.some(function (x) { return x.valeur === periode; })) periode = '12';
@@ -137,13 +142,28 @@
       options: optionsFocus(function () { return sel; }),
     });
     charts.push(chart);
+    root_.appendChild(c);
+
+    const c2 = carte('Solde cumulé sur la période', 'Solde en fin de mois sur la période choisie ci-dessus ; survolez un mois pour son détail.');
+    c2.appendChild(legende([{ couleur: css('--positif'), texte: 'Solde positif' }, { couleur: css('--negatif'), texte: 'Solde négatif' }]));
+    const o2 = optionsCommunes();
+    o2.plugins.tooltip = tooltipDetail(function () { return sel; });
+    const chartSolde = new Chart(canvas(c2, 'Histogramme du solde cumulé en fin de mois sur la période choisie'), {
+      type: 'bar',
+      data: donneesSolde(sel),
+      options: o2,
+    });
+    charts.push(chartSolde);
+    root_.appendChild(c2);
+
     select.addEventListener('change', function () {
       periode = select.value;
       sel = B.moisDePeriode(mois, periode) || B.moisDePeriode(mois, '12');
       chart.data = donneesFocus(sel);
       chart.update();
+      chartSolde.data = donneesSolde(sel);
+      chartSolde.update();
     });
-    root_.appendChild(c);
   }
 
   function graphes(root_, mois) {

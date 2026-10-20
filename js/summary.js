@@ -110,6 +110,19 @@
     return out;
   }
 
+  // Lignes de l'infobulle détaillée d'un mois : d = detailMois(), m = mois de project(), fmt = formateur monétaire.
+  function lignesInfobulle(d, m, fmt) {
+    const signe = function (v) { return (v > 0 ? '+' : '') + fmt(v); };
+    const court = function (t) { return t.length > 36 ? t.slice(0, 35) + '…' : t; };
+    const corps = ['Mensuel (régulier)', '  Revenus : ' + signe(d.mensuel.revenus), '  Dépenses : ' + signe(-d.mensuel.depenses)];
+    [['Annuel', d.annuel], ['Exceptionnel / futur', d.exceptionnel.concat(d.futurs)]].forEach(function (g) {
+      if (!g[1].length) return;
+      corps.push(g[0]);
+      g[1].forEach(function (l) { corps.push('  ' + court(String(l.libelle)) + ' : ' + signe(l.montant)); });
+    });
+    return { corps: corps, pied: ['────────────────', 'Net du mois : ' + signe(m.net), 'Solde fin de mois : ' + fmt(m.solde)] };
+  }
+
   // Options du sélecteur de période : 12 prochains mois, puis une option par année civile couverte.
   function optionsPeriode(mois) {
     const opts = [{ valeur: '12', libelle: '12 prochains mois' }];
@@ -131,6 +144,7 @@
 
   const api = {
     detailMois: detailMois,
+    lignesInfobulle: lignesInfobulle,
     optionsPeriode: optionsPeriode,
     moisDePeriode: moisDePeriode,
     restantMensuel: restantMensuel,
