@@ -166,11 +166,38 @@
   }
 
   // Historique synthétique des comptes (une ligne par mois, euros arrondis), pensé pour être relu par un LLM avec peu de tokens.
-  function historiqueCsv(mois) {
+  // Avec `detail` (voir detailHistorique), une seconde section liste chaque revenu et chaque dépense de chaque mois.
+  function historiqueCsv(mois, detail) {
     const r = Math.round;
-    return 'mois,revenus,depenses,solde\n' + (mois || []).map(function (m) {
+    const champ = function (v) { const t = String(v == null ? '' : v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+    const montant = function (v) { return String(Math.round(v * 100) / 100 + 0); };
+    let out = 'mois,revenus,depenses,solde\n' + (mois || []).map(function (m) {
       return m.ym + ',' + r(m.revenus) + ',' + r(m.depenses) + ',' + r(m.solde);
     }).join('\n') + '\n';
+    if (detail) {
+      out += '\nmois,origine,categorie,libelle,montant\n' + detail.map(function (d) {
+        return [d.ym, d.origine, champ(d.categorie), champ(d.libelle), montant(d.montant)].join(',');
+      }).join('\n') + '\n';
+    }
+    return out;
+  }
+
+  // Toutes les lignes (revenus > 0, dépenses < 0) de chaque mois de la projection, revalorisation comprise, triées par mois.
+  // donnees = lignes mensuelles/annuelles/exceptionnelles ; futurs = événements et prêts (lignesFutures).
+  function detailHistorique(donnees, futurs, params) {
+    const p = Object.assign({}, Pj.PARAMETRES_DEFAUT, params);
+    const win = fenetre(p);
+    const rows = [];
+    [['mensuel', donnees.mensuel, true], ['annuel', donnees.annuel, false], ['exceptionnel', donnees.exceptionnel, false], ['futur', futurs, false]].forEach(function (g) {
+      (g[1] || []).filter(Pj.estActif).forEach(function (ligne) {
+        const l = Pj.normaliser(ligne, g[2]);
+        S.occurrences(l.schedule, l.bornes, win).forEach(function (o) {
+          const m = l.revalorise ? o.montant * Pj.facteurReval(p, S.monthIndex(o.ym)) : o.montant;
+          rows.push({ ym: o.ym, origine: ligne.pret ? 'pret' : g[0], categorie: ligne.categorie || '', libelle: String(ligne.libelle), montant: (l.type === 'revenu' ? 1 : -1) * m });
+        });
+      });
+    });
+    return rows.sort(function (a, b) { return S.monthIndex(a.ym) - S.monthIndex(b.ym); }); // tri stable : l'ordre des groupes est conservé
   }
 
   // Options du sélecteur de période : 12 prochains mois, puis une option par année civile couverte.
@@ -196,6 +223,7 @@
     detailMois: detailMois,
     lignesInfobulle: lignesInfobulle,
     historiqueCsv: historiqueCsv,
+    detailHistorique: detailHistorique,
     bilanLignes: bilanLignes,
     bilanParMois: bilanParMois,
     bilanParAnnee: bilanParAnnee,

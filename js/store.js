@@ -211,10 +211,10 @@
   }
 
   // Historique synthétique des comptes, regénéré après chaque enregistrement (jamais à l'ouverture).
-  async function ecrireHistorique(dir, mois) {
+  async function ecrireHistorique(dir, mois, detail) {
     const handle = await dir.getFileHandle(FICHIERS.historique, { create: true });
     const w = await handle.createWritable();
-    await w.write(Su.historiqueCsv(mois));
+    await w.write(Su.historiqueCsv(mois, detail));
     await w.close();
   }
 

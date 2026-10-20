@@ -136,7 +136,8 @@
     refresh();
     // Historique synthétique : une erreur d'écriture n'invalide pas l'enregistrement qui vient de réussir.
     try {
-      await B.ecrireHistorique(state.dir, state.mois);
+      const detail = B.detailHistorique(state.donnees, B.lignesFutures(state.evenements, state.prets), state.parametres);
+      await B.ecrireHistorique(state.dir, state.mois, detail);
     } catch (e) {
       erreur('Historique non enregistré (' + FICHIER_HISTORIQUE + ') : ' + e.message);
     }
