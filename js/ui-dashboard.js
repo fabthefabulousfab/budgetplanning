@@ -177,6 +177,7 @@
     const o1 = optionsCommunes();
     o1.scales.x.stacked = true;
     o1.scales.y.stacked = true;
+    o1.plugins.tooltip = tooltipDetail(function () { return mois; });
     charts.push(new Chart(canvas(c1, 'Histogramme mensuel des revenus et des dépenses'), {
       type: 'bar',
       data: { labels: labels, datasets: [
@@ -189,6 +190,8 @@
 
     const c2 = carte('Solde cumulé', 'Compte courant + épargne de départ, puis résultat de chaque mois.');
     c2.appendChild(legende([{ couleur: pos, texte: 'Solde positif' }, { couleur: neg, texte: 'Solde négatif' }]));
+    const o3 = optionsCommunes();
+    o3.plugins.tooltip = tooltipDetail(function () { return mois; });
     charts.push(new Chart(canvas(c2, 'Histogramme du solde cumulé'), {
       type: 'bar',
       data: { labels: labels, datasets: [{
@@ -197,7 +200,7 @@
         backgroundColor: mois.map(function (m) { return m.solde < 0 ? neg : pos; }),
         borderRadius: 2,
       }] },
-      options: optionsCommunes(),
+      options: o3,
     }));
     root_.appendChild(c2);
   }
