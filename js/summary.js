@@ -38,17 +38,45 @@
 
   // Bilan (revenus, dépenses, net) des lignes sur les nbMois premiers mois de la projection, montants de départ (hors revalorisation).
   function bilanLignes(lignes, params, nbMois) {
+    const g = bilanGroupe(lignes, params, nbMois, function () { return 'total'; })[0];
+    return g ? { revenus: g.revenus, depenses: g.depenses, net: g.net } : { revenus: 0, depenses: 0, net: 0 };
+  }
+
+  // Regroupe les occurrences signées des nbMois premiers mois selon cleDe(ym) (ordre de première apparition, clés triées).
+  function bilanGroupe(lignes, params, nbMois, cleDe) {
     const p = Object.assign({}, Pj.PARAMETRES_DEFAUT, params);
     const d = S.monthIndex(p.depart);
     const win = { debut: p.depart, fin: S.fromIndex(d + nbMois - 1) };
-    let revenus = 0;
-    let depenses = 0;
+    const groupes = new Map();
+    for (let i = 0; i < nbMois; i++) {
+      const c = cleDe(S.fromIndex(d + i));
+      if (!groupes.has(c)) groupes.set(c, { cle: c, revenus: 0, depenses: 0, net: 0 });
+    }
     (lignes || []).filter(Pj.estActif).forEach(function (l) {
       occurrencesSignees(l, win).forEach(function (o) {
-        if (o.montant > 0) revenus += o.montant; else depenses -= o.montant;
+        const g = groupes.get(cleDe(o.ym));
+        if (o.montant > 0) g.revenus += o.montant; else g.depenses -= o.montant;
+        g.net = g.revenus - g.depenses;
       });
     });
-    return { revenus: revenus, depenses: depenses, net: revenus - depenses };
+    return Array.from(groupes.values());
+  }
+
+  // Un bilan par mois (nbMois mois consécutifs depuis le départ).
+  function bilanParMois(lignes, params, nbMois) {
+    return bilanGroupe(lignes, params, nbMois, function (ym) { return ym; }).map(function (g) {
+      return { ym: g.cle, revenus: g.revenus, depenses: g.depenses, net: g.net };
+    });
+  }
+
+  // Un bilan par année civile, de l'année de départ à l'année de départ + nbAnnees (première année partielle : à partir du mois de départ).
+  function bilanParAnnee(lignes, params, nbAnnees) {
+    const p = Object.assign({}, Pj.PARAMETRES_DEFAUT, params);
+    const dep = S.parseYm(p.depart);
+    const nbMois = (nbAnnees + 1) * 12 - (dep.m - 1);
+    return bilanGroupe(lignes, params, nbMois, function (ym) { return ym.slice(0, 4); }).map(function (g) {
+      return { annee: Number(g.cle), revenus: g.revenus, depenses: g.depenses, net: g.net };
+    });
   }
 
   function restantMoyen(donnees, params) {
@@ -169,6 +197,8 @@
     lignesInfobulle: lignesInfobulle,
     historiqueCsv: historiqueCsv,
     bilanLignes: bilanLignes,
+    bilanParMois: bilanParMois,
+    bilanParAnnee: bilanParAnnee,
     optionsPeriode: optionsPeriode,
     moisDePeriode: moisDePeriode,
     restantMensuel: restantMensuel,

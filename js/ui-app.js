@@ -142,6 +142,33 @@
     }
   }
 
+  // Tableau de bilans en ligne : une colonne par période (+ un total), lignes Revenus / Dépenses / Bilan.
+  const eurBilan = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+  function tableauBilan(libelle, periodes) {
+    const f = function (v) { return eurBilan.format(Math.round(v) + 0); };
+    const total = periodes.reduce(function (a, p) { return { revenus: a.revenus + p.revenus, depenses: a.depenses + p.depenses, net: a.net + p.net }; }, { revenus: 0, depenses: 0, net: 0 });
+    const t = el('table', '', { class: 'bilan', 'aria-label': libelle });
+    const tr0 = el('tr');
+    tr0.appendChild(el('th', '', { scope: 'col' }));
+    periodes.forEach(function (p) { tr0.appendChild(el('th', p.titre, { scope: 'col', class: 'num' })); });
+    tr0.appendChild(el('th', 'Total', { scope: 'col', class: 'num' }));
+    t.appendChild(el('thead')).appendChild(tr0);
+    const tb = el('tbody');
+    [['Revenus', 'revenus', 1], ['Dépenses', 'depenses', -1], ['Bilan', 'net', 1]].forEach(function (r) {
+      const tr = el('tr', '', r[1] === 'net' ? { class: 'bilan-net' } : {});
+      tr.appendChild(el('th', r[0], { scope: 'row' }));
+      periodes.concat([total]).forEach(function (p) {
+        const v = r[2] * p[r[1]];
+        tr.appendChild(el('td', p[r[1]] === 0 && r[1] !== 'net' ? '—' : f(v), { class: v < 0 ? 'num neg' : 'num' }));
+      });
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    const w = el('div', '', { class: 'defil' });
+    w.appendChild(t);
+    return w;
+  }
+
   // Bouton « œil » : masque ou réaffiche une ligne (actif: false = ignorée par la projection).
   function boutonOeil(actifLigne, libelle, onClick, cle) {
     const b = el('button', '', { type: 'button', class: 'oeil' + (actifLigne ? '' : ' oeil-ferme'), 'aria-pressed': String(!actifLigne), 'aria-label': (actifLigne ? 'Masquer la ligne ' : 'Afficher la ligne ') + libelle, title: actifLigne ? 'Masquer (ignorée dans la projection)' : 'Masquée : cliquer pour la reprendre en compte' });
@@ -201,7 +228,7 @@
     a.appendChild(b);
   }
 
-  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, registerTab: registerTab, start: start });
+  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, tableauBilan: tableauBilan, registerTab: registerTab, start: start });
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ecranAccueil);
     else ecranAccueil();

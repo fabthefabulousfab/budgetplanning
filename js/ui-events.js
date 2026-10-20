@@ -211,18 +211,13 @@
     panneau.appendChild(c);
   }
 
-  // Impact bilan des événements (hors prêts) sur les 10 prochaines années, montants de départ.
+  // Somme par année civile des événements (hors prêts), de l'année de départ à +10, montants de départ.
   function bilan(panneau) {
-    const b = B.bilanLignes(B.state.evenements, B.state.parametres, 120);
-    const c = carte('Impact bilan sur les 10 prochaines années', 'Revenus − dépenses des événements ci-dessous, montants de départ (hors revalorisation, hors prêts).');
-    const w = el('div', '', { class: 'totaux' });
-    [['Revenus', b.revenus], ['Dépenses', -b.depenses], ['Impact bilan (revenus − dépenses)', b.net]].forEach(function (it) {
-      const d = el('div', '', { class: 'total' });
-      d.appendChild(el('span', it[0], { class: 'total-lib' }));
-      d.appendChild(el('strong', fmt(it[1]), { class: it[1] < 0 ? 'neg' : '' }));
-      w.appendChild(d);
+    const annees = B.bilanParAnnee(B.state.evenements, B.state.parametres, 10).map(function (a) {
+      return { titre: String(a.annee), revenus: a.revenus, depenses: a.depenses, net: a.net };
     });
-    c.appendChild(w);
+    const c = carte('Impact bilan par année, sur 10 ans', 'Revenus − dépenses des événements ci-dessous, de l’année de départ (à partir du mois de départ) jusqu’à dix ans plus tard. Montants de départ (hors revalorisation, hors prêts).');
+    c.appendChild(B.tableauBilan('Bilan des événements par année', annees));
     panneau.appendChild(c);
   }
 

@@ -12,6 +12,7 @@
     '2026-3-300 : 300 € une seule fois, en mars 2026',
     'Le mois va de 1 à 12 ; ne pas mélanger échéances avec et sans année.',
   ].join('\n');
+  const MOIS_COURTS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
   const TYPES = [['depense', 'Dépense'], ['revenu', 'Revenu']];
 
   // État d'édition conservé hors du DOM (les onglets sont redessinés à chaque activation).
@@ -375,6 +376,12 @@
     tete.appendChild(el('span', 'Syntaxe des échéances'));
     tete.appendChild(aide());
     resume.appendChild(tete);
+    // Les 12 premiers mois projetés, rangés de janvier à décembre (chaque mois civil apparaît une fois).
+    const parMois = B.bilanParMois(annuel.concat(exc), params, 12).sort(function (a, b) { return Number(a.ym.slice(5)) - Number(b.ym.slice(5)); });
+    resume.appendChild(el('p', 'Mois par mois, de janvier à décembre : chaque mois civil des 12 premiers mois projetés (à partir du mois de départ), montants de départ.', { class: 'note' }));
+    resume.appendChild(B.tableauBilan('Bilan annuel et exceptionnel mois par mois', parMois.map(function (m) {
+      return { titre: MOIS_COURTS[Number(m.ym.slice(5)) - 1], revenus: m.revenus, depenses: m.depenses, net: m.net };
+    })));
     resume.appendChild(totaux([
       { t: 'Revenus sur 12 mois', v: bilan.revenus },
       { t: 'Dépenses sur 12 mois', v: -bilan.depenses },
