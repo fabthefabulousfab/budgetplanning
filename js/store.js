@@ -85,7 +85,14 @@
       const src = l.echeances != null ? l.echeances : l.montant;
       S.parseEcheances(typeof src === 'number' ? String(src) : src);
     }
-    if (l.paliers != null) validerPaliers(l.paliers, nature, l.debut);
+    if (l.paliers != null) {
+      try {
+        validerPaliers(l.paliers, nature, l.debut);
+      } catch (e) {
+        if (nature !== 'evenement') e.fichier = FICHIERS.paliers; // les paliers des lignes importées vivent dans paliers.yaml
+        throw e;
+      }
+    }
   }
 
   function validerDonnees(d) {
@@ -101,7 +108,13 @@
       if (rows == null) return;
       if (!Array.isArray(rows)) throw new Error('« ' + nature + ' » doit être une liste.');
       rows.forEach(function (l, i) {
-        try { validerLigne(l, nature); } catch (e) { throw new Error(nature + ' #' + (i + 1) + ' : ' + e.message); }
+        try {
+          validerLigne(l, nature);
+        } catch (e) {
+          const err = new Error(nature + ' #' + (i + 1) + ' : ' + e.message);
+          err.fichier = e.fichier;
+          throw err;
+        }
       });
     });
   }
@@ -212,7 +225,7 @@
   }
 
   function enFichier(nom, fn) {
-    try { return fn(); } catch (e) { throw new Error(nom + ' : ' + e.message); }
+    try { return fn(); } catch (e) { throw new Error((e.fichier || nom) + ' : ' + e.message); }
   }
 
   const NATURES_IMPORT = ['mensuel', 'annuel', 'exceptionnel'];

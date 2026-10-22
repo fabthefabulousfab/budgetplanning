@@ -313,6 +313,27 @@ test('store : doublon refuse si l orphelin ou une autre ligne a deja ses paliers
   assert.ok(!d.files.has('donnees-courantes.yaml'));
 });
 
+test('totauxMensuels : montants en vigueur au depart, accord avec restantMensuel', () => {
+  const l1 = { type: 'revenu', categorie: 'c', libelle: 'a', montant: 249, paliers: [{ depuis: '2026-10', montant: 100 }, { depuis: '2029-01', montant: 5 }] };
+  const l2 = { type: 'depense', categorie: 'c', libelle: 'b', montant: 40, paliers: [{ depuis: '2027-01', montant: 90 }] };
+  const l3 = { type: 'depense', categorie: 'c', libelle: 'c', montant: 10, actif: false };
+  const d = { mensuel: [l1, l2, l3] };
+  const t = Su.totauxMensuels(d, P);
+  assert.deepStrictEqual(t, { revenus: 100, depenses: 40 });
+  assert.strictEqual(t.revenus - t.depenses, Su.restantMensuel(d, P));
+});
+
+test('store : une erreur de paliers d une ligne importee nomme paliers.yaml, pas celle d un evenement', async () => {
+  const d = fakeDir({});
+  const don = { mensuel: [Object.assign({}, LIGNE, { paliers: [{ depuis: '2027-02', montant: 1 }, { depuis: '2027-01', montant: 2 }] })] };
+  await assert.rejects(store.saveDonnees(d, don, []), /^Error: paliers\.yaml : mensuel #1 : Palier #2/);
+  assert.ok(!d.files.has('donnees-courantes.yaml'));
+  const ev = { id: 'e', type: 'depense', categorie: 'Achat', libelle: 'x', echeances: '5', paliers: [{ depuis: '2027-02', echeances: '1' }, { depuis: '2027-01', echeances: '2' }] };
+  await assert.rejects(store.saveEvenements(d, [ev], []), /^Error: evenements-futurs\.yaml : événement #1 : Palier #2/);
+  const bad = { mensuel: [Object.assign({}, LIGNE, { montant: -1 })] };
+  await assert.rejects(store.saveDonnees(d, bad, []), /^Error: donnees-courantes\.yaml : mensuel #1/);
+});
+
 test('store : cle de montant selon la nature', () => {
   const base = { id: 'x', type: 'depense', categorie: 'c', libelle: 'l' };
   assert.throws(() => store.validerLigne(Object.assign({ montant: 10, paliers: [{ depuis: '2027-01', echeances: '5' }] }, base), 'mensuel'), /utiliser « montant »/);

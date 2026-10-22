@@ -16,6 +16,20 @@
     b.textContent = message;
   }
 
+  // Avertissements non bloquants (affichés à l'ouverture, jusqu'à fermeture ou prochain chargement).
+  function avertir(messages) {
+    const b = $('avertissements');
+    b.textContent = '';
+    if (!messages || !messages.length) { b.hidden = true; return; }
+    b.hidden = false;
+    const ul = el('ul');
+    messages.forEach(function (m) { ul.appendChild(el('li', m)); });
+    b.appendChild(ul);
+    const f = el('button', 'Fermer', { type: 'button', class: 'btn-lien', 'aria-label': 'Fermer les avertissements' });
+    f.addEventListener('click', function () { avertir([]); });
+    b.appendChild(f);
+  }
+
   function accueil(contenu) {
     const a = $('accueil');
     a.hidden = false;
@@ -197,6 +211,7 @@
 
   async function start(dir) {
     erreur('');
+    avertir([]);
     let r;
     try {
       r = await B.loadAll(dir);
@@ -211,6 +226,7 @@
     state.parametres = r.parametres;
     state.orphelins = r.orphelins || [];
     state.avertissements = r.avertissements || [];
+    avertir(state.avertissements);
     if (r.donnees === null) {
       accueil([
         el('h2', 'Aucune donnée courante'),

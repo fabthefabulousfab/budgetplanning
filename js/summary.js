@@ -30,11 +30,18 @@
   }
 
   // `params` (optionnel) donne le mois de départ pour lequel est pris le montant en vigueur des lignes à paliers.
-  function restantMensuel(donnees, params) {
+  // Totaux des lignes mensuelles actives au mois de départ (montant en vigueur, paliers compris).
+  function totauxMensuels(donnees, params) {
     const depart = Object.assign({}, Pj.PARAMETRES_DEFAUT, params).depart;
     return (donnees.mensuel || []).filter(Pj.estActif).reduce(function (acc, l) {
-      return acc + (l.type === 'revenu' ? 1 : -1) * montantAu(l, depart);
-    }, 0);
+      acc[l.type === 'revenu' ? 'revenus' : 'depenses'] += montantAu(l, depart);
+      return acc;
+    }, { revenus: 0, depenses: 0 });
+  }
+
+  function restantMensuel(donnees, params) {
+    const t = totauxMensuels(donnees, params);
+    return t.revenus - t.depenses;
   }
 
   function impactMensuel(lignes, params) {
@@ -243,6 +250,8 @@
     optionsPeriode: optionsPeriode,
     moisDePeriode: moisDePeriode,
     restantMensuel: restantMensuel,
+    totauxMensuels: totauxMensuels,
+    montantAu: montantAu,
     impactMensuel: impactMensuel,
     restantMoyen: restantMoyen,
     syntheseEvenements: syntheseEvenements,

@@ -50,11 +50,15 @@
   // ---- Modification, suppression, ajout --------------------------------------------------
 
   async function modifier(nature, ligne, champ, valeur) {
+    return commit(nature, ligne, B.appliquerEdition(ligne, champ, valeur, nature));
+  }
+
+  // Enregistre `copie` à la place de `ligne` (repérée par identité) : validation, mise à jour, écriture, retour arrière si échec.
+  async function commit(nature, ligne, copie) {
     const liste = B.state.donnees[nature];
     const idx = liste.indexOf(ligne); // par identité : les index changent après suppression/ajout
     if (idx < 0) return;
-    const copie = B.appliquerEdition(ligne, champ, valeur, nature);
-    if (JSON.stringify(copie) === JSON.stringify(ligne) && !(champ === 'montant' && Number.isNaN(copie.montant))) {
+    if (JSON.stringify(copie) === JSON.stringify(ligne) && !Number.isNaN(copie.montant)) {
       if (erreurs.delete(ligne)) B.refresh(); // valeur enregistrée ressaisie : l'erreur n'a plus lieu d'être
       return;
     }
@@ -67,6 +71,7 @@
     }
     erreurs.delete(ligne);
     liste[idx] = copie;
+    B.paliersUI.remplacer(ligne, copie);
     B.refresh(); // les gestionnaires se relient aux nouvelles lignes avant toute écriture en attente
     try {
       await B.persist('donnees');
@@ -74,6 +79,7 @@
       const j = liste.indexOf(copie);
       if (j >= 0) {
         liste[j] = ligne;
+        B.paliersUI.remplacer(copie, ligne);
         erreurs.set(ligne, e.message);
       }
       B.refresh();
@@ -86,6 +92,7 @@
     if (idx < 0) return;
     if (!root.confirm('Supprimer la ligne « ' + ligne.libelle + ' » ?')) return;
     erreurs.delete(ligne);
+    B.paliersUI.oublier(ligne);
     liste.splice(idx, 1);
     B.refresh();
     try {
@@ -157,6 +164,9 @@
 
   function actions(nature, index, ligne) {
     const w = el('span', '', { class: 'actions' });
+    w.appendChild(B.paliersUI.caseCoche(ligne, nature + ':' + index, function (coche) {
+      B.paliersUI.basculer(ligne, coche, function (copie) { return commit(nature, ligne, copie); });
+    }));
     w.appendChild(boutonOeil(nature, index, ligne));
     w.appendChild(boutonSupprimer(nature, index, ligne));
     return w;
@@ -184,6 +194,16 @@
     const th = el('thead');
     th.appendChild(tr);
     return th;
+  }
+
+  // Sous-lignes de paliers d'une ligne (vide si la case « Palier » n'est pas cochée).
+  function sousLignes(nature, index, ligne, nbCols, col, creerFin, aide) {
+    return B.paliersUI.sousLignes({
+      ligne: ligne, nature: nature, cle: nature + ':' + index, nbCols: nbCols, col: col, creerFin: creerFin, aide: aide,
+      onEdit: function (i, champ, valeur) { commit(nature, ligne, B.editerPalier(ligne, i, champ, valeur, nature)); },
+      onAjouter: function () { commit(nature, ligne, B.ajouterPalier(ligne, nature, B.state.parametres.depart)); },
+      onSupprimer: function (i) { commit(nature, ligne, B.retirerPalier(ligne, i)); },
+    });
   }
 
   function ligneErreur(ligne, nbCols) {
@@ -265,17 +285,16 @@
     const d = B.state.donnees;
     const lignes = d.mensuel || (d.mensuel = []);
 
-    const somme = function (type) {
-      return lignes.filter(function (l) { return l.type === type && l.actif !== false; }).reduce(function (a, l) { return a + Number(l.montant); }, 0);
-    };
+    // Montants en vigueur au mois de départ (paliers compris), comme le restant mensuel.
+    const tot = B.totauxMensuels(d, B.state.parametres);
     // Mensualités des prêts (en cours et simulés) : moyenne sur les 12 premiers mois, montants de départ.
     const prets = B.bilanLignes(B.lignesPret(B.state.prets), B.state.parametres, 12);
     const moyennePrets = -prets.depenses / 12;
     const restant = B.restantMensuel(d, B.state.parametres);
     const c = carte('Mensuel', 'Montants de départ (hors revalorisation), par catégorie. Les prêts sont ceux de l’onglet Prêts (moyenne des mensualités des 12 premiers mois).');
     c.appendChild(totaux([
-      { t: 'Total revenus', v: somme('revenu') },
-      { t: 'Total dépenses', v: -somme('depense') },
+      { t: 'Total revenus', v: tot.revenus },
+      { t: 'Total dépenses', v: -tot.depenses },
       { t: 'Restant mensuel (montants de départ)', v: restant },
       { t: 'Mensualités de prêts (moyenne)', v: moyennePrets },
       { t: 'Restant mensuel après prêts', v: restant + moyennePrets },
@@ -296,9 +315,12 @@
         tr.appendChild(td(champSelect('mensuel', it.index, l, 'type', 'Type', TYPES)));
         tr.appendChild(td(champTexte('mensuel', it.index, l, 'montant', 'Montant mensuel', { inputmode: 'decimal', class: 'num' }), 'num'));
         tr.appendChild(td(champCase('mensuel', it.index, l)));
-        tr.appendChild(td(champTexte('mensuel', it.index, l, 'fin', 'Fin', { placeholder: 'AAAA-MM' })));
+        const creerFin = function () { return champTexte('mensuel', it.index, l, 'fin', 'Fin', { placeholder: 'AAAA-MM' }); };
+        // Avec des paliers, la fin se saisit sur le dernier palier.
+        tr.appendChild(td(B.proprietaireFin(l) === 'base' ? creerFin() : null));
         tr.appendChild(td(actions('mensuel', it.index, l)));
         tb.appendChild(tr);
+        sousLignes('mensuel', it.index, l, cols.length, { depuis: 1, montant: 2, fin: 4, actions: 5 }, creerFin, { placeholder: 'Montant mensuel' }).forEach(function (s) { tb.appendChild(s); });
         const e = ligneErreur(l, cols.length);
         if (e) tb.appendChild(e);
       });
@@ -312,6 +334,51 @@
     const a = carte('Ajouter une ligne mensuelle');
     a.appendChild(formulaireAjout('mensuel', brouillons.mensuel, categoriesDe([lignes])));
     panneau.appendChild(a);
+
+    if (B.state.orphelins.length) panneau.appendChild(carteOrphelins());
+  }
+
+  // ---- Paliers sans ligne correspondante --------------------------------------------------
+
+  let erreurOrphelins = '';
+
+  function texteEtapes(o) {
+    return o.etapes.map(function (p) { return 'à partir de ' + p.depuis + ' : ' + B.montantPalier(p); }).join(' ; ');
+  }
+
+  async function supprimerOrphelin(o) {
+    const liste = B.state.orphelins;
+    const idx = liste.indexOf(o);
+    if (idx < 0) return;
+    if (!root.confirm('Supprimer les paliers de « ' + o.ligne.libelle + ' » (ligne introuvable) ?')) return;
+    erreurOrphelins = '';
+    liste.splice(idx, 1);
+    B.refresh();
+    try {
+      await B.persist('donnees');
+    } catch (e) {
+      liste.splice(Math.min(idx, liste.length), 0, o);
+      erreurOrphelins = e.message;
+      B.refresh();
+    }
+  }
+
+  function carteOrphelins() {
+    const c = carte('Paliers sans ligne correspondante', 'Ces paliers (paliers.yaml) ne correspondent à aucune ligne importée (ligne renommée ou retirée par un nouvel import). Ils sont conservés tant que vous ne les supprimez pas ; renommer une ligne vers ces champs leur rattache à nouveau ces paliers.');
+    const ul = el('ul', '', { class: 'orphelins' });
+    B.state.orphelins.forEach(function (o, i) {
+      const g = o.ligne;
+      const li = el('li');
+      li.appendChild(el('span', g.nature + ' · ' + g.type + ' · ' + g.categorie + ' · ' + g.libelle, { class: 'orphelin-titre' }));
+      li.appendChild(el('span', texteEtapes(o), { class: 'orphelin-etapes' }));
+      const b = el('button', 'Supprimer', { type: 'button', class: 'btn-lien', 'aria-label': 'Supprimer les paliers de ' + g.libelle, 'data-cle': 'orphelin:' + i });
+      b.addEventListener('click', function () { supprimerOrphelin(o); });
+      li.appendChild(b);
+      ul.appendChild(li);
+    });
+    c.appendChild(ul);
+    if (erreurOrphelins) c.appendChild(el('p', erreurOrphelins, { class: 'erreur-ligne', role: 'alert' }));
+    return c;
   }
 
   // ---- Onglet Annuel & exceptionnel -------------------------------------------------------
@@ -329,6 +396,7 @@
     t.appendChild(entetes(cols));
     const tb = el('tbody');
     lignes.forEach(function (l, i) {
+      const creerFin = function () { return champTexte(nature, i, l, 'fin', 'Fin', { placeholder: 'AAAA-MM' }); };
       const tr = el('tr', '', { class: classeLigne(l) });
       tr.appendChild(td(champTexte(nature, i, l, 'libelle', 'Libellé')));
       tr.appendChild(td(champTexte(nature, i, l, 'categorie', 'Catégorie')));
@@ -337,7 +405,7 @@
       // Les lignes exceptionnelles sont datées par leurs échéances : pas de début/fin/revalorisé.
       if (nature === 'annuel') {
         tr.appendChild(td(champTexte(nature, i, l, 'debut', 'Début', { placeholder: 'AAAA-MM' })));
-        tr.appendChild(td(champTexte(nature, i, l, 'fin', 'Fin', { placeholder: 'AAAA-MM' })));
+        tr.appendChild(td(B.proprietaireFin(l) === 'base' ? creerFin() : null));
         tr.appendChild(td(champCase(nature, i, l)));
       } else {
         for (let k = 0; k < 3; k++) tr.appendChild(td(el('span', '—', { class: 'vide', 'aria-label': 'Non applicable' })));
@@ -346,6 +414,7 @@
       tr.appendChild(td(el('span', signe(imp), { class: imp < 0 ? 'neg' : '' }), 'num'));
       tr.appendChild(td(actions(nature, i, l)));
       tb.appendChild(tr);
+      sousLignes(nature, i, l, cols.length, { depuis: 1, montant: 3, fin: nature === 'annuel' ? 5 : null, actions: 8 }, creerFin, { placeholder: '6-500, 10-500' }).forEach(function (s) { tb.appendChild(s); });
       const e = ligneErreur(l, cols.length);
       if (e) tb.appendChild(e);
     });

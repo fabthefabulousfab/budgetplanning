@@ -67,10 +67,14 @@
   // ---- Modification, suppression, ajout ---------------------------------------------------
 
   async function modifier(ligne, champ, v) {
+    return commit(ligne, appliquer(ligne, champ, v));
+  }
+
+  // Enregistre `copie` à la place de `ligne` (repérée par identité) : validation, mise à jour, écriture, retour arrière si échec.
+  async function commit(ligne, copie) {
     const liste = B.state.evenements;
     const idx = liste.indexOf(ligne); // par identité, jamais par index mémorisé
     if (idx < 0) return;
-    const copie = appliquer(ligne, champ, v);
     if (JSON.stringify(copie) === JSON.stringify(ligne)) {
       if (erreurs.delete(ligne)) B.refresh();
       return;
@@ -84,6 +88,7 @@
     }
     erreurs.delete(ligne);
     liste[idx] = copie;
+    B.paliersUI.remplacer(ligne, copie);
     B.refresh();
     try {
       await B.persist('evenements');
@@ -91,6 +96,7 @@
       const j = liste.indexOf(copie);
       if (j >= 0) {
         liste[j] = ligne;
+        B.paliersUI.remplacer(copie, ligne);
         erreurs.set(ligne, e.message);
       }
       B.refresh();
@@ -103,6 +109,7 @@
     if (idx < 0) return;
     if (!root.confirm('Supprimer l’événement « ' + ligne.libelle + ' » ?')) return;
     erreurs.delete(ligne);
+    B.paliersUI.oublier(ligne);
     liste.splice(idx, 1);
     B.refresh();
     try {
@@ -179,20 +186,31 @@
     t.appendChild(th);
     const tb = el('tbody');
     evs.forEach(function (l) {
+      const creerFin = function () { return champTexte(l, 'fin', 'Fin', { placeholder: 'AAAA-MM' }); };
       const tr = el('tr', '', { class: (erreurs.has(l) ? 'invalide ' : '') + (l.actif === false ? 'masque' : '') });
       tr.appendChild(td(champTexte(l, 'libelle', 'Libellé')));
       tr.appendChild(td(champSelect(l, 'type', 'Type', TYPES)));
       tr.appendChild(td(champSelect(l, 'categorie', 'Catégorie', categories(l.categorie))));
       tr.appendChild(td(champTexte(l, 'echeances', 'Montant', { placeholder: '800 ou 3-300' })));
       tr.appendChild(td(champTexte(l, 'debut', 'Début', { placeholder: 'AAAA-MM' })));
-      tr.appendChild(td(champTexte(l, 'fin', 'Fin', { placeholder: 'AAAA-MM' })));
+      // Avec des paliers, la fin se saisit sur le dernier palier.
+      tr.appendChild(td(B.proprietaireFin(l) === 'base' ? creerFin() : null));
       const b = el('button', 'Supprimer', { type: 'button', class: 'btn-lien', 'aria-label': 'Supprimer l’événement ' + l.libelle, 'data-cle': l.id + ':suppr' });
       b.addEventListener('click', function () { supprimer(l); });
       const act = el('span', '', { class: 'actions' });
+      act.appendChild(B.paliersUI.caseCoche(l, l.id, function (coche) {
+        B.paliersUI.basculer(l, coche, function (copie) { return commit(l, copie); });
+      }));
       act.appendChild(B.boutonOeil(l.actif !== false, l.libelle, function () { modifier(l, 'actif', l.actif === false); }, l.id + ':actif'));
       act.appendChild(b);
       tr.appendChild(td(act));
       tb.appendChild(tr);
+      B.paliersUI.sousLignes({
+        ligne: l, nature: 'evenement', cle: l.id, nbCols: cols.length, col: { depuis: 1, montant: 3, fin: 5, actions: 6 }, creerFin: creerFin, aide: { placeholder: '800 ou 3-300' },
+        onEdit: function (i, champ, v) { commit(l, B.editerPalier(l, i, champ, v, 'evenement')); },
+        onAjouter: function () { commit(l, B.ajouterPalier(l, 'evenement', B.state.parametres.depart)); },
+        onSupprimer: function (i) { commit(l, B.retirerPalier(l, i)); },
+      }).forEach(function (s) { tb.appendChild(s); });
       if (erreurs.has(l)) {
         const e = el('tr', '', { class: 'ligne-erreur' });
         e.appendChild(el('td', erreurs.get(l), { colspan: String(cols.length), role: 'alert' }));

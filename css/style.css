@@ -38,6 +38,8 @@ body { margin: 0; background: var(--fond); color: var(--encre); font: 15px/1.5 s
 .onglets button:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 main { max-width: 1200px; margin: 0 auto; padding: 1.25rem 1.5rem 3rem; }
 .bandeau { padding: .75rem 1.5rem; background: var(--negatif-fond); color: var(--encre); border-bottom: 2px solid var(--negatif); }
+.avertissements { padding: .5rem 1.5rem; background: var(--positif-fond); color: var(--encre); border-bottom: 2px solid var(--accent); font-size: .9rem; }
+.avertissements ul { margin: 0 0 .25rem; padding-left: 1.2rem; }
 .accueil { max-width: 40rem; margin: 3rem auto; text-align: center; }
 .accueil p { color: var(--encre-2); }
 .accueil code { background: var(--carte); border: 1px solid var(--trait); border-radius: 4px; padding: .1rem .35rem; }
@@ -81,6 +83,16 @@ tr.ligne-erreur td, .erreur-ligne { color: var(--negatif); background: var(--neg
 .oeil-ferme { color: var(--negatif); }
 table.edition tr.masque td:not(:last-child), table.edition tr.masque input, table.edition tr.masque select { opacity: .5; }
 .btn-lien { font: inherit; font-size: .85rem; color: var(--negatif); background: none; border: 0; cursor: pointer; text-decoration: underline; padding: .2rem; }
+.case-palier { display: inline-flex; align-items: center; gap: .25rem; font-size: .85rem; color: var(--encre-2); cursor: pointer; }
+table.edition tr.palier td { background: var(--positif-fond); border-bottom-color: var(--trait); }
+.palier-lib { color: var(--accent); font-weight: 600; font-size: .85rem; padding-left: .8rem; white-space: nowrap; }
+.palier-etiq { display: block; color: var(--encre-2); font-size: .75rem; }
+.btn-palier { font: inherit; font-size: .85rem; color: var(--accent); background: none; border: 0; cursor: pointer; text-decoration: underline; padding: .2rem .8rem; }
+.btn-palier:focus-visible, .case-palier input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.orphelins { list-style: none; margin: 0; padding: 0; }
+.orphelins li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem 1rem; padding: .4rem 0; border-bottom: 1px solid var(--grille); }
+.orphelin-titre { font-weight: 600; }
+.orphelin-etapes { color: var(--encre-2); font-size: .85rem; flex: 1 1 14rem; }
 .ajout { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
 .ajout input, .ajout select { width: auto; flex: 1 1 10rem; }
 .aide-ligne { display: flex; align-items: center; gap: .5rem; color: var(--encre-2); font-size: .85rem; margin-bottom: .5rem; }
