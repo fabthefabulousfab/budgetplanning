@@ -253,3 +253,85 @@ test('store : un echec d ecriture de paliers ne touche pas donnees si invalide a
   await assert.rejects(store.saveDonnees(d, don2, [ENTREE]), /paliers\.yaml/);
   assert.ok(!d.files.has('donnees-courantes.yaml'));
 });
+
+// ---- fix round 1 ----
+test('finsDePret : montant libere = montant en vigueur a la fin', () => {
+  const d = { mensuel: [
+    { type: 'depense', categorie: 'c', libelle: 'a', montant: 100, fin: '2028-06', paliers: [{ depuis: '2027-01', montant: 80 }, { depuis: '2028-01', montant: 60 }] },
+    { type: 'depense', categorie: 'c', libelle: 'b', montant: 50, fin: '2027-12', paliers: [{ depuis: '2029-01', montant: 1 }] },
+    { type: 'depense', categorie: 'c', libelle: 'c', montant: 30, fin: '2027-01' },
+  ] };
+  const r = Su.finsDePret(d);
+  const par = (l) => r.find((x) => x.libelle === l).libere_par_mois;
+  assert.strictEqual(par('a'), 60);
+  assert.strictEqual(par('b'), 50);
+  assert.strictEqual(par('c'), 30);
+});
+
+test('expandPaliers : echeances numerique acceptee', () => {
+  const l = { type: 'depense', categorie: 'c', libelle: 'l', echeances: '5', paliers: [{ depuis: '2027-01', echeances: 800 }] };
+  assert.strictEqual(expandPaliers(l)[1].echeances, '800');
+});
+
+test('store : paliers avant le debut de la ligne : chargement tolerant + avertissement, refus a l enregistrement', async () => {
+  const don = DON();
+  don.mensuel[0].debut = '2027-06';
+  const d = fakeDir({ 'donnees-courantes.yaml': dump(don), 'paliers.yaml': dump({ paliers: [ENTREE] }) });
+  const r = await store.loadAll(d);
+  assert.strictEqual(r.donnees.mensuel[0].paliers.length, 1);
+  assert.strictEqual(r.avertissements.length, 1);
+  assert.match(r.avertissements[0], /paliers\.yaml/);
+  assert.ok(project(r.donnees, [], P).every((m) => Number.isFinite(m.net)));
+  assert.throws(() => store.validerLigne(r.donnees.mensuel[0], 'mensuel'), /début/);
+  await assert.rejects(store.saveDonnees(d, r.donnees, r.orphelins), /début/);
+});
+
+test('store : renommer une ligne vers la cle d un orphelin lui rattache ses paliers', async () => {
+  const orph = { ligne: { nature: 'mensuel', type: 'depense', categorie: 'vie', libelle: 'nouveau' }, etapes: [{ depuis: '2027-03', montant: 7 }] };
+  const d = fakeDir({ 'donnees-courantes.yaml': dump(DON()), 'paliers.yaml': dump({ paliers: [orph] }) });
+  const r = await store.loadAll(d);
+  assert.deepStrictEqual(r.orphelins, [orph]);
+  r.donnees.mensuel[0].libelle = 'nouveau';
+  await store.saveDonnees(d, r.donnees, r.orphelins);
+  assert.deepStrictEqual(r.orphelins, []);
+  assert.deepStrictEqual(r.donnees.mensuel[0].paliers, orph.etapes);
+  const r2 = await store.loadAll(d);
+  assert.deepStrictEqual(r2.orphelins, []);
+  assert.deepStrictEqual(r2.donnees.mensuel[0].paliers, orph.etapes);
+});
+
+test('store : doublon refuse si l orphelin ou une autre ligne a deja ses paliers', async () => {
+  const orph = { ligne: { nature: 'mensuel', type: 'depense', categorie: 'vie', libelle: 'loyer' }, etapes: [{ depuis: '2027-03', montant: 7 }] };
+  const d = fakeDir();
+  const don = DON();
+  don.mensuel[0].paliers = ENTREE.etapes;
+  await assert.rejects(store.saveDonnees(d, don, [orph]), /paliers\.yaml.*doublon/);
+  const don2 = DON();
+  don2.mensuel.push(Object.assign({}, LIGNE, { paliers: ENTREE.etapes }));
+  don2.mensuel[0].paliers = ENTREE.etapes;
+  await assert.rejects(store.saveDonnees(d, don2, []), /paliers\.yaml.*doublon/);
+  assert.ok(!d.files.has('donnees-courantes.yaml'));
+});
+
+test('store : cle de montant selon la nature', () => {
+  const base = { id: 'x', type: 'depense', categorie: 'c', libelle: 'l' };
+  assert.throws(() => store.validerLigne(Object.assign({ montant: 10, paliers: [{ depuis: '2027-01', echeances: '5' }] }, base), 'mensuel'), /utiliser « montant »/);
+  assert.throws(() => store.validerLigne(Object.assign({ echeances: '3-5', paliers: [{ depuis: '2027-01', montant: 5 }] }, base), 'annuel'), /utiliser « echeances »/);
+  assert.throws(() => store.validerLigne(Object.assign({ echeances: '3-5', paliers: [{ depuis: '2027-01', montant: '5' }] }, base, { categorie: 'Achat' }), 'evenement'), /utiliser « echeances »/);
+});
+
+test('store : echec d ecriture de paliers.yaml : erreur remontee, donnees sans paliers, rien perdu', async () => {
+  const d = fakeDir({ 'donnees-courantes.yaml': dump(DON()), 'paliers.yaml': dump({ paliers: [ENTREE] }) });
+  const r = await store.loadAll(d);
+  r.donnees.mensuel[0].paliers = [{ depuis: '2027-02', montant: 1 }];
+  const orig = d.getFileHandle.bind(d);
+  d.getFileHandle = async (name, opts) => {
+    const h = await orig(name, opts);
+    if (name === 'paliers.yaml' && opts && opts.create) return { async createWritable() { throw new Error('disque plein'); } };
+    return h;
+  };
+  await assert.rejects(store.saveDonnees(d, r.donnees, r.orphelins), /paliers\.yaml : disque plein/);
+  assert.ok(!/paliers/.test(d.files.get('donnees-courantes.yaml')));
+  const r2 = await store.loadAll(d);
+  assert.deepStrictEqual(r2.donnees.mensuel[0].paliers, ENTREE.etapes);
+});

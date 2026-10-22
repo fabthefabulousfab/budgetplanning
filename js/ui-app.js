@@ -2,7 +2,7 @@
   'use strict';
 
   const B = root.Budget;
-  const state = { dir: null, donnees: null, evenements: [], prets: [], parametres: null, mois: [], orphelins: [] };
+  const state = { dir: null, donnees: null, evenements: [], prets: [], parametres: null, mois: [], orphelins: [], avertissements: [] };
   const FICHIER_HISTORIQUE = 'historique-comptes.csv';
   const tabs = [];
   let actif = null;
@@ -210,6 +210,7 @@
     state.prets = r.prets;
     state.parametres = r.parametres;
     state.orphelins = r.orphelins || [];
+    state.avertissements = r.avertissements || [];
     if (r.donnees === null) {
       accueil([
         el('h2', 'Aucune donnée courante'),

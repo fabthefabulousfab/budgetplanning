@@ -132,7 +132,7 @@
   function finsDePret(donnees) {
     return (donnees.mensuel || [])
       .filter(function (l) { return Pj.estActif(l) && l.type === 'depense' && l.fin; })
-      .map(function (l) { return { libelle: l.libelle, fin: l.fin, libere_par_mois: Number(l.montant) }; })
+      .map(function (l) { return { libelle: l.libelle, fin: l.fin, libere_par_mois: montantAu(l, l.fin) }; })
       .sort(function (a, b) { return S.monthIndex(a.fin) - S.monthIndex(b.fin); });
   }
 

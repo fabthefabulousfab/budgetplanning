@@ -32,8 +32,10 @@
       const nom = 'Palier #' + (i + 1);
       try {
         if (!p || typeof p !== 'object' || Array.isArray(p)) throw new Error('palier invalide.');
+        const cleMontant = nature === 'mensuel' ? 'montant' : 'echeances';
         Object.keys(p).forEach(function (k) {
-          if (CLES_PALIER.indexOf(k) < 0) throw new Error('clé inconnue « ' + k + ' » (attendues : depuis, ' + (nature === 'mensuel' ? 'montant' : 'echeances') + ').');
+          if (CLES_PALIER.indexOf(k) < 0) throw new Error('clé inconnue « ' + k + ' » (attendues : depuis, ' + cleMontant + ').');
+          if (k !== 'depuis' && k !== cleMontant) throw new Error('clé « ' + k + ' » non admise pour cette ligne : utiliser « ' + cleMontant + ' ».');
         });
         if (typeof p.depuis !== 'string' || p.depuis === '') throw new Error('« depuis » manquant (attendu AAAA-MM).');
         validerMois(p.depuis, '« depuis »');
@@ -44,7 +46,7 @@
         if (nature === 'mensuel') {
           if (typeof p.montant !== 'number' || !Number.isFinite(p.montant) || p.montant <= 0) throw new Error('le montant mensuel doit être un nombre supérieur à 0.');
         } else {
-          const src = p.echeances != null ? p.echeances : p.montant;
+          const src = p.echeances;
           S.parseEcheances(typeof src === 'number' ? String(src) : src);
         }
       } catch (e) {
@@ -248,7 +250,9 @@
   }
 
   // Rattache chaque entrée à la première ligne importée correspondante (4 champs, espaces ignorés) ; renvoie les entrées sans ligne.
-  function attacherPaliers(donnees, entrees) {
+  // Lenient : une entrée dont le premier `depuis` précède le `debut` de la ligne reste attachée (ignorée par la projection) et produit un avertissement.
+  // Une entrée dont la ligne a déjà ses propres paliers est un doublon (erreur).
+  function attacherPaliers(donnees, entrees, avertissements) {
     const parCle = new Map();
     NATURES_IMPORT.forEach(function (nature) {
       ((donnees && donnees[nature]) || []).forEach(function (l) {
@@ -260,7 +264,10 @@
     entrees.forEach(function (e) {
       const l = parCle.get(cleLigne(e.ligne.nature, e.ligne));
       if (!l) { orphelins.push(e); return; }
-      enFichier(FICHIERS.paliers, function () { validerPaliers(e.etapes, e.ligne.nature, l.debut); });
+      if (Array.isArray(l.paliers) && l.paliers.length > 0) throw new Error('doublon de paliers pour la ligne « ' + String(l.libelle).trim() + ' » (' + e.ligne.nature + ').');
+      if (avertissements && l.debut && S.monthIndex(e.etapes[0].depuis) <= S.monthIndex(l.debut)) {
+        avertissements.push(FICHIERS.paliers + ' : le premier palier de « ' + String(l.libelle).trim() + ' » (' + e.etapes[0].depuis + ') n’est pas postérieur au début de la ligne (' + l.debut + ').');
+      }
       l.paliers = e.etapes;
     });
     return orphelins;
@@ -299,7 +306,8 @@
     }
     const brutPaliers = await lire(dir, FICHIERS.paliers);
     const entreesLues = enFichier(FICHIERS.paliers, function () { return validerContenuPaliers(brutPaliers); });
-    const orphelins = attacherPaliers(donnees, entreesLues);
+    const avertissements = [];
+    const orphelins = enFichier(FICHIERS.paliers, function () { return attacherPaliers(donnees, entreesLues, avertissements); });
 
     // evenements-futurs.yaml contient les événements et les prêts (nature: pret), séparés à la lecture.
     let brutEv = await lire(dir, FICHIERS.evenements);
@@ -314,11 +322,16 @@
     const parametres = fusionnerParametres(brut);
     enFichier(FICHIERS.parametres, function () { validerParametres(parametres); });
 
-    return { donnees: donnees, evenements: evenements, prets: prets, parametres: parametres, orphelins: orphelins };
+    return { donnees: donnees, evenements: evenements, prets: prets, parametres: parametres, orphelins: orphelins, avertissements: avertissements };
   }
 
   // donnees-courantes.yaml est écrit sans `paliers` ; paliers.yaml est regénéré (lignes + orphelins), tout est validé avant la première écriture.
+  // Un orphelin dont la clé correspond à une ligne sans paliers (ex. ligne renommée) lui est rattaché et quitte `orphelins` (modifié en place).
   async function saveDonnees(dir, donnees, orphelins) {
+    if (Array.isArray(orphelins) && orphelins.length > 0) {
+      const restants = enFichier(FICHIERS.paliers, function () { return attacherPaliers(donnees, orphelins.slice()); });
+      orphelins.splice(0, orphelins.length, ...restants);
+    }
     enFichier(FICHIERS.donnees, function () { validerDonnees(donnees); });
     const entrees = entreesPaliers(donnees, orphelins);
     enFichier(FICHIERS.paliers, function () { validerEntreesPaliers(entrees); });

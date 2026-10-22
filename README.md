@@ -70,7 +70,7 @@ paliers:
 
 Événements : clé `paliers` dans l'événement de `evenements-futurs.yaml`, avec `echeances` dans chaque palier.
 
-Les paliers suivent la ligne quand on change son libellé ou sa catégorie dans la page. Une entrée de `paliers.yaml` dont la ligne n'existe plus (par exemple après un nouvel import Excel) est conservée comme « ligne introuvable », jamais supprimée en silence. `donnees-courantes.yaml` ne contient jamais de `paliers`.
+Les paliers suivent la ligne quand on change son libellé ou sa catégorie dans la page. Une entrée de `paliers.yaml` dont la ligne n'existe plus (par exemple après un nouvel import Excel) est conservée comme « ligne introuvable », jamais supprimée en silence. `donnees-courantes.yaml` ne contient jamais de `paliers`. Si deux lignes ont exactement la même clé (mêmes quatre champs), seule la première porte les paliers ; la seconde reste sans palier. Renommer une ligne vers la clé d'une entrée « ligne introuvable » lui rattache cette entrée. À l'ouverture, un premier palier qui n'est pas postérieur au `debut` de la ligne est accepté (avertissement), mais devra être corrigé pour enregistrer.
 
 Ces fichiers sont ignorés par git.
 
