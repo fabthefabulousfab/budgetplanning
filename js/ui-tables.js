@@ -70,6 +70,7 @@
       return;
     }
     erreurs.delete(ligne);
+    erreurOrphelins = ''; // un enregistrement réussi périme l'ancien message de la carte des paliers orphelins
     liste[idx] = copie;
     B.paliersUI.remplacer(ligne, copie);
     B.refresh(); // les gestionnaires se relient aux nouvelles lignes avant toute écriture en attente
@@ -92,6 +93,7 @@
     if (idx < 0) return;
     if (!root.confirm('Supprimer la ligne « ' + ligne.libelle + ' » ?')) return;
     erreurs.delete(ligne);
+    const etaitOuvert = B.paliersUI.estOuvert(ligne);
     B.paliersUI.oublier(ligne);
     liste.splice(idx, 1);
     B.refresh();
@@ -99,6 +101,7 @@
       await B.persist('donnees');
     } catch (e) {
       liste.splice(Math.min(idx, liste.length), 0, ligne);
+      if (etaitOuvert) B.paliersUI.ouvrir(ligne);
       B.refresh();
     }
   }

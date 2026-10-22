@@ -56,7 +56,9 @@ Le mois va de 1 à 12. Ne pas mélanger des échéances avec année et sans ann�
 
 Une ligne peut changer de montant à des dates précises. Le montant propre de la ligne s'applique de son `debut` (s'il y en a un) jusqu'au premier palier (exclu) ; chaque palier remplace tout le montant à partir de son `depuis` (inclus) jusqu'au palier suivant (exclu) ; le dernier palier court jusqu'à la `fin` de la ligne (incluse) ou sans limite. `debut` et `fin` bornent toujours l'ensemble. La revalorisation (`revalorise`) et le masquage (`actif: false`) s'appliquent à tous les paliers de la ligne.
 
-Un palier est `{ depuis: 'AAAA-MM', … }` avec, pour une ligne mensuelle, `montant` (nombre supérieur à 0) et, pour une ligne annuelle, exceptionnelle ou un événement, `echeances` (même syntaxe que ci-dessus : `800`, `3-300`, `6-500, 10-500`, `2026-3-300`). Les `depuis` sont strictement croissants, postérieurs au `debut` de la ligne, 50 paliers au plus.
+Un montant de palier à `0` (nombre `0` pour une ligne mensuelle, texte `0` pour les échéances) signifie « plus rien à partir de cette date » (jusqu'au palier suivant s'il y en a un) ; une dépense mensuelle qui s'arrête ainsi apparaît dans les fins de prêt du tableau de bord. La `fin` d'une ligne à paliers ne peut pas précéder son dernier palier (refusé à l'enregistrement ; avertissement à l'ouverture).
+
+Un palier est `{ depuis: 'AAAA-MM', … }` avec, pour une ligne mensuelle, `montant` (nombre supérieur ou égal à 0) et, pour une ligne annuelle, exceptionnelle ou un événement, `echeances` (même syntaxe que ci-dessus : `800`, `3-300`, `6-500, 10-500`, `2026-3-300`). Les `depuis` sont strictement croissants, postérieurs au `debut` de la ligne, 50 paliers au plus.
 
 Lignes importées, dans `paliers.yaml` (la ligne est identifiée par ses quatre champs `nature`, `type`, `categorie`, `libelle`, espaces ignorés) :
 

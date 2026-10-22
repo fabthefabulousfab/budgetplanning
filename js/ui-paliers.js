@@ -21,6 +21,9 @@
   }
 
   function oublier(ligne) { ouverts.delete(ligne); }
+  function estOuvert(ligne) { return ouverts.has(ligne); }
+  function ouvrir(ligne) { ouverts.add(ligne); }
+  function reset() { ouverts.clear(); } // nouvelles données chargées : plus aucune ligne ouverte
 
   // Case « Palier » d'une ligne ; cochée si la ligne a des paliers ou si elle a été ouverte.
   function caseCoche(ligne, cle, onChange) {
@@ -90,10 +93,11 @@
     const b = el('button', '+ ajouter un palier', { type: 'button', class: 'btn-palier', 'aria-label': 'Ajouter un palier — ' + ligne.libelle, 'data-cle': cfg.cle + ':palier+' });
     b.addEventListener('click', function () { cfg.onAjouter(); });
     c.appendChild(b);
+    c.appendChild(el('span', '0 = plus rien à partir de cette date', { class: 'palier-aide' }));
     tr.appendChild(c);
     out.push(tr);
     return out;
   }
 
-  B.paliersUI = { caseCoche: caseCoche, basculer: basculer, sousLignes: sousLignes, remplacer: remplacer, oublier: oublier, afficher: afficher };
+  B.paliersUI = { caseCoche: caseCoche, basculer: basculer, sousLignes: sousLignes, remplacer: remplacer, oublier: oublier, estOuvert: estOuvert, ouvrir: ouvrir, reset: reset, afficher: afficher };
 })(this);

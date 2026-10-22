@@ -88,6 +88,8 @@ table.edition tr.palier td { background: var(--positif-fond); border-bottom-colo
 .palier-lib { color: var(--accent); font-weight: 600; font-size: .85rem; padding-left: .8rem; white-space: nowrap; }
 .palier-etiq { display: block; color: var(--encre-2); font-size: .75rem; }
 .btn-palier { font: inherit; font-size: .85rem; color: var(--accent); background: none; border: 0; cursor: pointer; text-decoration: underline; padding: .2rem .8rem; }
+.palier-aide { color: var(--encre-2); font-size: .8rem; margin-left: 1rem; }
+table.edition tr.masque.palier-ajout button, table.edition tr.masque.palier-ajout .palier-aide { opacity: .5; }
 .btn-palier:focus-visible, .case-palier input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .orphelins { list-style: none; margin: 0; padding: 0; }
 .orphelins li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem 1rem; padding: .4rem 0; border-bottom: 1px solid var(--grille); }

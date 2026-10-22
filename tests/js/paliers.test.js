@@ -212,7 +212,8 @@ test('store : validation des paliers', () => {
   assert.throws(() => ok([{ depuis: '2027/01', montant: 5 }], 'mensuel'), /depuis|Mois/);
   assert.throws(() => ok([{ depuis: '2027-05', montant: 5 }, { depuis: '2027-05', montant: 6 }], 'mensuel'), /croissant/);
   assert.throws(() => ok([{ depuis: '2027-05', montant: 5 }, { depuis: '2027-04', montant: 6 }], 'mensuel'), /croissant/);
-  assert.throws(() => ok([{ depuis: '2027-05', montant: 0 }], 'mensuel'), /supérieur à 0/);
+  assert.throws(() => ok([{ depuis: '2027-05', montant: -1 }], 'mensuel'), /supérieur ou égal à 0/);
+  ok([{ depuis: '2027-05', montant: 0 }], 'mensuel');
   assert.throws(() => ok([{ depuis: '2027-05', montant: '3-300' }], 'mensuel'), /nombre/);
   assert.throws(() => ok([{ depuis: '2027-05', echeances: '13:5' }], 'annuel'), /invalide/);
   ok([{ depuis: '2027-05', echeances: '6-500, 10-500' }], 'annuel');
@@ -266,6 +267,77 @@ test('finsDePret : montant libere = montant en vigueur a la fin', () => {
   assert.strictEqual(par('a'), 60);
   assert.strictEqual(par('b'), 50);
   assert.strictEqual(par('c'), 30);
+});
+
+// ---- fix round 2 : palier a 0, fin vs dernier palier ----
+const BASE = { id: 'x', type: 'depense', categorie: 'c', libelle: 'l' };
+
+test('validation : palier a 0 accepte (mensuel : 0 ; autres : "0"), montant de base 0 refuse', () => {
+  assert.doesNotThrow(() => store.validerLigne(Object.assign({ montant: 10, paliers: [{ depuis: '2027-01', montant: 0 }] }, BASE), 'mensuel'));
+  assert.throws(() => store.validerLigne(Object.assign({ montant: 10, paliers: [{ depuis: '2027-01', montant: -1 }] }, BASE), 'mensuel'), /supérieur ou égal à 0/);
+  assert.throws(() => store.validerLigne(Object.assign({ montant: 0 }, BASE), 'mensuel'), /supérieur à 0/);
+  assert.doesNotThrow(() => store.validerLigne(Object.assign({ echeances: '3-5', paliers: [{ depuis: '2027-01', echeances: '0' }] }, BASE), 'annuel'));
+  assert.doesNotThrow(() => store.validerLigne(Object.assign({ echeances: '3-5', paliers: [{ depuis: '2027-01', echeances: ' 0 ' }] }, BASE, { categorie: 'Achat' }), 'evenement'));
+  assert.throws(() => store.validerLigne(Object.assign({ echeances: '3-5', paliers: [{ depuis: '2027-01', echeances: '00x' }] }, BASE), 'annuel'), /Palier #1/);
+});
+
+test('projection : un palier a 0 coupe les occurrences et un palier suivant les reprend', () => {
+  const l = { type: 'revenu', categorie: 'c', libelle: 'l', montant: 100, paliers: [{ depuis: '2027-01', montant: 0 }, { depuis: '2027-04', montant: 50 }] };
+  assert.deepStrictEqual(segs(l), [[100, null, '2026-12'], [50, '2027-04', null]]);
+  const a = { type: 'depense', categorie: 'c', libelle: 'a', echeances: '3-600', paliers: [{ depuis: '2028-01', echeances: '0' }] };
+  assert.deepStrictEqual(segs(a), [['3-600', null, '2027-12']]);
+  const p = { depart: '2026-10', horizon_annees: 2, revalorisation: { taux: 0, mois: 1 } };
+  const m = project({ mensuel: [l], annuel: [a] }, [], p);
+  const par = (ym) => m.find((x) => x.ym === ym);
+  assert.strictEqual(par('2026-12').revenus, 100);
+  assert.strictEqual(par('2027-02').revenus, 0);
+  assert.strictEqual(par('2027-04').revenus, 50);
+  assert.strictEqual(par('2027-03').depenses, 600);
+  assert.strictEqual(par('2028-03').depenses, 0);
+  const d = Su.detailMois({ mensuel: [l], annuel: [a] }, [], p, '2027-02');
+  assert.strictEqual(d.mensuel.revenus, 0);
+  assert.strictEqual(Su.detailMois({ mensuel: [l] }, [], p, '2027-05').mensuel.revenus, 50);
+  assert.strictEqual(Su.bilanLignes([l], p, 12).revenus, 100 * 3 + 50 * 6);
+});
+
+test('finsDePret : une depense qui s arrete via un palier a 0 est listee', () => {
+  const d = { mensuel: [
+    { type: 'depense', categorie: 'c', libelle: 'z', montant: 100, paliers: [{ depuis: '2027-01', montant: 80 }, { depuis: '2029-03', montant: 0 }] },
+    { type: 'depense', categorie: 'c', libelle: 'y', montant: 40, fin: '2028-01', paliers: [{ depuis: '2027-06', montant: 0 }] },
+    { type: 'depense', categorie: 'c', libelle: 'x', montant: 40, fin: '2026-12', paliers: [{ depuis: '2026-11', montant: 0 }] },
+    { type: 'revenu', categorie: 'c', libelle: 'r', montant: 40, paliers: [{ depuis: '2027-06', montant: 0 }] },
+  ] };
+  const r = Su.finsDePret(d);
+  const get = (l) => r.find((x) => x.libelle === l);
+  assert.deepStrictEqual([get('z').fin, get('z').libere_par_mois], ['2029-02', 80]);
+  assert.deepStrictEqual([get('y').fin, get('y').libere_par_mois], ['2027-05', 40]);
+  assert.deepStrictEqual([get('x').fin, get('x').libere_par_mois], ['2026-10', 40]);
+  assert.strictEqual(get('r'), undefined);
+});
+
+test('validation : la fin ne peut preceder le dernier palier', () => {
+  const l = (fin) => Object.assign({ montant: 10, fin: fin, paliers: [{ depuis: '2027-01', montant: 5 }, { depuis: '2028-01', montant: 6 }] }, BASE);
+  assert.doesNotThrow(() => store.validerLigne(l('2028-01'), 'mensuel'));
+  assert.doesNotThrow(() => store.validerLigne(l(null), 'mensuel'));
+  assert.throws(() => store.validerLigne(l('2027-12'), 'mensuel'), /La fin \(2027-12\) précède le dernier palier \(2028-01\)/);
+  assert.doesNotThrow(() => store.validerLigne(Object.assign({ montant: 10, fin: '2020-01' }, BASE), 'mensuel'));
+});
+
+test('ajouter un palier apres la fin : refuse par la validation de la copie', () => {
+  const T = require('../../js/tables-logic.js');
+  const l = Object.assign({ montant: 10, fin: '2026-10' }, BASE);
+  const copie = T.ajouterPalier(l, 'mensuel', '2026-10');
+  assert.strictEqual(copie.paliers[0].depuis, '2026-11');
+  assert.throws(() => store.validerLigne(copie, 'mensuel'), /précède le dernier palier/);
+  assert.strictEqual(l.paliers, undefined);
+});
+
+test('chargement : fin avant le dernier palier = avertissement (pas d erreur)', async () => {
+  const don = DON();
+  don.mensuel[0].fin = '2026-12';
+  const d = fakeDir({ 'donnees-courantes.yaml': dump(don), 'paliers.yaml': dump({ paliers: [ENTREE] }) });
+  const r = await store.loadAll(d);
+  assert.ok(r.avertissements.some((a) => /fin/.test(a)));
 });
 
 test('expandPaliers : echeances numerique acceptee', () => {

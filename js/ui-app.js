@@ -143,6 +143,8 @@
     try {
       await fn();
       erreur('');
+      // Un enregistrement de donnees réussi prouve que toutes les lignes (paliers compris) sont valides : les avertissements de chargement sont périmés.
+      if (kind === 'donnees' && state.avertissements.length) { state.avertissements = []; avertir([]); }
     } catch (e) {
       erreur(e.message);
       throw e;
@@ -227,6 +229,7 @@
     state.orphelins = r.orphelins || [];
     state.avertissements = r.avertissements || [];
     avertir(state.avertissements);
+    if (B.paliersUI) B.paliersUI.reset();
     if (r.donnees === null) {
       accueil([
         el('h2', 'Aucune donnée courante'),

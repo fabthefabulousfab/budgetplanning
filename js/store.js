@@ -44,10 +44,10 @@
         if (debut && idx <= S.monthIndex(debut)) throw new Error('« depuis » (' + p.depuis + ') doit être postérieur au début de la ligne (' + debut + ').');
         prec = idx;
         if (nature === 'mensuel') {
-          if (typeof p.montant !== 'number' || !Number.isFinite(p.montant) || p.montant <= 0) throw new Error('le montant mensuel doit être un nombre supérieur à 0.');
+          if (typeof p.montant !== 'number' || !Number.isFinite(p.montant) || p.montant < 0) throw new Error('le montant mensuel doit être un nombre supérieur ou égal à 0 (0 = plus rien à partir de cette date).');
         } else {
           const src = p.echeances;
-          S.parseEcheances(typeof src === 'number' ? String(src) : src);
+          if (String(src).trim() !== '0') S.parseEcheances(typeof src === 'number' ? String(src) : src); // « 0 » : plus rien à partir de cette date
         }
       } catch (e) {
         throw new Error(nom + ' : ' + e.message);
@@ -91,6 +91,10 @@
       } catch (e) {
         if (nature !== 'evenement') e.fichier = FICHIERS.paliers; // les paliers des lignes importées vivent dans paliers.yaml
         throw e;
+      }
+      const dernier = l.paliers[l.paliers.length - 1];
+      if (l.fin && dernier && typeof dernier.depuis === 'string' && S.monthIndex(l.fin) < S.monthIndex(dernier.depuis)) {
+        throw new Error('La fin (' + l.fin + ') précède le dernier palier (' + dernier.depuis + ') : avancez le palier ou repoussez la fin.');
       }
     }
   }
@@ -280,6 +284,10 @@
       if (Array.isArray(l.paliers) && l.paliers.length > 0) throw new Error('doublon de paliers pour la ligne « ' + String(l.libelle).trim() + ' » (' + e.ligne.nature + ').');
       if (avertissements && l.debut && S.monthIndex(e.etapes[0].depuis) <= S.monthIndex(l.debut)) {
         avertissements.push(FICHIERS.paliers + ' : le premier palier de « ' + String(l.libelle).trim() + ' » (' + e.etapes[0].depuis + ') n’est pas postérieur au début de la ligne (' + l.debut + ').');
+      }
+      const dernier = e.etapes[e.etapes.length - 1].depuis;
+      if (avertissements && l.fin && S.monthIndex(l.fin) < S.monthIndex(dernier)) {
+        avertissements.push(FICHIERS.paliers + ' : la fin de « ' + String(l.libelle).trim() + ' » (' + l.fin + ') précède son dernier palier (' + dernier + ') : ce palier est sans effet.');
       }
       l.paliers = e.etapes;
     });

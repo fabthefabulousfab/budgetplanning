@@ -43,6 +43,8 @@
     }
     segment(-Infinity, S.monthIndex(ps[0].depuis) - 1, {});
     ps.forEach(function (pal, i) {
+      // Montant 0 : plus aucune occurrence à partir de ce palier (jusqu'au suivant).
+      if (pal.montant === 0 || (pal.echeances != null && String(pal.echeances).trim() === '0')) return;
       const m = pal.echeances != null ? { echeances: typeof pal.echeances === 'number' ? String(pal.echeances) : pal.echeances, montant: undefined } : { montant: pal.montant, echeances: undefined };
       const hi = i + 1 < ps.length ? S.monthIndex(ps[i + 1].depuis) - 1 : Infinity;
       segment(S.monthIndex(pal.depuis), hi, m);

@@ -109,6 +109,7 @@
     if (idx < 0) return;
     if (!root.confirm('Supprimer l’événement « ' + ligne.libelle + ' » ?')) return;
     erreurs.delete(ligne);
+    const etaitOuvert = B.paliersUI.estOuvert(ligne);
     B.paliersUI.oublier(ligne);
     liste.splice(idx, 1);
     B.refresh();
@@ -116,6 +117,7 @@
       await B.persist('evenements');
     } catch (e) {
       liste.splice(Math.min(idx, liste.length), 0, ligne);
+      if (etaitOuvert) B.paliersUI.ouvrir(ligne);
       B.refresh();
     }
   }

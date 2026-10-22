@@ -137,9 +137,17 @@
   }
 
   function finsDePret(donnees) {
+    // Fin effective : la fin de la ligne ou, si plus tôt, le mois précédant son premier palier à 0.
+    function finEffective(l) {
+      const z = (l.paliers || []).find(function (p) { return p.montant === 0; });
+      const f0 = z ? S.fromIndex(S.monthIndex(z.depuis) - 1) : null;
+      if (f0 && (!l.fin || S.monthIndex(f0) < S.monthIndex(l.fin))) return f0;
+      return l.fin || null;
+    }
     return (donnees.mensuel || [])
-      .filter(function (l) { return Pj.estActif(l) && l.type === 'depense' && l.fin; })
-      .map(function (l) { return { libelle: l.libelle, fin: l.fin, libere_par_mois: montantAu(l, l.fin) }; })
+      .map(function (l) { return { l: l, fin: Pj.estActif(l) && l.type === 'depense' ? finEffective(l) : null }; })
+      .filter(function (x) { return x.fin; })
+      .map(function (x) { return { libelle: x.l.libelle, fin: x.fin, libere_par_mois: montantAu(x.l, x.fin) }; })
       .sort(function (a, b) { return S.monthIndex(a.fin) - S.monthIndex(b.fin); });
   }
 
