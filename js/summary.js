@@ -13,16 +13,27 @@
   }
 
   function occurrencesSignees(ligne, win) {
-    const l = Pj.normaliser(ligne, true);
-    const signe = l.type === 'revenu' ? 1 : -1;
-    return S.occurrences(l.schedule, l.bornes, win).map(function (o) {
-      return { ym: o.ym, montant: signe * o.montant };
+    const out = [];
+    Pj.normaliserTout(ligne, true).forEach(function (l) {
+      const signe = l.type === 'revenu' ? 1 : -1;
+      S.occurrences(l.schedule, l.bornes, win).forEach(function (o) { out.push({ ym: o.ym, montant: signe * o.montant }); });
     });
+    return out;
   }
 
-  function restantMensuel(donnees) {
+  // Montant mensuel d'une ligne mensuelle en vigueur au mois `ym` (dernier palier dont `depuis` <= ym, sinon montant de la ligne).
+  function montantAu(ligne, ym) {
+    let m = ligne.montant;
+    const i = S.monthIndex(ym);
+    (ligne.paliers || []).forEach(function (p) { if (S.monthIndex(p.depuis) <= i) m = p.montant; });
+    return Number(m);
+  }
+
+  // `params` (optionnel) donne le mois de départ pour lequel est pris le montant en vigueur des lignes à paliers.
+  function restantMensuel(donnees, params) {
+    const depart = Object.assign({}, Pj.PARAMETRES_DEFAUT, params).depart;
     return (donnees.mensuel || []).filter(Pj.estActif).reduce(function (acc, l) {
-      return acc + (l.type === 'revenu' ? 1 : -1) * Number(l.montant);
+      return acc + (l.type === 'revenu' ? 1 : -1) * montantAu(l, depart);
     }, 0);
   }
 
@@ -81,7 +92,7 @@
 
   function restantMoyen(donnees, params) {
     const lignes = (donnees.annuel || []).concat(donnees.exceptionnel || []);
-    return restantMensuel(donnees) + impactMensuel(lignes, params).reduce(function (a, x) { return a + x.impact_mensuel; }, 0);
+    return restantMensuel(donnees, params) + impactMensuel(lignes, params).reduce(function (a, x) { return a + x.impact_mensuel; }, 0);
   }
 
   function syntheseEvenements(evenements, params) {
@@ -136,11 +147,12 @@
     const win = { debut: ym, fin: ym };
     function lignes(liste, mensuelNumerique, groupe) {
       (liste || []).filter(Pj.estActif).forEach(function (ligne) {
-        const l = Pj.normaliser(ligne, mensuelNumerique);
-        S.occurrences(l.schedule, l.bornes, win).forEach(function (o) {
-          const montant = l.revalorise ? o.montant * facteur : o.montant;
-          if (groupe === null) out.mensuel[l.type === 'revenu' ? 'revenus' : 'depenses'] += montant;
-          else (ligne.pret ? out.prets : groupe).push({ libelle: ligne.libelle, type: l.type, montant: (l.type === 'revenu' ? 1 : -1) * montant });
+        Pj.normaliserTout(ligne, mensuelNumerique).forEach(function (l) {
+          S.occurrences(l.schedule, l.bornes, win).forEach(function (o) {
+            const montant = l.revalorise ? o.montant * facteur : o.montant;
+            if (groupe === null) out.mensuel[l.type === 'revenu' ? 'revenus' : 'depenses'] += montant;
+            else (ligne.pret ? out.prets : groupe).push({ libelle: ligne.libelle, type: l.type, montant: (l.type === 'revenu' ? 1 : -1) * montant });
+          });
         });
       });
     }
@@ -190,10 +202,11 @@
     const rows = [];
     [['mensuel', donnees.mensuel, true], ['annuel', donnees.annuel, false], ['exceptionnel', donnees.exceptionnel, false], ['futur', futurs, false]].forEach(function (g) {
       (g[1] || []).filter(Pj.estActif).forEach(function (ligne) {
-        const l = Pj.normaliser(ligne, g[2]);
-        S.occurrences(l.schedule, l.bornes, win).forEach(function (o) {
-          const m = l.revalorise ? o.montant * Pj.facteurReval(p, S.monthIndex(o.ym)) : o.montant;
-          rows.push({ ym: o.ym, origine: ligne.pret ? 'pret' : g[0], categorie: ligne.categorie || '', libelle: String(ligne.libelle), montant: (l.type === 'revenu' ? 1 : -1) * m });
+        Pj.normaliserTout(ligne, g[2]).forEach(function (l) {
+          S.occurrences(l.schedule, l.bornes, win).forEach(function (o) {
+            const m = l.revalorise ? o.montant * Pj.facteurReval(p, S.monthIndex(o.ym)) : o.montant;
+            rows.push({ ym: o.ym, origine: ligne.pret ? 'pret' : g[0], categorie: ligne.categorie || '', libelle: String(ligne.libelle), montant: (l.type === 'revenu' ? 1 : -1) * m });
+          });
         });
       });
     });

@@ -9,7 +9,7 @@
   const yaml = isNode ? require('../vendor/js-yaml.min.js') : root.jsyaml;
   const PARAMETRES_DEFAUT = P.PARAMETRES_DEFAUT;
 
-  const FICHIERS = { donnees: 'donnees-courantes.yaml', evenements: 'evenements-futurs.yaml', parametres: 'parametres.yaml', historique: 'historique-comptes.csv' };
+  const FICHIERS = { donnees: 'donnees-courantes.yaml', evenements: 'evenements-futurs.yaml', parametres: 'parametres.yaml', paliers: 'paliers.yaml', historique: 'historique-comptes.csv' };
   const CATEGORIES_EVENEMENT = ['Études', 'Prêt', 'Achat', 'Revenu', 'Autre'];
   const NATURES = ['mensuel', 'annuel', 'exceptionnel', 'evenement'];
 
@@ -18,6 +18,39 @@
     if (typeof v !== 'string') throw new Error(nom + ' invalide : « ' + v + ' » (attendu AAAA-MM).');
     const p = S.parseYm(v);
     if (p.m < 1 || p.m > 12) throw new Error(nom + ' invalide : « ' + v + ' » (mois de 1 à 12).');
+  }
+
+  const MAX_PALIERS = 50;
+  const CLES_PALIER = ['depuis', 'montant', 'echeances'];
+
+  // Paliers d'une ligne : liste d'étapes { depuis: 'AAAA-MM', montant | echeances }, `depuis` strictement croissant et postérieur au début de la ligne.
+  function validerPaliers(ps, nature, debut) {
+    if (!Array.isArray(ps)) throw new Error('Les paliers doivent former une liste.');
+    if (ps.length > MAX_PALIERS) throw new Error('Trop de paliers (' + MAX_PALIERS + ' au maximum).');
+    let prec = null;
+    ps.forEach(function (p, i) {
+      const nom = 'Palier #' + (i + 1);
+      try {
+        if (!p || typeof p !== 'object' || Array.isArray(p)) throw new Error('palier invalide.');
+        Object.keys(p).forEach(function (k) {
+          if (CLES_PALIER.indexOf(k) < 0) throw new Error('clé inconnue « ' + k + ' » (attendues : depuis, ' + (nature === 'mensuel' ? 'montant' : 'echeances') + ').');
+        });
+        if (typeof p.depuis !== 'string' || p.depuis === '') throw new Error('« depuis » manquant (attendu AAAA-MM).');
+        validerMois(p.depuis, '« depuis »');
+        const idx = S.monthIndex(p.depuis);
+        if (prec !== null && idx <= prec) throw new Error('« depuis » (' + p.depuis + ') doit être strictement postérieur au palier précédent (ordre croissant).');
+        if (debut && idx <= S.monthIndex(debut)) throw new Error('« depuis » (' + p.depuis + ') doit être postérieur au début de la ligne (' + debut + ').');
+        prec = idx;
+        if (nature === 'mensuel') {
+          if (typeof p.montant !== 'number' || !Number.isFinite(p.montant) || p.montant <= 0) throw new Error('le montant mensuel doit être un nombre supérieur à 0.');
+        } else {
+          const src = p.echeances != null ? p.echeances : p.montant;
+          S.parseEcheances(typeof src === 'number' ? String(src) : src);
+        }
+      } catch (e) {
+        throw new Error(nom + ' : ' + e.message);
+      }
+    });
   }
 
   function validerLigne(l, nature) {
@@ -50,6 +83,7 @@
       const src = l.echeances != null ? l.echeances : l.montant;
       S.parseEcheances(typeof src === 'number' ? String(src) : src);
     }
+    if (l.paliers != null) validerPaliers(l.paliers, nature, l.debut);
   }
 
   function validerDonnees(d) {
@@ -179,9 +213,93 @@
     try { return fn(); } catch (e) { throw new Error(nom + ' : ' + e.message); }
   }
 
+  const NATURES_IMPORT = ['mensuel', 'annuel', 'exceptionnel'];
+  const cleLigne = function (nature, l) { return [nature, l.type, String(l.categorie).trim(), String(l.libelle).trim()].join('\u0000'); };
+
+  // paliers.yaml : { paliers: [{ ligne: { nature, type, categorie, libelle }, etapes: [{ depuis, montant | echeances }] }] }
+  function validerEntreesPaliers(entrees) {
+    const vues = new Set();
+    entrees.forEach(function (e, i) {
+      try {
+        if (!estObjet(e) || !estObjet(e.ligne)) throw new Error('entrée invalide (« ligne » et « etapes » attendus).');
+        const g = e.ligne;
+        if (NATURES_IMPORT.indexOf(g.nature) < 0) throw new Error('nature invalide : « ' + g.nature + ' » (' + NATURES_IMPORT.join(', ') + ').');
+        if (g.type !== 'revenu' && g.type !== 'depense') throw new Error('type invalide : « ' + g.type + ' » (revenu ou depense).');
+        if (typeof g.categorie !== 'string' || g.categorie.trim() === '') throw new Error('catégorie manquante.');
+        if (typeof g.libelle !== 'string' || g.libelle.trim() === '') throw new Error('libellé manquant.');
+        if (!Array.isArray(e.etapes) || e.etapes.length === 0) throw new Error('« etapes » doit être une liste non vide.');
+        const cle = cleLigne(g.nature, g);
+        if (vues.has(cle)) throw new Error('doublon pour la ligne « ' + g.libelle + ' ».');
+        vues.add(cle);
+        validerPaliers(e.etapes, g.nature);
+      } catch (err) {
+        throw new Error('paliers #' + (i + 1) + ' : ' + err.message);
+      }
+    });
+  }
+
+  function validerContenuPaliers(c) {
+    if (c === null) return [];
+    if (!estObjet(c) || Object.keys(c).some(function (k) { return k !== 'paliers'; })) throw new Error('contenu invalide (un objet « paliers: [...] » est attendu).');
+    if (c.paliers == null) return [];
+    if (!Array.isArray(c.paliers)) throw new Error('« paliers » doit être une liste.');
+    validerEntreesPaliers(c.paliers);
+    return c.paliers;
+  }
+
+  // Rattache chaque entrée à la première ligne importée correspondante (4 champs, espaces ignorés) ; renvoie les entrées sans ligne.
+  function attacherPaliers(donnees, entrees) {
+    const parCle = new Map();
+    NATURES_IMPORT.forEach(function (nature) {
+      ((donnees && donnees[nature]) || []).forEach(function (l) {
+        const k = cleLigne(nature, l);
+        if (!parCle.has(k)) parCle.set(k, l);
+      });
+    });
+    const orphelins = [];
+    entrees.forEach(function (e) {
+      const l = parCle.get(cleLigne(e.ligne.nature, e.ligne));
+      if (!l) { orphelins.push(e); return; }
+      enFichier(FICHIERS.paliers, function () { validerPaliers(e.etapes, e.ligne.nature, l.debut); });
+      l.paliers = e.etapes;
+    });
+    return orphelins;
+  }
+
+  // Entrées de paliers.yaml reconstruites depuis les lignes (les paliers suivent le libellé courant) puis les orphelins.
+  function entreesPaliers(donnees, orphelins) {
+    const out = [];
+    NATURES_IMPORT.forEach(function (nature) {
+      ((donnees && donnees[nature]) || []).forEach(function (l) {
+        if (!Array.isArray(l.paliers) || l.paliers.length === 0) return;
+        out.push({ ligne: { nature: nature, type: l.type, categorie: l.categorie, libelle: l.libelle }, etapes: l.paliers.map(function (p) { return Object.assign({}, p); }) });
+      });
+    });
+    return out.concat(orphelins || []);
+  }
+
+  function sansPaliers(donnees) {
+    const copie = Object.assign({}, donnees);
+    NATURES_IMPORT.forEach(function (nature) {
+      if (!Array.isArray(donnees[nature])) return;
+      copie[nature] = donnees[nature].map(function (l) { const c = Object.assign({}, l); delete c.paliers; return c; });
+    });
+    return copie;
+  }
+
   async function loadAll(dir) {
     const donnees = await lire(dir, FICHIERS.donnees);
     if (donnees !== null) enFichier(FICHIERS.donnees, function () { validerDonnees(donnees); });
+    if (donnees !== null) {
+      NATURES_IMPORT.forEach(function (nature) {
+        (donnees[nature] || []).forEach(function (l, i) {
+          if (l.paliers != null) throw new Error(FICHIERS.donnees + ' : ' + nature + ' #' + (i + 1) + ' : les paliers des lignes importées se saisissent dans ' + FICHIERS.paliers + '.');
+        });
+      });
+    }
+    const brutPaliers = await lire(dir, FICHIERS.paliers);
+    const entreesLues = enFichier(FICHIERS.paliers, function () { return validerContenuPaliers(brutPaliers); });
+    const orphelins = attacherPaliers(donnees, entreesLues);
 
     // evenements-futurs.yaml contient les événements et les prêts (nature: pret), séparés à la lecture.
     let brutEv = await lire(dir, FICHIERS.evenements);
@@ -196,12 +314,22 @@
     const parametres = fusionnerParametres(brut);
     enFichier(FICHIERS.parametres, function () { validerParametres(parametres); });
 
-    return { donnees: donnees, evenements: evenements, prets: prets, parametres: parametres };
+    return { donnees: donnees, evenements: evenements, prets: prets, parametres: parametres, orphelins: orphelins };
   }
 
-  async function saveDonnees(dir, donnees) {
+  // donnees-courantes.yaml est écrit sans `paliers` ; paliers.yaml est regénéré (lignes + orphelins), tout est validé avant la première écriture.
+  async function saveDonnees(dir, donnees, orphelins) {
     enFichier(FICHIERS.donnees, function () { validerDonnees(donnees); });
-    await ecrire(dir, FICHIERS.donnees, donnees);
+    const entrees = entreesPaliers(donnees, orphelins);
+    enFichier(FICHIERS.paliers, function () { validerEntreesPaliers(entrees); });
+    await ecrire(dir, FICHIERS.donnees, sansPaliers(donnees));
+    let existe = true;
+    try { await dir.getFileHandle(FICHIERS.paliers); } catch (e) {
+      if (e && e.name === 'NotFoundError') existe = false; else throw e;
+    }
+    if (entrees.length > 0 || existe) {
+      try { await ecrire(dir, FICHIERS.paliers, { paliers: entrees }); } catch (e) { throw new Error(FICHIERS.paliers + ' : ' + e.message); }
+    }
   }
 
   async function saveEvenements(dir, evenements, prets) {

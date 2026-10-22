@@ -50,6 +50,27 @@ Le mois va de 1 à 12. Ne pas mélanger des échéances avec année et sans ann�
 - `historique-comptes.csv` : historique mois par mois : résumé (revenus, dépenses, solde, euros arrondis), puis le détail de chaque revenu et dépense du mois (origine, catégorie, libellé, montant, revalorisation comprise ; lignes masquées exclues), regénéré après chaque enregistrement, à donner tel quel à un LLM pour un avis financier.
 - Une ligne peut être masquée avec l'icône œil (`actif: false`) : elle est ignorée dans toute la projection. Un nouvel import Excel remet les lignes de `donnees-courantes.yaml` à l'état actif.
 - `parametres.yaml` : départ, horizon, revalorisation, solde de départ (onglet Paramètres). Jamais écrasé par l'import Excel.
+- `paliers.yaml` : paliers (changements de montant à une date donnée) des lignes importées (mensuelles, annuelles, exceptionnelles). Jamais écrasé par l'import Excel.
+
+### Paliers
+
+Une ligne peut changer de montant à des dates précises. Le montant propre de la ligne s'applique de son `debut` (s'il y en a un) jusqu'au premier palier (exclu) ; chaque palier remplace tout le montant à partir de son `depuis` (inclus) jusqu'au palier suivant (exclu) ; le dernier palier court jusqu'à la `fin` de la ligne (incluse) ou sans limite. `debut` et `fin` bornent toujours l'ensemble. La revalorisation (`revalorise`) et le masquage (`actif: false`) s'appliquent à tous les paliers de la ligne.
+
+Un palier est `{ depuis: 'AAAA-MM', … }` avec, pour une ligne mensuelle, `montant` (nombre supérieur à 0) et, pour une ligne annuelle, exceptionnelle ou un événement, `echeances` (même syntaxe que ci-dessus : `800`, `3-300`, `6-500, 10-500`, `2026-3-300`). Les `depuis` sont strictement croissants, postérieurs au `debut` de la ligne, 50 paliers au plus.
+
+Lignes importées, dans `paliers.yaml` (la ligne est identifiée par ses quatre champs `nature`, `type`, `categorie`, `libelle`, espaces ignorés) :
+
+```yaml
+paliers:
+  - ligne: { nature: mensuel, type: depense, categorie: Logement, libelle: Loyer }
+    etapes:
+      - { depuis: '2027-09', montant: 950 }
+      - { depuis: '2029-01', montant: 1000 }
+```
+
+Événements : clé `paliers` dans l'événement de `evenements-futurs.yaml`, avec `echeances` dans chaque palier.
+
+Les paliers suivent la ligne quand on change son libellé ou sa catégorie dans la page. Une entrée de `paliers.yaml` dont la ligne n'existe plus (par exemple après un nouvel import Excel) est conservée comme « ligne introuvable », jamais supprimée en silence. `donnees-courantes.yaml` ne contient jamais de `paliers`.
 
 Ces fichiers sont ignorés par git.
 

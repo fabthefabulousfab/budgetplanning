@@ -21,6 +21,40 @@
   // Une ligne masquée (actif: false) n'est prise en compte nulle part.
   function estActif(ligne) { return ligne.actif !== false; }
 
+  // Lignes virtuelles d'une ligne à paliers : une par période (montant en vigueur), sans propriété `paliers`,
+  // bornes intersectées avec le debut/fin d'origine. Une ligne sans palier est renvoyée telle quelle.
+  function expandPaliers(ligne) {
+    const ps = ligne.paliers;
+    if (!Array.isArray(ps) || ps.length === 0) return [ligne];
+    const base = Object.assign({}, ligne);
+    delete base.paliers;
+    const debut = ligne.debut ? S.monthIndex(ligne.debut) : -Infinity;
+    const fin = ligne.fin ? S.monthIndex(ligne.fin) : Infinity;
+    const out = [];
+    function segment(lo, hi, montants) {
+      lo = Math.max(lo, debut);
+      hi = Math.min(hi, fin);
+      if (lo > hi) return;
+      const l = Object.assign({}, base, montants);
+      l.debut = lo === -Infinity ? (ligne.debut || null) : S.fromIndex(lo);
+      l.fin = hi === Infinity ? (ligne.fin || null) : S.fromIndex(hi);
+      Object.keys(l).forEach(function (k) { if (l[k] === undefined) delete l[k]; });
+      out.push(l);
+    }
+    segment(-Infinity, S.monthIndex(ps[0].depuis) - 1, {});
+    ps.forEach(function (pal, i) {
+      const m = pal.echeances != null ? { echeances: pal.echeances, montant: undefined } : { montant: pal.montant, echeances: undefined };
+      const hi = i + 1 < ps.length ? S.monthIndex(ps[i + 1].depuis) - 1 : Infinity;
+      segment(S.monthIndex(pal.depuis), hi, m);
+    });
+    return out;
+  }
+
+  // Comme normaliser, pour toutes les périodes d'une ligne (paliers compris).
+  function normaliserTout(ligne, mensuelNumerique) {
+    return expandPaliers(ligne).map(function (l) { return normaliser(l, mensuelNumerique); });
+  }
+
   function normaliser(ligne, mensuelNumerique) {
     let schedule;
     if (mensuelNumerique && typeof ligne.montant === 'number') {
@@ -57,11 +91,10 @@
     const debutIdx = S.monthIndex(p.depart);
     const fenetre = { debut: p.depart, fin: S.ym(Math.floor((debutIdx + n - 1) / 12), ((debutIdx + n - 1) % 12) + 1) };
 
-    const lignes = []
-      .concat((donnees.mensuel || []).filter(estActif).map(function (l) { return normaliser(l, true); }))
-      .concat((donnees.annuel || []).filter(estActif).map(function (l) { return normaliser(l, false); }))
-      .concat((donnees.exceptionnel || []).filter(estActif).map(function (l) { return normaliser(l, false); }))
-      .concat((evenements || []).filter(estActif).map(function (l) { return normaliser(l, false); }));
+    const lignes = [];
+    [[donnees.mensuel, true], [donnees.annuel, false], [donnees.exceptionnel, false], [evenements, false]].forEach(function (g) {
+      (g[0] || []).filter(estActif).forEach(function (l) { normaliserTout(l, g[1]).forEach(function (x) { lignes.push(x); }); });
+    });
 
     const revenus = new Array(n).fill(0);
     const depenses = new Array(n).fill(0);
@@ -88,7 +121,7 @@
     return out;
   }
 
-  const api = { project: project, PARAMETRES_DEFAUT: PARAMETRES_DEFAUT, normaliser: normaliser, estActif: estActif, facteurReval: facteurReval, soldeDepart: soldeDepart };
+  const api = { project: project, PARAMETRES_DEFAUT: PARAMETRES_DEFAUT, normaliser: normaliser, normaliserTout: normaliserTout, expandPaliers: expandPaliers, estActif: estActif, facteurReval: facteurReval, soldeDepart: soldeDepart };
   if (typeof module !== 'undefined') module.exports = api;
   else root.Budget = Object.assign(root.Budget || {}, api);
 })(this);

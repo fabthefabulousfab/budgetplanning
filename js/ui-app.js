@@ -2,7 +2,7 @@
   'use strict';
 
   const B = root.Budget;
-  const state = { dir: null, donnees: null, evenements: [], prets: [], parametres: null, mois: [] };
+  const state = { dir: null, donnees: null, evenements: [], prets: [], parametres: null, mois: [], orphelins: [] };
   const FICHIER_HISTORIQUE = 'historique-comptes.csv';
   const tabs = [];
   let actif = null;
@@ -120,7 +120,7 @@
 
   async function persistNow(kind) {
     const fn = {
-      donnees: function () { return B.saveDonnees(state.dir, state.donnees); },
+      donnees: function () { return B.saveDonnees(state.dir, state.donnees, state.orphelins); },
       evenements: function () { return B.saveEvenements(state.dir, state.evenements, state.prets); },
       prets: function () { return B.saveEvenements(state.dir, state.evenements, state.prets); },
       parametres: function () { return B.saveParametres(state.dir, state.parametres); },
@@ -209,6 +209,7 @@
     state.evenements = r.evenements;
     state.prets = r.prets;
     state.parametres = r.parametres;
+    state.orphelins = r.orphelins || [];
     if (r.donnees === null) {
       accueil([
         el('h2', 'Aucune donnée courante'),

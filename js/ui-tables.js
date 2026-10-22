@@ -271,7 +271,7 @@
     // Mensualités des prêts (en cours et simulés) : moyenne sur les 12 premiers mois, montants de départ.
     const prets = B.bilanLignes(B.lignesPret(B.state.prets), B.state.parametres, 12);
     const moyennePrets = -prets.depenses / 12;
-    const restant = B.restantMensuel(d);
+    const restant = B.restantMensuel(d, B.state.parametres);
     const c = carte('Mensuel', 'Montants de départ (hors revalorisation), par catégorie. Les prêts sont ceux de l’onglet Prêts (moyenne des mensualités des 12 premiers mois).');
     c.appendChild(totaux([
       { t: 'Total revenus', v: somme('revenu') },
