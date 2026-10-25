@@ -114,10 +114,20 @@ test('textes : un jeu d\'étapes par onglet enregistré, plus l\'accueil', () =>
   });
 });
 
-test('textes : chaque onglet a de 4 à 7 étapes', () => {
+test('textes : chaque onglet a de 4 à 7 étapes (cas « navigateur » : une seule)', () => {
   Object.keys(textesVisite).forEach((id) => {
     const n = textesVisite[id].length;
-    assert.ok(n >= 4 && n <= 7, id + ' : ' + n + ' étapes');
+    if (id === 'navigateur') assert.strictEqual(n, 1);
+    else assert.ok(n >= 4 && n <= 7, id + ' : ' + n + ' étapes');
+  });
+});
+
+test('textes : de 1 à 3 phrases par étape', () => {
+  Object.keys(textesVisite).forEach((id) => {
+    textesVisite[id].forEach((e) => {
+      const n = e.texte.replace(/«\s*\?\s*»/g, '«»').split(/[.!?](?=\s|$)/).filter((x) => x.trim() !== '').length;
+      assert.ok(n >= 1 && n <= 3, id + ' / ' + e.cible + ' : ' + n + ' phrases');
+    });
   });
 });
 
@@ -138,17 +148,28 @@ test('textes : pas de doublon de cible dans un même onglet', () => {
   });
 });
 
-test('textes : chaque cible est posée quelque part dans js/ (data-aide)', () => {
+// Code sans commentaires : une clé citée seulement dans un commentaire ne compte pas.
+function sansCommentaires(src) {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"])\/\/.*$/gm, '$1');
+}
+
+// Poses de l'attribut : data-aide="cle", setAttribute('data-aide', 'cle') ou { 'data-aide': 'cle' }.
+function poses(code, cle) {
+  const formes = ['data-aide="' + cle + '"', "setAttribute('data-aide', '" + cle + "')", "'data-aide': '" + cle + "'"];
+  return formes.reduce((n, f) => n + code.split(f).length - 1, 0);
+}
+
+test('textes : chaque cible est posée dans js/ comme attribut data-aide (hors commentaires)', () => {
   const code = sources
     .filter((f) => f !== 'visite-textes.js')
-    .map((f) => fs.readFileSync(path.join(JS, f), 'utf8'))
+    .map((f) => sansCommentaires(fs.readFileSync(path.join(JS, f), 'utf8')))
     .join('\n');
   const cles = new Set();
   Object.keys(textesVisite).forEach((id) => textesVisite[id].forEach((e) => cles.add(e.cible)));
   cles.forEach((cle) => {
-    const attr = 'data-aide="' + cle + '"';
-    const setter = "setAttribute('data-aide', '" + cle + "')";
-    const objet = "'data-aide': '" + cle + "'"; // el('div', '', { 'data-aide': 'cle' })
-    assert.ok(code.includes(attr) || code.includes(setter) || code.includes(objet), 'cible introuvable dans js/ : ' + cle);
+    const n = poses(code, cle);
+    assert.ok(n >= 1, 'cible introuvable dans js/ : ' + cle);
+    // « accueil-intro » est posée sur deux écrans (Bienvenue / Aucune donnée courante) ; les autres clés n'ont qu'un point de pose.
+    if (cle !== 'accueil-intro') assert.strictEqual(n, 1, 'cible posée à ' + n + ' endroits : ' + cle);
   });
 });

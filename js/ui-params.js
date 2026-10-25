@@ -165,12 +165,15 @@
 
     const f = el('form', '', { class: 'ajout', 'aria-label': 'Paramètres de la projection' });
     f.addEventListener('submit', function (ev) { ev.preventDefault(); });
+    // Revalorisation (taux + mois) et soldes de départ (compte courant + épargne) forment deux groupes ciblés par la visite guidée.
+    const groupeReval = el('div', '', { class: 'groupe-param' });
+    groupeReval.setAttribute('data-aide', 'param-revalorisation');
+    const groupeSolde = el('div', '', { class: 'groupe-param' });
+    groupeSolde.setAttribute('data-aide', 'param-solde');
     CHAMPS.forEach(function (ch) {
       const bloc = el('div', '', { class: 'champ-param' });
       if (ch.cle === 'depart') bloc.setAttribute('data-aide', 'param-depart');
       if (ch.cle === 'horizon') bloc.setAttribute('data-aide', 'param-horizon');
-      if (ch.cle === 'taux') bloc.setAttribute('data-aide', 'param-revalorisation');
-      if (ch.cle === 'solde_compte_courant') bloc.setAttribute('data-aide', 'param-solde');
       const id = 'param-' + ch.cle;
       bloc.appendChild(el('label', ch.label, { for: id }));
       const attrs = { id: id, type: ch.type || 'text', 'aria-label': ch.label, 'data-cle': ch.cle, 'aria-describedby': id + '-aide' };
@@ -188,7 +191,9 @@
       bloc.appendChild(i);
       bloc.appendChild(el('small', ch.aide, { id: id + '-aide', class: 'note' }));
       if (erreurs[ch.cle]) bloc.appendChild(el('p', erreurs[ch.cle], { id: id + '-err', class: 'erreur-ligne', role: 'alert' }));
-      f.appendChild(bloc);
+      if (ch.cle === 'taux' || ch.cle === 'mois') { if (!groupeReval.parentNode) f.appendChild(groupeReval); groupeReval.appendChild(bloc); }
+      else if (ch.solde) { if (!groupeSolde.parentNode) f.appendChild(groupeSolde); groupeSolde.appendChild(bloc); }
+      else f.appendChild(bloc);
     });
     c.appendChild(f);
     const total = B.soldeDepart(state().donnees, state().parametres).total;

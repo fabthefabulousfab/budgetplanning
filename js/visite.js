@@ -78,7 +78,7 @@
 
   function idOnglet() {
     const accueil = document.getElementById('accueil');
-    if (!accueil || !accueil.hidden || !B.ongletActif) return 'accueil';
+    if (!accueil || !accueil.hidden || !B.ongletActif) return B.supported && !B.supported() ? 'navigateur' : 'accueil';
     return B.ongletActif() || 'accueil';
   }
 
@@ -86,6 +86,15 @@
 
   function placer(n, animer) {
     const s = session;
+    if (s.centre) {
+      // Étape sans zone à entourer : bulle au centre de la fenêtre, page assombrie par le voile.
+      const vpc = viewport();
+      s.bulle.style.width = vpc.width < LARGEUR_ETROITE ? (vpc.width - 2 * MARGE) + 'px' : '';
+      s.bulle.style.left = Math.max(MARGE, (vpc.width - s.bulle.offsetWidth) / 2) + 'px';
+      s.bulle.style.top = Math.max(MARGE, (vpc.height - s.bulle.offsetHeight) / 2) + 'px';
+      s.bulle.setAttribute('data-placement', 'centre');
+      return { placement: 'centre' };
+    }
     const r = n.getBoundingClientRect();
     const cadre = s.cadre.style;
     const boite = [r.top, r.left, r.width, r.height].join(',');
@@ -144,7 +153,7 @@
     s.bulle.classList.remove('visible');
     void s.bulle.offsetWidth;
     s.bulle.classList.add('visible');
-    defiler(n);
+    if (!s.centre) defiler(n);
     let pos = placer(n, !premier);
     if (degager(n, pos)) pos = placer(n, true);
     if (document.activeElement === document.body || !s.bulle.contains(document.activeElement) || document.activeElement.hidden) s.suivant.focus();
@@ -251,7 +260,9 @@
     [voile, cadre, bulle].forEach(function (n) { racine.appendChild(n); });
 
     const bouton = document.getElementById('bouton-aide');
-    session = { toutes: toutes, courante: null, racine: racine, cadre: cadre, bulle: bulle, titre: titre, texte: texte, compteur: compteur, precedent: precedent, suivant: suivant, bouton: bouton, attente: 0, observateurs: [], inertes: [] };
+    const centre = idOnglet() === 'navigateur';
+    if (centre) racine.classList.add('visite-centre');
+    session = { centre: centre, toutes: toutes, courante: null, racine: racine, cadre: cadre, bulle: bulle, titre: titre, texte: texte, compteur: compteur, precedent: precedent, suivant: suivant, bouton: bouton, attente: 0, observateurs: [], inertes: [] };
 
     fermerBtn.addEventListener('click', fermer);
     precedent.addEventListener('click', function () { aller(-1); });

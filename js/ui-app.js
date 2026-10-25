@@ -59,7 +59,7 @@
   function ecranAccueil() {
     if (!B.supported()) {
       accueil([
-        el('h2', 'Navigateur non pris en charge'),
+        el('h2', 'Navigateur non pris en charge', { 'data-aide': 'accueil-navigateur' }),
         el('p', "Cette application a besoin de l'accès aux dossiers locaux (File System Access API). Ouvrez cette page dans Chrome ou Edge sur ordinateur."),
       ]);
       return;
