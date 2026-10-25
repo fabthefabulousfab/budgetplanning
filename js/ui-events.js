@@ -227,6 +227,7 @@
     t.appendChild(tb);
     const defil = el('div', '', { class: 'defil' });
     defil.appendChild(t);
+    defil.setAttribute('data-aide', 'evenements-liste');
     c.appendChild(defil);
     panneau.appendChild(c);
   }
@@ -237,12 +238,14 @@
       return { titre: String(a.annee), revenus: a.revenus, depenses: a.depenses, net: a.net };
     });
     const c = carte('Impact bilan par année, sur 10 ans', 'Revenus − dépenses des événements ci-dessous, de l’année de départ (à partir du mois de départ) jusqu’à dix ans plus tard. Montants de départ (hors revalorisation, hors prêts).');
+    c.setAttribute('data-aide', 'evenements-bilan');
     c.appendChild(B.tableauBilan('Bilan des événements par année', annees));
     panneau.appendChild(c);
   }
 
   function synthese(panneau) {
     const c = carte('Synthèse par type, catégorie et année', 'Montants de départ (hors revalorisation), sur l’horizon de projection.');
+    c.setAttribute('data-aide', 'evenements-synthese');
     const groupes = B.syntheseEvenements(B.state.evenements, B.state.parametres);
     if (!groupes.length) {
       c.appendChild(el('p', 'Aucun événement dans l’horizon de projection.', { class: 'vide' }));
@@ -291,6 +294,7 @@
 
   function formulaire(panneau) {
     const c = carte('Ajouter un événement', 'Études, achat d’une voiture, prime, prêt… Le type est à choisir explicitement.');
+    c.setAttribute('data-aide', 'evenements-ajout');
     const tete = el('div', '', { class: 'aide-ligne' });
     tete.appendChild(el('span', 'Syntaxe du montant'));
     tete.appendChild(aide());
