@@ -110,3 +110,6 @@ table.edition tr.masque.palier-ajout button, table.edition tr.masque.palier-ajou
 .champ-param { display: flex; flex-direction: column; gap: .25rem; flex: 1 1 14rem; }
 .champ-param label { font-weight: 600; font-size: .9rem; }
 .champ-param input { width: 100%; }
+.actions-accueil { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
+.zone-import { margin-top: 1rem; }
+.zone-import .btn-lien { margin-left: .75rem; }

@@ -90,6 +90,15 @@ Si vous modifiez ces fichiers à la main :
 
 Un prêt = un revenu ponctuel à la date du versement (par exemple `2027-9-20000`) et une dépense mensuelle avec début et fin pour les remboursements. Aucun calcul d'intérêts n'est fait : saisissez la mensualité.
 
+## Sauvegarde et partage
+
+Un seul fichier YAML (`budget-<nom>-AAAA-MM-JJ.yaml`) regroupe `donnees-courantes.yaml`, `evenements-futurs.yaml`, `parametres.yaml` et `paliers.yaml` (ceux qui existent), tels quels, commentaires compris. L'historique `historique-comptes.csv` n'y figure pas : il est regénéré à chaque enregistrement.
+
+- **Exporter** : onglet Paramètres, carte « Sauvegarde », bouton « Exporter la sauvegarde ». Le fichier est téléchargé depuis le dossier ouvert (donc tel qu'enregistré).
+- **Importer sur un autre ordinateur** : sur l'écran d'accueil (ou dans l'onglet Paramètres), « Importer une sauvegarde », choisissez le fichier, puis le dossier de destination (par exemple un dossier vide). Le fichier est entièrement vérifié avant toute écriture ; en cas d'erreur, le message nomme le fichier concerné et rien n'est écrit.
+- **Aucun remplacement silencieux** : si le dossier de destination contient déjà certains de ces fichiers, la liste vous est montrée et rien n'est écrit sans votre accord (exportez d'abord le dossier actuel). Les fichiers absents de la sauvegarde ne sont pas touchés.
+- **Partager** : le fichier est un simple fichier texte de moins de 5 Mo ; envoyez-le par e-mail ou déposez-le dans un drive. Il contient vos données financières : partagez-le avec soin.
+
 ## Limites
 
 - Chrome ou Edge uniquement (pas de Firefox ni Safari).

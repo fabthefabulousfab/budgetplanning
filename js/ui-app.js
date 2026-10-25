@@ -64,13 +64,74 @@
       ]);
       return;
     }
-    const bouton = el('button', 'Ouvrir le dossier data/', { type: 'button', class: 'btn' });
-    bouton.addEventListener('click', ouvrirDossier);
     accueil([
       el('h2', 'Bienvenue'),
-      el('p', 'Choisissez le dossier data/ du projet : les fichiers YAML y sont lus et enregistrés directement, rien ne quitte votre ordinateur.'),
-      bouton,
-    ]);
+      el('p', 'Choisissez le dossier data/ du projet : les fichiers YAML y sont lus et enregistrés directement, rien ne quitte votre ordinateur. Vous pouvez aussi importer une sauvegarde exportée depuis un autre ordinateur.'),
+    ].concat(boutonsOuverture()));
+  }
+
+  // Sélecteur de fichier hors DOM ; résout null si l'utilisateur annule.
+  function choisirFichier() {
+    return new Promise(function (resolve) {
+      const input = el('input', '', { type: 'file', accept: '.yaml,.yml,text/yaml' });
+      input.addEventListener('change', function () { resolve(input.files && input.files[0] ? input.files[0] : null); });
+      input.addEventListener('cancel', function () { resolve(null); });
+      input.click();
+    });
+  }
+
+  function confirmerRemplacement(noms) {
+    return Promise.resolve(root.confirm('Les fichiers suivants existent déjà dans ce dossier et seront remplacés :\n\n' + noms.join('\n') + '\n\nPensez à exporter une sauvegarde de ce dossier avant de continuer. Remplacer ces fichiers ?'));
+  }
+
+  // Étape 2 : le choix du dossier exige un clic récent, d'où un bouton dédié une fois la sauvegarde lue et validée.
+  function proposerDossier(zone, sauvegarde) {
+    zone.textContent = '';
+    const nb = Object.keys(sauvegarde.fichiers).length;
+    zone.appendChild(el('p', 'Sauvegarde « ' + sauvegarde.nom + ' » valide (' + nb + (nb > 1 ? ' fichiers' : ' fichier') + '). Choisissez le dossier de destination.', { role: 'status' }));
+    const choisir = el('button', 'Choisir le dossier de destination', { type: 'button', class: 'btn', 'aria-label': 'Choisir le dossier de destination de la sauvegarde' });
+    const annuler = el('button', 'Annuler', { type: 'button', class: 'btn-lien', 'aria-label': 'Annuler l’import de la sauvegarde' });
+    annuler.addEventListener('click', function () { zone.textContent = ''; });
+    choisir.addEventListener('click', async function () {
+      try {
+        const dir = await root.showDirectoryPicker({ mode: 'readwrite' });
+        await B.importerSauvegarde(sauvegarde, dir, { confirmerRemplacement: confirmerRemplacement });
+        zone.textContent = '';
+        await start(dir);
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+        if (e && e.annule) { zone.textContent = ''; return; }
+        erreur(e && e.message ? e.message : String(e));
+      }
+    });
+    zone.appendChild(choisir);
+    zone.appendChild(annuler);
+  }
+
+  // Import : fichier lu et validé d'abord (rien n'est écrit en cas d'erreur), puis choix du dossier dans `zone`.
+  async function importerFichier(zone) {
+    try {
+      const fichier = await choisirFichier();
+      if (!fichier) return;
+      erreur('');
+      const sauvegarde = await B.lireSauvegarde(await fichier.text());
+      proposerDossier(zone, sauvegarde);
+    } catch (e) {
+      zone.textContent = '';
+      erreur(e && e.message ? e.message : String(e));
+    }
+  }
+
+  function boutonsOuverture() {
+    const zone = el('div', '', { class: 'zone-import' });
+    const ouvrir = el('button', 'Ouvrir le dossier data/', { type: 'button', class: 'btn' });
+    ouvrir.addEventListener('click', ouvrirDossier);
+    const importer = el('button', 'Importer une sauvegarde', { type: 'button', class: 'btn', 'aria-label': 'Importer une sauvegarde' });
+    importer.addEventListener('click', function () { importerFichier(zone); });
+    const ligne = el('div', '', { class: 'actions-accueil' });
+    ligne.appendChild(ouvrir);
+    ligne.appendChild(importer);
+    return [ligne, zone];
   }
 
   function registerTab(id, titre, render) {
@@ -245,12 +306,10 @@
 
   function ecranAccueilBouton() {
     const a = $('accueil');
-    const b = el('button', 'Ouvrir le dossier data/', { type: 'button', class: 'btn' });
-    b.addEventListener('click', ouvrirDossier);
-    a.appendChild(b);
+    boutonsOuverture().forEach(function (n) { a.appendChild(n); });
   }
 
-  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, tableauBilan: tableauBilan, registerTab: registerTab, start: start });
+  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, tableauBilan: tableauBilan, registerTab: registerTab, start: start, erreur: erreur, importerFichier: importerFichier });
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ecranAccueil);
     else ecranAccueil();

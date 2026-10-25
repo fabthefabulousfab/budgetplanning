@@ -106,6 +106,49 @@
     }
   }
 
+  let noteExport = ''; // conservée hors du DOM : l'onglet est redessiné à chaque rafraîchissement
+
+  // Téléchargement via Blob + lien temporaire : fonctionne dans tous les navigateurs.
+  function telecharger(texte, nomFichier) {
+    const url = URL.createObjectURL(new Blob([texte], { type: 'text/yaml;charset=utf-8' }));
+    const a = el('a', '', { href: url, download: nomFichier });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+  }
+
+  async function exporter() {
+    try {
+      const r = await B.exporterSauvegarde(state().dir, { nom: state().dir && state().dir.name });
+      telecharger(r.texte, r.nomFichier);
+      B.erreur('');
+      noteExport = 'Sauvegarde exportée : ' + r.nomFichier;
+    } catch (e) {
+      noteExport = '';
+      B.erreur(e && e.message ? e.message : String(e));
+    }
+    B.refresh();
+  }
+
+  function carteSauvegarde() {
+    const c = el('div', '', { class: 'carte' });
+    c.appendChild(el('h2', 'Sauvegarde'));
+    c.appendChild(el('p', 'Un seul fichier YAML contient vos données, événements, paramètres et paliers (pas l’historique CSV, regénéré à l’enregistrement). Importer ne remplace jamais un fichier sans confirmation.', { class: 'note' }));
+    const ligne = el('div', '', { class: 'actions-accueil' });
+    const exp = el('button', 'Exporter la sauvegarde', { type: 'button', class: 'btn', 'aria-label': 'Exporter la sauvegarde' });
+    exp.addEventListener('click', exporter);
+    const zone = el('div', '', { class: 'zone-import' });
+    const imp = el('button', 'Importer une sauvegarde', { type: 'button', class: 'btn', 'aria-label': 'Importer une sauvegarde' });
+    imp.addEventListener('click', function () { noteExport = ''; B.importerFichier(zone); });
+    ligne.appendChild(exp);
+    ligne.appendChild(imp);
+    c.appendChild(ligne);
+    if (noteExport) c.appendChild(el('p', noteExport, { class: 'note', role: 'status', 'data-note-export': '1' }));
+    c.appendChild(zone);
+    return c;
+  }
+
   function render(panneau) {
     const actif = document.activeElement;
     const cleActive = actif && panneau.contains(actif) && actif.getAttribute ? actif.getAttribute('data-cle') : null;
@@ -143,6 +186,7 @@
     const total = B.soldeDepart(state().donnees, state().parametres).total;
     c.appendChild(el('p', 'Solde de départ : ' + eur.format(total), { class: 'note', 'data-total-solde': '1' }));
     panneau.appendChild(c);
+    panneau.appendChild(carteSauvegarde());
 
     if (cleActive) {
       const cible = Array.from(panneau.querySelectorAll('[data-cle]')).find(function (n) { return n.getAttribute('data-cle') === cleActive; });
