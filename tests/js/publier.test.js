@@ -33,25 +33,35 @@ function ecrire(fichier, contenu) {
   fs.writeFileSync(fichier, contenu);
 }
 
-// Copie temporaire du dépôt (sources + scripts) avec des leurres à ne pas publier.
+// Copie temporaire du dépôt (sources + scripts), dépôt git réel, avec des leurres.
 function copie() {
   const racine = tmp();
   for (const s of SOURCES) {
     fs.cpSync(path.join(REPO, s), path.join(racine, s), { recursive: true });
   }
-  ecrire(path.join(racine, 'docs/x.md'), 'doc');
+  // Leurres SUIVIS par git : ils ne doivent pas être publiés.
+  const suivis = {
+    'docs/x.md': 'doc', 'js/.DS_Store': 'x', 'js/notes.md': 'notes', 'js/store.js~': 'editeur',
+    'js/sous/profond.js': 'x', 'css/notes.md': 'notes', 'vendor/LICENSE.md': 'licence',
+    'tests/js/x.test.js': 'x', 'spike/s.html': 's',
+  };
+  for (const [f, c] of Object.entries(suivis)) ecrire(path.join(racine, f), c);
+  git(racine, 'init', '-q', '-b', 'main');
+  git(racine, 'config', 'user.name', 'Test');
+  git(racine, 'config', 'user.email', 'test@example.invalid');
+  git(racine, 'config', 'commit.gpgsign', 'false');
+  for (const s of SOURCES) git(racine, 'add', s);
+  git(racine, 'add', '-f', ...Object.keys(suivis));
+  git(racine, 'commit', '-q', '-m', 'initial');
+  // Leurres NON suivis (jamais publiés).
   ecrire(path.join(racine, 'data/x.yaml'), 'a: 1');
   ecrire(path.join(racine, 'data/x.csv'), 'a,b');
   ecrire(path.join(racine, 'budget.xlsx'), 'xlsx');
   ecrire(path.join(racine, '.env'), 'SECRET=1');
   ecrire(path.join(racine, 'TODO.md'), 'todo');
-  ecrire(path.join(racine, 'js/.DS_Store'), 'x');
-  ecrire(path.join(racine, 'js/notes.md'), 'notes');
-  ecrire(path.join(racine, 'js/store.js~'), 'sauvegarde editeur');
-  ecrire(path.join(racine, 'css/notes.md'), 'notes');
-  ecrire(path.join(racine, 'vendor/LICENSE.md'), 'licence');
-  ecrire(path.join(racine, 'tests/js/x.test.js'), 'x');
-  ecrire(path.join(racine, 'spike/s.html'), 's');
+  ecrire(path.join(racine, 'js/secret.js'), 'SECRET');
+  ecrire(path.join(racine, 'css/priv.css'), 'SECRET');
+  fs.symlinkSync(path.join(tmp(), 'dehors.js'), path.join(racine, 'js/link.js'));
   return racine;
 }
 
@@ -67,14 +77,13 @@ function lister(dossier) {
   return out.sort();
 }
 
+// Attendu : les fichiers SUIVIS du dépôt temporaire qui sont la page, des scripts
+// ou des styles (jamais déduit du dossier de travail ni du vrai dépôt).
 function attendu(racine) {
-  const liste = ['.nojekyll', 'index.html'];
-  for (const [dossier, ext] of [['js', '.js'], ['css', '.css'], ['vendor', '.js']]) {
-    for (const f of fs.readdirSync(path.join(REPO, dossier))) {
-      if (f.endsWith(ext)) liste.push(dossier + '/' + f);
-    }
-  }
-  return liste.sort();
+  const suivis = git(racine, 'ls-files').split('\n');
+  const liste = suivis.filter((f) => /^(index\.html|js\/[^/]+\.js|css\/[^/]+\.css|vendor\/[^/]+\.js)$/.test(f));
+  assert.ok(liste.includes('index.html') && liste.some((f) => f.startsWith('js/')), 'liste attendue plausible');
+  return ['.nojekyll', ...liste].sort();
 }
 
 function build(racine, ...args) {
@@ -135,19 +144,61 @@ test('publier.sh : refuse les sorties dangereuses sans rien supprimer', () => {
   assert.deepStrictEqual(lister(dehors), ['garde.txt']);
 });
 
+test('publier.sh : refuse un dossier de sortie qui contient des fichiers suivis par git', () => {
+  const racine = copie();
+  const r = build(racine, path.join(racine, 'docs'));
+  assert.notStrictEqual(r.status, 0);
+  assert.ok(fs.existsSync(path.join(racine, 'docs/x.md')));
+});
+
+test('publier.sh : refuse hors dépôt git et argument vide', () => {
+  const racine = copie();
+  const vide = build(racine, '');
+  assert.notStrictEqual(vide.status, 0);
+  assert.match(vide.stderr, /vide/);
+  fs.rmSync(path.join(racine, '.git'), { recursive: true, force: true });
+  const r = build(racine, path.join(racine, 'dist'));
+  assert.notStrictEqual(r.status, 0);
+  assert.match(r.stderr, /pas un dépôt git/);
+});
+
+test('publier.sh : un lien symbolique suivi dans js/ fait refuser la construction', () => {
+  const racine = copie();
+  fs.symlinkSync(path.join(tmp(), 'cible'), path.join(racine, 'js/suivi.txt'));
+  git(racine, 'add', '-f', 'js/suivi.txt');
+  git(racine, 'commit', '-q', '-m', 'lien');
+  const sortie = path.join(racine, 'dist');
+  const r = build(racine, sortie);
+  assert.notStrictEqual(r.status, 0);
+  assert.ok(r.stderr.includes('js/suivi.txt'), r.stderr);
+  assert.ok(!fs.existsSync(path.join(sortie, 'index.html')));
+});
+
+test('publier.sh : seul l\'état committé est publié (non suivis, liens, modifs non validées)', () => {
+  const racine = copie();
+  const sortie = path.join(racine, 'dist');
+  assert.strictEqual(build(racine, sortie).status, 0);
+  const publies = lister(sortie);
+  for (const f of ['js/secret.js', 'css/priv.css', 'js/link.js', 'js/sous/profond.js']) {
+    assert.ok(!publies.includes(f), f);
+  }
+  assert.deepStrictEqual(publies, attendu(racine));
+  // Modification non validée : la construction publie le contenu committé et avertit.
+  fs.appendFileSync(path.join(racine, 'js/store.js'), '\n// NON VALIDE\n');
+  const r = build(racine, sortie);
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.ok(!fs.readFileSync(path.join(sortie, 'js/store.js'), 'utf8').includes('NON VALIDE'));
+  assert.match(r.stderr, /js\/store\.js/);
+  assert.match(r.stdout, /COMMITT/);
+});
+
 // --- publier-pages.sh -------------------------------------------------------
 
 function depot() {
   const racine = copie();
   const distant = path.join(tmp(), 'distant.git');
   git(path.dirname(distant), 'init', '--bare', '-q', distant);
-  git(racine, 'init', '-q', '-b', 'main');
-  git(racine, 'config', 'user.name', 'Test');
-  git(racine, 'config', 'user.email', 'test@example.invalid');
-  git(racine, 'config', 'commit.gpgsign', 'false');
   git(racine, 'remote', 'add', 'origin', 'file://' + distant);
-  for (const s of ['index.html', 'js', 'css', 'vendor', 'scripts', '.gitignore']) git(racine, 'add', s);
-  git(racine, 'commit', '-q', '-m', 'initial');
   return { racine, distant };
 }
 
@@ -174,15 +225,16 @@ test('publier-pages.sh : crée gh-pages orpheline sans toucher à la branche cou
   const avant = etat(racine);
   const r = pages(racine);
   assert.strictEqual(r.status, 0, r.stderr + r.stdout);
-  const apres = etat(racine);
-  assert.deepStrictEqual(apres, avant);
+  assert.deepStrictEqual(etat(racine), avant);
   assert.deepStrictEqual(arbre(racine, 'gh-pages'), attendu(racine));
   for (const f of arbre(racine, 'gh-pages')) assert.ok(!INTERDIT.test(f), f);
+  assert.ok(!arbre(racine, 'gh-pages').some((f) => /secret|priv|link/.test(f)));
   assert.strictEqual(git(racine, 'rev-list', '--count', 'gh-pages'), '1');
   assert.strictEqual(git(racine, 'rev-list', '--max-parents=0', 'gh-pages'), git(racine, 'rev-parse', 'gh-pages'));
   const court = git(racine, 'rev-parse', '--short', 'HEAD');
   assert.match(git(racine, 'log', '-1', '--format=%s', 'gh-pages'), new RegExp('^publication \\d{4}-\\d{2}-\\d{2} \\(' + court + '\\)$'));
-  assert.match(r.stdout, /ne pousse rien|rien n'a été poussé|Aucun envoi/i);
+  assert.match(r.stdout, /on ne pousse rien/);
+  assert.match(r.stdout, /non suivis.*js\/secret\.js/, 'note sur les fichiers non suivis');
   assert.strictEqual(git(distant, 'branch', '--list'), '', 'rien poussé sur le distant');
   assert.strictEqual(git(racine, 'worktree', 'list').split('\n').length, 1, 'worktree temporaire retiré');
 });
@@ -193,7 +245,7 @@ test('publier-pages.sh : sans changement, rien à publier et aucun commit', () =
   const avant = git(racine, 'rev-parse', 'gh-pages');
   const r = pages(racine);
   assert.strictEqual(r.status, 0, r.stderr);
-  assert.ok(r.stdout.includes("Rien à publier : la page est déjà à jour."), r.stdout);
+  assert.ok(r.stdout.includes('Rien à publier : la page est déjà à jour.'), r.stdout);
   assert.strictEqual(git(racine, 'rev-parse', 'gh-pages'), avant);
   assert.strictEqual(git(racine, 'rev-list', '--count', 'gh-pages'), '1');
 });
@@ -224,24 +276,68 @@ test('publier-pages.sh --push : pousse gh-pages vers le distant (sans force)', (
 
 test('publier-pages.sh --push : un push rejeté affiche la raison et échoue', () => {
   const { racine, distant } = depot();
-  assert.strictEqual(pages(racine, '--push').status, 0);
-  // Le distant reçoit un autre commit : le push suivant n'est plus un avance rapide.
-  const autre = tmp();
-  git(autre, 'clone', '-q', '-b', 'gh-pages', 'file://' + distant, 'c');
-  const c = path.join(autre, 'c');
-  git(c, 'config', 'user.name', 'Autre');
-  git(c, 'config', 'user.email', 'autre@example.invalid');
-  ecrire(path.join(c, 'autre.txt'), 'x');
-  git(c, 'add', 'autre.txt');
-  git(c, 'commit', '-q', '-m', 'autre');
-  git(c, 'push', '-q', 'origin', 'gh-pages');
-  fs.appendFileSync(path.join(racine, 'css/style.css'), '\n/* modif */\n');
-  git(racine, 'add', 'css/style.css');
-  git(racine, 'commit', '-q', '-m', 'modif css');
+  const hook = path.join(distant, 'hooks/pre-receive');
+  ecrire(hook, '#!/bin/sh\necho "refus de test" >&2\nexit 1\n');
+  fs.chmodSync(hook, 0o755);
   const r = pages(racine, '--push');
   assert.notStrictEqual(r.status, 0);
-  assert.match(r.stderr + r.stdout, /rejet|refus|rejected/i);
-  assert.ok(git(distant, 'show', 'gh-pages:autre.txt') === 'x', 'le distant est intact');
+  assert.match(r.stderr, /rejeté/);
+  assert.match(r.stderr, /ne forcez pas/);
+  assert.strictEqual(git(distant, 'branch', '--list'), '');
+});
+
+function secondePoste(racine, distant) {
+  const dossier = path.join(tmp(), 'poste2');
+  git(path.dirname(dossier), 'clone', '-q', '--single-branch', '-b', 'main', racine, dossier);
+  git(dossier, 'remote', 'set-url', 'origin', 'file://' + distant);
+  git(dossier, 'config', 'user.name', 'Poste2');
+  git(dossier, 'config', 'user.email', 'poste2@example.invalid');
+  git(dossier, 'config', 'commit.gpgsign', 'false');
+  return dossier;
+}
+
+test('publier-pages.sh --push : un second poste publie par-dessus la gh-pages distante', () => {
+  const { racine, distant } = depot();
+  assert.strictEqual(pages(racine, '--push').status, 0);
+  const premier = git(distant, 'rev-parse', 'gh-pages');
+  for (const dejaLocale of [false, true]) {
+    const poste = secondePoste(racine, distant);
+    fs.appendFileSync(path.join(poste, 'css/style.css'), '\n/* poste2 ' + dejaLocale + ' */\n');
+    git(poste, 'add', 'css/style.css');
+    git(poste, 'commit', '-q', '-m', 'modif poste2');
+    if (dejaLocale) {
+      // Une gh-pages orpheline locale (publication sans --push) ne doit pas gêner.
+      assert.strictEqual(pages(poste).status, 0);
+      assert.strictEqual(git(poste, 'rev-list', '--count', 'gh-pages'), '1');
+    }
+    const r = pages(poste, '--push');
+    assert.strictEqual(r.status, 0, r.stderr + r.stdout);
+    assert.notStrictEqual(git(distant, 'rev-parse', 'gh-pages'), premier);
+    git(distant, 'merge-base', '--is-ancestor', premier, 'gh-pages');
+    assert.ok(git(distant, 'show', 'gh-pages:css/style.css').includes('poste2 ' + dejaLocale));
+    assert.deepStrictEqual(arbre(distant, 'gh-pages'), attendu(poste));
+    // On repart de l'état distant initial pour l'itération suivante.
+    git(distant, 'update-ref', 'refs/heads/gh-pages', premier);
+  }
+});
+
+test('publier-pages.sh --push : distant injoignable, arrêt explicite', () => {
+  const { racine } = depot();
+  git(racine, 'remote', 'set-url', 'origin', 'file://' + path.join(tmp(), 'inexistant.git'));
+  const r = pages(racine, '--push');
+  assert.notStrictEqual(r.status, 0);
+  assert.match(r.stderr, /Impossible de joindre origin/);
+  assert.strictEqual(git(racine, 'branch', '--list', 'gh-pages'), '');
+});
+
+test('publier-pages.sh : un arbre de travail périmé après un plantage ne bloque pas', () => {
+  const { racine } = depot();
+  const perime = path.join(tmp(), 'perime');
+  git(racine, 'worktree', 'add', '-q', '-b', 'gh-pages', perime);
+  fs.rmSync(perime, { recursive: true, force: true });
+  const r = pages(racine);
+  assert.strictEqual(r.status, 0, r.stderr + r.stdout);
+  assert.deepStrictEqual(arbre(racine, 'gh-pages'), attendu(racine));
 });
 
 test('publier-pages.sh : refuse avec des modifications non validées dans les sources', () => {
@@ -262,13 +358,4 @@ test('publier-pages.sh : les fichiers hors sources (docs, données) ne bloquent 
   fs.appendFileSync(path.join(racine, 'TODO.md'), 'x');
   fs.appendFileSync(path.join(racine, 'data/x.yaml'), 'b: 2');
   assert.strictEqual(pages(racine).status, 0);
-});
-
-test('publier.sh : refuse un dossier de sortie qui contient des fichiers suivis par git', () => {
-  const { racine } = depot();
-  git(racine, 'add', '-f', 'docs/x.md');
-  git(racine, 'commit', '-q', '-m', 'doc');
-  const r = build(racine, path.join(racine, 'docs'));
-  assert.notStrictEqual(r.status, 0);
-  assert.ok(fs.existsSync(path.join(racine, 'docs/x.md')));
 });
