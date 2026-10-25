@@ -58,7 +58,7 @@
     Object.keys(fichiers).forEach(function (k) {
       if (FICHIERS_SAUVEGARDE.indexOf(k) < 0) throw new Error('Sauvegarde invalide : fichier non autorisé « ' + k + ' ».');
       if (typeof fichiers[k] !== 'string') throw new Error('Sauvegarde invalide : le contenu de « ' + k + ' » doit être un texte.');
-      total += fichiers[k].length;
+      total += new TextEncoder().encode(fichiers[k]).length;
     });
     if (total > TAILLE_MAX) throw new Error('Sauvegarde invalide : sauvegarde trop volumineuse (5 Mo au maximum).');
     if (!(St.FICHIERS.donnees in fichiers)) throw new Error('Sauvegarde invalide : ' + St.FICHIERS.donnees + ' est absent de la sauvegarde.');
@@ -88,6 +88,7 @@
     }
     if (doc.version_format > VERSION_FORMAT) throw new Error('Sauvegarde invalide : elle a été créée par une version plus récente de l’application.');
     controlerFichiers(doc.fichiers);
+    verifierForme(doc.fichiers);
     try {
       await St.loadAll(dossierMemoire(doc.fichiers));
     } catch (e) {
@@ -97,13 +98,29 @@
     return { nom: typeof doc.nom === 'string' ? doc.nom : NOM_DEFAUT, exporteLe: exporteLe, fichiers: Object.assign({}, doc.fichiers) };
   }
 
+  function verifierForme(fichiers) {
+    // Un fichier vide ou réduit à des commentaires passerait la validation et écraserait de vraies données : refusé.
+    FICHIERS_SAUVEGARDE.forEach(function (nom) {
+      if (!(nom in fichiers)) return;
+      let contenu;
+      try { contenu = yaml.load(fichiers[nom]); } catch (e) { return; } // déjà refusé par loadAll
+      if (contenu === undefined) contenu = null;
+      const attendu = nom === St.FICHIERS.evenements ? Array.isArray(contenu) : estObjet(contenu);
+      if (!attendu) {
+        throw new Error('Sauvegarde invalide : ' + nom + ' est vide ou n’a pas la forme attendue (' + (nom === St.FICHIERS.evenements ? 'une liste' : 'un objet « clé: valeur »') + ').');
+      }
+    });
+  }
+
   async function importerSauvegarde(sauvegarde, dirCible, options) {
     const fichiers = sauvegarde && sauvegarde.fichiers;
     controlerFichiers(fichiers); // revalidé : on n'écrit jamais hors de la liste blanche
     const noms = FICHIERS_SAUVEGARDE.filter(function (f) { return f in fichiers; });
     const existants = [];
+    const avant = {}; // textes d'origine, pour la restauration en cas d'échec d'écriture
     for (const n of noms) {
-      if ((await lireBrut(dirCible, n)) !== null) existants.push(n);
+      const t = await lireBrut(dirCible, n);
+      if (t !== null) { existants.push(n); avant[n] = t; }
     }
     if (existants.length > 0) {
       const confirmer = options && options.confirmerRemplacement;
@@ -114,11 +131,36 @@
         throw e;
       }
     }
-    for (const n of noms) {
+    const ecrire = async function (n, texte) {
       const handle = await dirCible.getFileHandle(n, { create: true });
       const w = await handle.createWritable();
-      await w.write(fichiers[n]);
+      await w.write(texte);
       await w.close();
+    };
+    const tentes = [];
+    for (const n of noms) {
+      tentes.push(n);
+      try {
+        await ecrire(n, fichiers[n]);
+      } catch (cause) {
+        // Meilleur effort : remettre les textes d'origine (le fichier en échec compris) ; les fichiers créés restent en place.
+        const restaures = [];
+        const nonRestaures = [];
+        const crees = [];
+        for (const m of tentes) {
+          if (!(m in avant)) { if (m !== n) crees.push(m); continue; }
+          try { await ecrire(m, avant[m]); restaures.push(m); } catch (e2) { nonRestaures.push(m); }
+        }
+        const nonEcrits = noms.slice(noms.indexOf(n));
+        const morceaux = [];
+        if (restaures.length) morceaux.push(restaures.length + ' remplacé(s) puis restauré(s) (' + restaures.join(', ') + ')');
+        if (crees.length) morceaux.push('créé(s) et conservé(s) (' + crees.join(', ') + ')');
+        if (nonRestaures.length) morceaux.push('NON restauré(s), contenu à vérifier (' + nonRestaures.join(', ') + ')');
+        morceaux.push(nonEcrits.length + ' non écrit(s) (' + nonEcrits.join(', ') + ')');
+        const e = new Error('Import interrompu (' + (cause && cause.message ? cause.message : String(cause)) + ') : ' + morceaux.join(' ; ') + '.');
+        e.interrompu = true;
+        throw e;
+      }
     }
     return { ecrits: noms };
   }

@@ -101,7 +101,10 @@
       } catch (e) {
         if (e && e.name === 'AbortError') return;
         if (e && e.annule) { zone.textContent = ''; return; }
-        erreur(e && e.message ? e.message : String(e));
+        const message = e && e.message ? e.message : String(e);
+        // Après un échec, l'écran doit refléter le disque : on recharge le dossier ouvert (s'il y en a un), puis on affiche l'erreur.
+        if (state.dir) { zone.textContent = ''; await start(state.dir); }
+        erreur(message);
       }
     });
     zone.appendChild(choisir);
@@ -114,6 +117,7 @@
       const fichier = await choisirFichier();
       if (!fichier) return;
       erreur('');
+      if (fichier.size > 5 * 1024 * 1024) throw new Error('Sauvegarde invalide : fichier trop volumineux (5 Mo au maximum).');
       const sauvegarde = await B.lireSauvegarde(await fichier.text());
       proposerDossier(zone, sauvegarde);
     } catch (e) {
@@ -191,6 +195,11 @@
     const run = (files[cle] || Promise.resolve()).catch(function () {}).then(function () { return persistNow(kind); });
     files[cle] = run;
     return run;
+  }
+
+  // Résout quand toutes les écritures en cours sont terminées (utilisé avant un export).
+  async function attendreEcritures() {
+    await Promise.all(Object.keys(files).map(function (k) { return files[k].catch(function () {}); }));
   }
 
   async function persistNow(kind) {
@@ -309,7 +318,7 @@
     boutonsOuverture().forEach(function (n) { a.appendChild(n); });
   }
 
-  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, tableauBilan: tableauBilan, registerTab: registerTab, start: start, erreur: erreur, importerFichier: importerFichier });
+  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, tableauBilan: tableauBilan, registerTab: registerTab, start: start, erreur: erreur, attendreEcritures: attendreEcritures, importerFichier: importerFichier });
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ecranAccueil);
     else ecranAccueil();

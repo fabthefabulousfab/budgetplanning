@@ -120,6 +120,7 @@
 
   async function exporter() {
     try {
+      await B.attendreEcritures(); // l'export reflète ce qui est enregistré, sans mélange ancien/nouveau
       const r = await B.exporterSauvegarde(state().dir, { nom: state().dir && state().dir.name });
       telecharger(r.texte, r.nomFichier);
       B.erreur('');

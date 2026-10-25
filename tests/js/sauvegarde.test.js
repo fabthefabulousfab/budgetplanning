@@ -181,3 +181,102 @@ test('import : n’écrit jamais hors de la liste blanche', async () => {
   await refuse(sv.importerSauvegarde({ nom: 'x', exporteLe: '', fichiers: { 'donnees-courantes.yaml': DONNEES, '../evil.yaml': 'x' } }, cible, { confirmerRemplacement: async function () { return true; } }), /fichier non autorisé/);
   assert.strictEqual(cible.files.size, 0);
 });
+
+// ---- Correctifs de revue ----
+
+async function sauvegardeComplete() {
+  return sv.lireSauvegarde((await sv.exporterSauvegarde(dossierComplet(), { maintenant: MAINTENANT })).texte);
+}
+
+const OUI = { confirmerRemplacement: async function () { return true; } };
+
+test('lecture : donnees vide, commentaires seuls ou scalaire refusés', async () => {
+  for (const contenu of ['', '   \n\n', '# rien que des commentaires\n', 'juste un texte\n', '- 1\n- 2\n']) {
+    await refuse(sv.lireSauvegarde(bundle(function (b) { b.fichiers['donnees-courantes.yaml'] = contenu; return b; })), /donnees-courantes\.yaml est vide ou n’a pas la forme attendue/);
+  }
+});
+
+test('lecture : fichiers optionnels vides refusés', async () => {
+  for (const nom of ['parametres.yaml', 'paliers.yaml', 'evenements-futurs.yaml']) {
+    await refuse(sv.lireSauvegarde(bundle(function (b) { b.fichiers[nom] = '# vide\n'; return b; })), new RegExp(nom.replace('.', '\\.') + ' est vide'));
+  }
+  await refuse(sv.lireSauvegarde(bundle(function (b) { b.fichiers['evenements-futurs.yaml'] = 'a: 1\n'; return b; })), /evenements-futurs\.yaml/);
+});
+
+test('donnees vide : refusé avant tout import, cible intacte', async () => {
+  const cible = fakeDir({ 'donnees-courantes.yaml': DONNEES });
+  await assert.rejects(sv.lireSauvegarde(bundle(function (b) { b.fichiers['donnees-courantes.yaml'] = '# vide\n'; return b; })));
+  assert.strictEqual(cible.files.get('donnees-courantes.yaml'), DONNEES);
+});
+
+test('lecture : taille comptée en octets', async () => {
+  // 2 Mo de caractères sur 3 octets = 6 Mo > 5 Mo, alors que le nombre de caractères reste sous la limite
+  const gros = '#' + '€'.repeat(2 * 1024 * 1024);
+  await refuse(sv.lireSauvegarde(bundle(function (b) { b.fichiers['evenements-futurs.yaml'] = gros; return b; })), /trop volumineuse/);
+});
+
+test('import : échec d’écriture au 2e fichier, le 1er est restauré octet pour octet', async () => {
+  const sauvegarde = await sauvegardeComplete();
+  const cible = fakeDir({ 'donnees-courantes.yaml': 'ancien donnees\n', 'paliers.yaml': 'ancien paliers\n' });
+  const base = cible.getFileHandle.bind(cible);
+  cible.getFileHandle = async function (nom, opts) {
+    const h = await base(nom, opts);
+    if (nom !== 'evenements-futurs.yaml' || !(opts && opts.create)) return h;
+    return { getFile: h.getFile, async createWritable() { return { async write() { throw new Error('disque plein'); }, async close() {} }; } };
+  };
+  await assert.rejects(sv.importerSauvegarde(sauvegarde, cible, OUI), function (e) {
+    assert.strictEqual(e.interrompu, true);
+    assert.match(e.message, /^Import interrompu \(disque plein\)/);
+    assert.match(e.message, /1 remplacé\(s\) puis restauré\(s\) \(donnees-courantes\.yaml\)/);
+    assert.match(e.message, /3 non écrit\(s\) \(evenements-futurs\.yaml, parametres\.yaml, paliers\.yaml\)/);
+    return true;
+  });
+  assert.strictEqual(cible.files.get('donnees-courantes.yaml'), 'ancien donnees\n');
+  assert.strictEqual(cible.files.get('paliers.yaml'), 'ancien paliers\n');
+  assert.ok(!cible.files.has('parametres.yaml'));
+});
+
+test('import : échec de restauration signalé', async () => {
+  const sauvegarde = await sauvegardeComplete();
+  const cible = fakeDir({ 'donnees-courantes.yaml': 'ancien donnees\n' });
+  const base = cible.getFileHandle.bind(cible);
+  let ecritDonnees = 0;
+  cible.getFileHandle = async function (nom, opts) {
+    const h = await base(nom, opts);
+    if (!(opts && opts.create)) return h;
+    if (nom === 'evenements-futurs.yaml') return { getFile: h.getFile, async createWritable() { return { async write() { throw new Error('panne'); }, async close() {} }; } };
+    if (nom === 'donnees-courantes.yaml' && ++ecritDonnees === 2) return { getFile: h.getFile, async createWritable() { return { async write() { throw new Error('restauration impossible'); }, async close() {} }; } };
+    return h;
+  };
+  await assert.rejects(sv.importerSauvegarde(sauvegarde, cible, OUI), function (e) {
+    assert.match(e.message, /NON restauré\(s\), contenu à vérifier \(donnees-courantes\.yaml\)/);
+    return true;
+  });
+});
+
+test('import : erreur autre que NotFoundError propagée, rien écrit', async () => {
+  const sauvegarde = await sauvegardeComplete();
+  const cible = fakeDir({ 'donnees-courantes.yaml': 'ancien\n' });
+  const base = cible.getFileHandle.bind(cible);
+  cible.getFileHandle = async function (nom, opts) {
+    if (nom === 'parametres.yaml' && !(opts && opts.create)) { const e = new Error('accès refusé'); e.name = 'NotAllowedError'; throw e; }
+    return base(nom, opts);
+  };
+  await refuse(sv.importerSauvegarde(sauvegarde, cible, OUI), /accès refusé/);
+  assert.strictEqual(cible.files.get('donnees-courantes.yaml'), 'ancien\n');
+  assert.strictEqual(cible.files.size, 1);
+});
+
+test('première ligne avec espace initial préservée', async () => {
+  const texte0 = '  # première ligne indentée\nsituation:\n  epargne: 3000\n';
+  const { texte } = await sv.exporterSauvegarde(fakeDir({ 'donnees-courantes.yaml': texte0 }), { maintenant: MAINTENANT });
+  const s = await sv.lireSauvegarde(texte);
+  assert.strictEqual(s.fichiers['donnees-courantes.yaml'], texte0);
+});
+
+test('exporte_le lu comme Date par js-yaml : aller-retour', async () => {
+  const brut = 'format: budget-sauvegarde\nversion_format: 1\napplication: budget-previsionnel\nexporte_le: 2026-03-07T10:20:30.000Z\nnom: x\nfichiers:\n  donnees-courantes.yaml: |\n    situation:\n      epargne: 1\n';
+  assert.ok(yaml.load(brut).exporte_le instanceof Date);
+  const s = await sv.lireSauvegarde(brut);
+  assert.strictEqual(s.exporteLe, '2026-03-07T10:20:30.000Z');
+});
