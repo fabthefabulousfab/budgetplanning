@@ -216,43 +216,74 @@
     root_.appendChild(c2);
   }
 
-  function tableau(entetes, lignes) {
-    const t = el('table');
-    const tr = el('tr');
-    entetes.forEach(function (h) { tr.appendChild(el('th', h.t, h.num ? { class: 'num', scope: 'col' } : { scope: 'col' })); });
-    t.appendChild(el('thead')).appendChild(tr);
-    const tb = el('tbody');
-    lignes.forEach(function (l) {
-      const r = el('tr');
-      l.forEach(function (c, i) {
-        const td = el('td', c.t, entetes[i].num ? { class: 'num' + (c.neg ? ' neg' : '') } : {});
-        r.appendChild(td);
+  const ORIGINES = { mensuel: 'mensuel', annuel: 'annuel', exceptionnel: 'exceptionnel', futur: 'futur', pret: 'prêt' };
+  let moisDetail = null; // mois choisi dans « Détail d'un mois par catégorie » : survit aux redessins
+
+  function colonneDetail(titre, col, classe) {
+    const c = el('section', '', { class: 'detail-col ' + classe, 'aria-label': titre });
+    const h = el('h3', '', { class: 'detail-entete' });
+    h.appendChild(el('span', titre));
+    h.appendChild(el('strong', fmt(col.total)));
+    c.appendChild(h);
+    col.categories.forEach(function (cat) {
+      const g = el('div', '', { class: 'detail-cat' });
+      const t = el('div', '', { class: 'detail-cat-titre' });
+      t.appendChild(el('strong', cat.categorie));
+      t.appendChild(el('strong', fmt(cat.total)));
+      g.appendChild(t);
+      cat.lignes.forEach(function (l) {
+        const r = el('div', '', { class: 'detail-ligne' });
+        const lib = el('span', l.libelle);
+        lib.appendChild(el('small', ORIGINES[l.origine] || l.origine, { class: 'detail-origine' }));
+        r.appendChild(lib);
+        r.appendChild(el('span', fmt(l.montant)));
+        g.appendChild(r);
       });
-      tb.appendChild(r);
+      c.appendChild(g);
     });
-    t.appendChild(tb);
-    return t;
+    return c;
   }
 
-  function periodesDeficit(root_, mois) {
-    const c = carte('Périodes de déficit', 'Mois où le solde cumulé passe sous zéro ; montant manquant maximal sur la période.');
-    const d = B.deficits(mois);
-    if (!d.length) c.appendChild(el('p', 'Aucun déficit sur la période projetée.', { class: 'vide' }));
-    else c.appendChild(tableau(
-      [{ t: 'Début' }, { t: 'Fin' }, { t: 'Mois', num: true }, { t: 'Manque maximal', num: true }],
-      d.map(function (p) { return [{ t: p.debut }, { t: p.fin }, { t: String(p.mois_en_deficit) }, { t: fmt(p.manque_max), neg: true }]; })
-    ));
-    root_.appendChild(c);
+  function contenuDetail(zone, ym) {
+    const s = B.state;
+    const d = B.detailParCategorie(s.donnees, B.lignesFutures(s.evenements, s.prets), s.parametres, ym);
+    zone.textContent = '';
+    if (!d.revenus.categories.length && !d.depenses.categories.length) {
+      zone.appendChild(el('p', 'Aucun mouvement ce mois-ci.', { class: 'vide' }));
+    } else {
+      const cols = el('div', '', { class: 'detail-cols' });
+      cols.appendChild(colonneDetail('Revenus', d.revenus, 'detail-revenus'));
+      cols.appendChild(colonneDetail('Dépenses', d.depenses, 'detail-depenses'));
+      zone.appendChild(cols);
+    }
+    const pied = el('div', '', { class: 'detail-pied' });
+    pied.appendChild(el('div', 'Net du mois : ' + signe(d.net)));
+    pied.appendChild(el('div', 'Solde fin de mois : ' + fmt(d.solde)));
+    zone.appendChild(pied);
   }
 
-  function fins(root_, donnees) {
-    const c = carte('Fins de prêts et de charges', 'Montants de départ (hors revalorisation) libérés chaque mois à l’échéance.');
-    const f = B.finsDePret(donnees);
-    if (!f.length) c.appendChild(el('p', 'Aucune charge mensuelle avec date de fin.', { class: 'vide' }));
-    else c.appendChild(tableau(
-      [{ t: 'Fin' }, { t: 'Libellé' }, { t: 'Libéré par mois (montant de départ)', num: true }],
-      f.map(function (x) { return [{ t: x.fin }, { t: x.libelle }, { t: fmt(x.libere_par_mois) }]; })
-    ));
+  // Carte « Détail d'un mois par catégorie » : seule la zone de détail est redessinée au changement de mois.
+  function detailParMois(root_, mois) {
+    if (!mois.length) return;
+    if (!mois.some(function (m) { return m.ym === moisDetail; })) moisDetail = mois[0].ym;
+    const c = carte('Détail d’un mois par catégorie', 'Revenus et dépenses du mois choisi, regroupés par catégorie, avec le détail de chaque ligne.');
+    const ligne = el('div', '', { class: 'choix-periode' });
+    ligne.appendChild(el('label', 'Mois', { for: 'detail-mois' }));
+    const select = el('select', '', { id: 'detail-mois' });
+    mois.forEach(function (m) {
+      const op = el('option', titreMois(m.ym), { value: m.ym });
+      if (m.ym === moisDetail) op.setAttribute('selected', '');
+      select.appendChild(op);
+    });
+    ligne.appendChild(select);
+    c.appendChild(ligne);
+    const zone = el('div', '', { class: 'detail-zone', 'aria-live': 'polite' });
+    c.appendChild(zone);
+    contenuDetail(zone, moisDetail);
+    select.addEventListener('change', function () {
+      moisDetail = select.value;
+      contenuDetail(zone, moisDetail);
+    });
     root_.appendChild(c);
   }
 
@@ -263,8 +294,7 @@
     const s = B.state;
     if (!s.donnees) return;
     graphes(panneau, s.mois);
-    periodesDeficit(panneau, s.mois);
-    fins(panneau, s.donnees);
+    detailParMois(panneau, s.mois);
   }
 
   B.registerTab('dashboard', 'Tableau de bord', render);
