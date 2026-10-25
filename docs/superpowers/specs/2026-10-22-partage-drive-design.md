@@ -1,6 +1,6 @@
 # Partage du budget via Google Drive — conception
 
-Date : 2026-10-22. Auteur du besoin : fabulous. Statut : à valider.
+Date : 2026-10-22. Auteur du besoin : fabulous. Statut : **abandonné le 2026-10-25** — le PO a choisi de ne pas utiliser l'API Google Drive. Remplacé par une sauvegarde par fichier unique (export et import) et la publication de la page web. Ce document est conservé pour mémoire.
 
 ## Pourquoi
 

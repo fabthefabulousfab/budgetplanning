@@ -1,5 +1,7 @@
 # Partage du budget via Google Drive — Implementation Plan
 
+> **ABANDONNÉ le 2026-10-25** — le PO a choisi une sauvegarde par fichier unique (export et import) et la publication de la page, sans API Google. Seule la tâche 1 a été réalisée (guide et essai, jamais exécutés). Plan conservé pour mémoire.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Permettre à deux personnes d'ouvrir la même application depuis n'importe quel navigateur, avec des données et des versions nommées stockées dans le Google Drive du compte familial, sans rien installer.
