@@ -42,8 +42,8 @@ C'est la page que Google affiche quand l'application demande l'accès au Drive.
 3. **Type d'application** : choisissez **Application Web**.
 4. Nom : `Budget famille web`.
 5. Section **Origines JavaScript autorisées** > **Ajouter un URI**, et saisissez exactement :
-   - `http://localhost:8000` (pour l'essai et le travail en local ; pas de barre oblique finale, pas de chemin) ;
-   - puis cliquez de nouveau sur **Ajouter un URI** pour l'adresse de l'hébergement : `https://ADRESSE-DE-L-HEBERGEMENT` (**à remplacer** dès qu'elle est connue, par exemple `https://budget-famille.pages.dev`). Vous pourrez revenir ajouter ou modifier cette ligne plus tard ; tant qu'elle n'est pas connue, laissez-la de côté.
+   - `http://localhost:8000` (pour l'essai et le travail en local ; pas de barre oblique finale, pas de chemin). **C'est la seule origine nécessaire pour l'essai.**
+   - L'adresse de l'hébergement est **facultative pour l'essai** : ne saisissez rien pour elle maintenant. Quand elle sera connue, vous reviendrez dans **Identifiants**, ouvrirez ce client, et ajouterez une origine `https://...` (adresse exacte, sans chemin).
 6. Laissez vide la section **URI de redirection autorisés** : elle n'est pas utilisée ici.
 7. Cliquez sur **Créer**. Une fenêtre affiche l'**ID client** : copiez-le (bouton de copie). Vous le retrouverez à tout moment dans **Identifiants**.
 8. Un changement d'origine autorisée peut mettre de quelques minutes à quelques heures pour être pris en compte.
@@ -56,7 +56,12 @@ C'est la page que Google affiche quand l'application demande l'accès au Drive.
 - En mode Test, l'autorisation donnée expire au bout d'environ 7 jours : l'écran de consentement réapparaîtra alors de temps en temps. C'est attendu.
 - L'application ne verra que les fichiers qu'elle a elle-même créés dans le Drive (portée `drive.file`) ; le reste du Drive reste hors de portée.
 
-## 6. À communiquer
+## 6. Avant l'essai : deux précautions
+
+- **Si vous avez déjà un dossier Budget créé à la main dans votre Drive, renommez-le avant l'essai : l'application ne le voit pas et en créera un second.** (Avec la portée `drive.file`, seuls les éléments créés par l'application sont visibles.)
+- L'essai se lance depuis le dossier `spike/` du projet. Sur le PC, copiez **tout le dossier `spike/`** (clé USB, courriel, etc.) ou clonez le dépôt, puis lancez le serveur depuis l'intérieur de `spike/` : `python3 -m http.server 8000` (Mac) ou `py -m http.server 8000` (Windows). Détails dans `resultat-essai.md`.
+
+## 7. À communiquer
 
 Notez, sans rien d'autre :
 
@@ -71,5 +76,6 @@ Notez, sans rien d'autre :
 | `Erreur 403 : access_denied` / « L'application n'a pas terminé la procédure de validation Google » | Le compte utilisé n'est pas dans les utilisateurs de test. | Écran de consentement > Audience > Utilisateurs test : ajoutez le compte exact avec lequel vous vous connectez ; ou connectez-vous avec le compte familial. |
 | `403` avec `accessNotConfigured` ou « Google Drive API has not been used in project … » | L'API Drive n'est pas activée dans ce projet. | Refaites l'étape 2 sur le bon projet (le nom du projet est en haut de la console). |
 | `401` plus tard dans la session | Le jeton de connexion dure environ une heure. | Cliquez de nouveau sur « Se connecter ». |
-| La fenêtre de connexion ne s'ouvre pas | Le navigateur bloque les fenêtres surgissantes. | Autorisez les fenêtres surgissantes pour cette page, puis recliquez. |
+| `Erreur 401 : invalid_client` / « The OAuth client was not found » | L'ID client est mal recopié. | Recopiez-le en entier depuis **Identifiants** (sans espace, avec `.apps.googleusercontent.com`), dans le bon projet. |
+| La fenêtre de connexion ne s'ouvre pas ; `popup_failed_to_open` ou `popup_closed` dans le journal | Le navigateur bloque les fenêtres surgissantes, ou la fenêtre a été fermée avant la fin. | Autorisez les fenêtres surgissantes pour cette page, puis recliquez sur « Se connecter » (attendez que la page soit chargée) et terminez la connexion dans la fenêtre. |
 | `Erreur 400 : invalid_request` / `redirect_uri_mismatch` | Le type de client n'est pas « Application Web ». | Recréez un client de type **Application Web**. |

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <title>Essai jetable : accès Drive (drive.file)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   body { font-family: system-ui, sans-serif; max-width: 60rem; margin: 1rem auto; padding: 0 1rem; }
   label { display: block; margin-top: .6rem; font-weight: 600; }
@@ -19,6 +20,7 @@
 <h1>Essai jetable : accès Drive (drive.file)</h1>
 <p>Page de test, hors du site publié. Aucun jeton n'est conservé (ni stockage du navigateur, ni cookie, ni adresse).</p>
 <p>Appareil : <span id="ua"></span></p>
+<p><strong>Si vous avez déjà un dossier Budget créé à la main, renommez-le avant l'essai : l'application ne le voit pas et en créera un second.</strong></p>
 
 <label for="clientId">ID client OAuth (non secret)</label>
 <input type="text" id="clientId" autocomplete="off" placeholder="123456-abc.apps.googleusercontent.com">
@@ -42,7 +44,7 @@
   var API = 'https://www.googleapis.com/drive/v3/files';
   var UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
   var DOSSIER = 'application/vnd.google-apps.folder';
-  var CHAMPS = 'id,name,mimeType,version,modifiedTime';
+  var CHAMPS = 'id,name,mimeType,version,modifiedTime,createdTime';
   var MAX = 2000;
   var jeton = null; // en mémoire seulement
   var clientTokenCourant = null;
@@ -94,8 +96,9 @@
           return texte;
         });
       }, function (e) {
-        log('<<< ÉCHEC RÉSEAU : ' + (e && e.message ? e.message : e));
-        throw new Error('Réseau : ' + (e && e.message ? e.message : e));
+        var msg = masquer(e && e.message ? e.message : e);
+        log('<<< ÉCHEC RÉSEAU : ' + msg);
+        throw new Error('Réseau : ' + msg);
       });
   }
   function erreurLisible(statut, texte) {
@@ -115,8 +118,16 @@
   function chercher(nom, parent, estDossier) {
     var q = "name = '" + esc(nom) + "' and '" + esc(parent) + "' in parents and trashed = false";
     q += estDossier ? " and mimeType = '" + DOSSIER + "'" : " and mimeType != '" + DOSSIER + "'";
-    return appel('GET', urlRequete(API, { q: q, spaces: 'drive', fields: 'files(' + CHAMPS + ')', pageSize: 100 }))
+    return appel('GET', urlRequete(API, { q: q, spaces: 'drive', orderBy: 'createdTime',
+        fields: 'files(' + CHAMPS + ')', pageSize: 100 }))
       .then(function (t) { return json(t).files || []; });
+  }
+  // Le plus ancien (tri par createdTime croissant) ; avertit s'il y en a plusieurs.
+  function premier(trouves, nom) {
+    if (trouves.length > 1) {
+      log('!!! ATTENTION : ' + trouves.length + ' éléments nommés « ' + nom + ' » au même endroit ; le plus ancien est utilisé.');
+    }
+    return trouves[0] || null;
   }
   function creerDossier(nom, parent) {
     return appel('POST', urlRequete(API, { fields: CHAMPS }), {
@@ -126,10 +137,7 @@
   }
   function trouverOuCreerDossier(nom, parent) {
     return chercher(nom, parent, true).then(function (trouves) {
-      if (trouves.length) {
-        if (trouves.length > 1) log('!!! ' + trouves.length + ' dossiers « ' + nom + ' » : le premier est utilisé.');
-        return trouves[0];
-      }
+      if (trouves.length) return premier(trouves, nom);
       return creerDossier(nom, parent);
     });
   }
@@ -146,7 +154,15 @@
   function lister(parent, dossiers) {
     var q = "'" + esc(parent) + "' in parents and trashed = false and mimeType "
       + (dossiers ? '= ' : '!= ') + "'" + DOSSIER + "'";
-    return appel('GET', urlRequete(API, { q: q, spaces: 'drive', fields: 'files(' + CHAMPS + ')', pageSize: 100 }));
+    return appel('GET', urlRequete(API, { q: q, spaces: 'drive', orderBy: 'createdTime',
+        fields: 'files(' + CHAMPS + ')', pageSize: 100 })).then(function (t) {
+      var fs = json(t).files || [];
+      log('RÉSUMÉ : ' + fs.length + (dossiers ? ' dossier(s)' : ' fichier(s)') + (fs.length ? ' : ' : '')
+        + fs.map(function (f) {
+          return f.name + ' (' + f.id + (dossiers ? '' : ', version ' + f.version) + ')';
+        }).join(', '));
+      return fs;
+    });
   }
   function lire(id) {
     return appel('GET', urlRequete(API + '/' + encodeURIComponent(id), { alt: 'media' }));
@@ -164,14 +180,13 @@
   function retrouver() {
     return chercher('Budget', 'root', true).then(function (budgets) {
       if (!budgets.length) { log('Dossier « Budget » introuvable pour cette application.'); return null; }
-      if (budgets.length > 1) log('!!! ' + budgets.length + ' dossiers « Budget » : le premier est utilisé.');
-      var budget = budgets[0];
+      var budget = premier(budgets, 'Budget');
       return chercher('Base', budget.id, true).then(function (bases) {
         if (!bases.length) { log('Sous-dossier « Base » introuvable dans Budget.'); return { budget: budget }; }
-        var base = bases[0];
+        var base = premier(bases, 'Base');
         return chercher('essai.txt', base.id, false).then(function (fichiers) {
           if (!fichiers.length) log('Fichier « essai.txt » introuvable dans Base.');
-          return { budget: budget, base: base, fichier: fichiers[0] || null };
+          return { budget: budget, base: base, fichier: premier(fichiers, 'essai.txt') };
         });
       });
     });
@@ -180,30 +195,32 @@
   function horodatage() { return new Date().toISOString(); }
   function appareil() { return document.getElementById('appareil').value.trim() || '(appareil sans nom)'; }
 
+  var occupe = false;
+  var elActions = ['btnCreer', 'btnLister', 'btnModifier'].map(function (id) { return document.getElementById(id); });
   function exiger(action) {
+    if (occupe) return;
     if (!jeton) { log('Pas de jeton : cliquez d\'abord sur « Se connecter ».'); etat('Non connecté.'); return; }
+    occupe = true;
+    elActions.forEach(function (b) { b.disabled = true; });
+    etat('En cours…');
+    var fin = function () { occupe = false; elActions.forEach(function (b) { b.disabled = false; }); };
     action().then(function () { etat('Terminé.'); }, function (e) {
       log('ERREUR : ' + e.message);
       etat('Erreur : ' + e.message);
-    });
+    }).then(fin, fin);
   }
 
-  function chargerGoogle() {
-    if (window.google && window.google.accounts && window.google.accounts.oauth2) return Promise.resolve();
-    return new Promise(function (resolve, reject) {
-      var s = document.createElement('script');
-      s.src = 'https://accounts.google.com/gsi/client';
-      s.async = true;
-      s.onload = resolve;
-      s.onerror = function () { reject(new Error('Impossible de charger le script Google (réseau ?)')); };
-      document.head.appendChild(s);
-    });
-  }
-
+  // Le script Google est chargé une seule fois, par la balise de l'en-tête (async defer).
+  // Le clic n'attend jamais : un seul appel synchrone à requestAccessToken().
   document.getElementById('btnConnexion').addEventListener('click', function () {
     var clientId = document.getElementById('clientId').value.trim();
     if (!clientId) { etat('Saisissez d\'abord l\'ID client.'); return; }
-    chargerGoogle().then(function () {
+    if (!(window.google && window.google.accounts && window.google.accounts.oauth2)) {
+      log('Google n\'est pas encore chargé, réessayez dans un instant.');
+      etat('Google n\'est pas encore chargé, réessayez dans un instant.');
+      return;
+    }
+    {
       if (!clientTokenCourant || clientTokenCourant.id !== clientId) {
         clientTokenCourant = {
           id: clientId,
@@ -227,9 +244,9 @@
           })
         };
       }
-      // Appelé directement depuis le clic : la fenêtre n'est pas bloquée.
+      // Appelé de façon synchrone depuis le clic (GIS déjà chargé) : la fenêtre n'est pas bloquée.
       clientTokenCourant.client.requestAccessToken();
-    }, function (e) { log('ERREUR : ' + e.message); etat('Erreur : ' + e.message); });
+    }
   });
 
   document.getElementById('btnCreer').addEventListener('click', function () {
@@ -240,7 +257,7 @@
           log('Dossier Base : id=' + base.id);
           return chercher('essai.txt', base.id, false).then(function (existants) {
             if (existants.length) {
-              log('essai.txt existe déjà (id=' + existants[0].id + ') : pas de nouvelle création. Utilisez 2 puis 3.');
+              log('essai.txt existe déjà (id=' + premier(existants, 'essai.txt').id + ') : pas de nouvelle création. Utilisez 2 puis 3.');
               return;
             }
             return creerFichier('essai.txt', base.id,
