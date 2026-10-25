@@ -101,7 +101,15 @@ Un seul fichier YAML (`budget-<nom>-AAAA-MM-JJ.yaml`) regroupe `donnees-courante
 
 ## Publication
 
-La page (code seul, jamais les données) peut être publiée sur GitHub Pages avec `./scripts/publier-pages.sh --push` ; voir [docs/publication.md](docs/publication.md).
+La page (code seul, jamais les données) est publiée sur GitHub Pages, à l'adresse `https://fabthefabulousfab.github.io/budgetplanning/` une fois Pages activé (Settings → Pages → source `gh-pages`, dossier racine) ; voir [docs/publication.md](docs/publication.md).
+
+**La publication n'est pas automatique.** Un `git push` sur `main` ne met pas le site à jour : le site affiche la branche `gh-pages`, qui n'est modifiée que par la commande ci-dessous. Après avoir commité vos changements, lancez :
+
+```
+./scripts/publier-pages.sh --push
+```
+
+Seuls les fichiers commités de l'application (`index.html`, `js/`, `css/`, `vendor/`) sont publiés, jamais les fichiers non commités ni les données. Pour une publication automatique à chaque push sur `main`, il faudrait un workflow GitHub Actions : cela demande le droit « Workflows » sur le jeton d'accès et la source « GitHub Actions » dans les réglages de Pages. Ce n'est pas en place aujourd'hui.
 
 ## Limites
 
