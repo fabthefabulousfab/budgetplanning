@@ -123,3 +123,34 @@ table.edition tr.masque.palier-ajout button, table.edition tr.masque.palier-ajou
 .actions-accueil { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
 .zone-import { margin-top: 1rem; }
 .zone-import .btn-lien { margin-left: .75rem; }
+
+/* Aide : bouton « ? » de l'en-tête et visite guidée (js/visite.js) */
+.bouton-aide { margin-left: auto; font: inherit; font-weight: 700; width: 2rem; height: 2rem; padding: 0; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); background: var(--carte); cursor: pointer; }
+.bouton-aide:hover { background: var(--positif-fond); }
+.bouton-aide:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.visite { position: fixed; inset: 0; z-index: 1000; }
+.visite-voile { position: absolute; inset: 0; }
+.visite-cadre { position: fixed; border: 3px solid #fff; border-radius: 10px; pointer-events: none; box-shadow: 0 0 0 200vmax rgba(8, 12, 18, .6); transition: top .35s ease, left .35s ease, width .35s ease, height .35s ease; }
+.visite-cadre::after { content: ""; position: absolute; inset: -8px; border: 2px solid #fff; border-radius: 14px; opacity: 0; animation: visite-pulse 1.8s ease-out infinite; }
+@keyframes visite-pulse { 0% { opacity: .85; transform: scale(.99); } 70%, 100% { opacity: 0; transform: scale(1.03); } }
+.visite-bulle { position: fixed; width: min(22rem, calc(100vw - 16px)); max-height: calc(100vh - 16px); overflow-y: auto; padding: 1rem 1.1rem .9rem; background: var(--carte); color: var(--encre); border: 1px solid var(--trait); border-radius: 10px; box-shadow: 0 8px 28px rgba(0, 0, 0, .4); opacity: 0; transition: opacity .25s ease; }
+.visite-bulle.visible { opacity: 1; }
+.visite-titre { font-size: 1.05rem; margin: 0 1.6rem .4rem 0; }
+.visite-texte { margin: 0 0 .9rem; font-size: .92rem; color: var(--encre-2); }
+.visite-fermer { position: absolute; top: .4rem; right: .5rem; width: 1.8rem; height: 1.8rem; padding: 0; font: inherit; font-size: 1.3rem; line-height: 1; color: var(--encre-2); background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.visite-fermer:hover { color: var(--encre); }
+.visite-pied { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.visite-compteur { font-size: .85rem; color: var(--encre-2); font-variant-numeric: tabular-nums; }
+.visite-boutons { display: flex; gap: .5rem; }
+.visite-btn { font: inherit; font-weight: 600; color: var(--accent); background: none; border: 1px solid var(--accent); border-radius: 6px; padding: .35rem .9rem; cursor: pointer; }
+.visite-btn-principal { color: #fff; background: var(--accent); }
+.visite-fermer:focus-visible, .visite-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-color-scheme: dark) {
+  .visite-cadre { box-shadow: 0 0 0 200vmax rgba(0, 0, 0, .7); }
+  .visite-btn-principal { color: #0b1521; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .visite-cadre, .visite-bulle { transition: none; }
+  .visite-cadre::after { animation: none; }
+}
+@media print { .visite, .bouton-aide { display: none !important; } }

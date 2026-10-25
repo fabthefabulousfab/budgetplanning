@@ -295,13 +295,15 @@
     const moyennePrets = -prets.depenses / 12;
     const restant = B.restantMensuel(d, B.state.parametres);
     const c = carte('Mensuel', 'Montants de départ (hors revalorisation), par catégorie. Les prêts sont ceux de l’onglet Prêts (moyenne des mensualités des 12 premiers mois).');
-    c.appendChild(totaux([
+    const totauxMensuel = totaux([
       { t: 'Total revenus', v: tot.revenus },
       { t: 'Total dépenses', v: -tot.depenses },
       { t: 'Restant mensuel (montants de départ)', v: restant },
       { t: 'Mensualités de prêts (moyenne)', v: moyennePrets },
       { t: 'Restant mensuel après prêts', v: restant + moyennePrets },
-    ]));
+    ]);
+    totauxMensuel.setAttribute('data-aide', 'mensuel-totaux');
+    c.appendChild(totauxMensuel);
 
     const cols = [{ t: 'Libellé' }, { t: 'Type' }, { t: 'Montant (€/mois)', num: true }, { t: 'Revalorisé' }, { t: 'Fin (AAAA-MM)' }, { t: 'Actions' }];
     const t = el('table', '', { class: 'edition' });
@@ -331,10 +333,12 @@
     t.appendChild(tb);
     const defil = el('div', '', { class: 'defil' });
     defil.appendChild(t);
+    defil.setAttribute('data-aide', 'mensuel-tableau');
     c.appendChild(defil);
     panneau.appendChild(c);
 
     const a = carte('Ajouter une ligne mensuelle');
+    a.setAttribute('data-aide', 'mensuel-ajout');
     a.appendChild(formulaireAjout('mensuel', brouillons.mensuel, categoriesDe([lignes])));
     panneau.appendChild(a);
 
@@ -368,6 +372,7 @@
 
   function carteOrphelins() {
     const c = carte('Paliers sans ligne correspondante', 'Ces paliers (paliers.yaml) ne correspondent à aucune ligne importée (ligne renommée ou retirée par un nouvel import). Ils sont conservés tant que vous ne les supprimez pas ; renommer une ligne vers ces champs leur rattache à nouveau ces paliers.');
+    c.setAttribute('data-aide', 'orphelins');
     const ul = el('ul', '', { class: 'orphelins' });
     B.state.orphelins.forEach(function (o, i) {
       const g = o.ligne;
@@ -445,15 +450,18 @@
 
     const resume = carte('Annuel & exceptionnel', 'Impact mensuel = total des douze premiers mois projetés ÷ 12, calculé sur les montants de départ (hors revalorisation).');
     const tete = el('div', '', { class: 'aide-ligne' });
+    tete.setAttribute('data-aide', 'annuel-syntaxe');
     tete.appendChild(el('span', 'Syntaxe des échéances'));
     tete.appendChild(aide());
     resume.appendChild(tete);
     // Les 12 premiers mois projetés, rangés de janvier à décembre (chaque mois civil apparaît une fois).
     const parMois = B.bilanParMois(annuel.concat(exc), params, 12).sort(function (a, b) { return Number(a.ym.slice(5)) - Number(b.ym.slice(5)); });
     resume.appendChild(el('p', 'Mois par mois, de janvier à décembre : chaque mois civil des 12 premiers mois projetés (à partir du mois de départ), montants de départ.', { class: 'note' }));
-    resume.appendChild(B.tableauBilan('Bilan annuel et exceptionnel mois par mois', parMois.map(function (m) {
+    const bilanMois = B.tableauBilan('Bilan annuel et exceptionnel mois par mois', parMois.map(function (m) {
       return { titre: MOIS_COURTS[Number(m.ym.slice(5)) - 1], revenus: m.revenus, depenses: m.depenses, net: m.net };
-    })));
+    }));
+    bilanMois.setAttribute('data-aide', 'annuel-bilan');
+    resume.appendChild(bilanMois);
     resume.appendChild(totaux([
       { t: 'Revenus sur 12 mois', v: bilan.revenus },
       { t: 'Dépenses sur 12 mois', v: -bilan.depenses },
@@ -464,6 +472,7 @@
     panneau.appendChild(resume);
 
     const ca = carte('Annuel');
+    ca.setAttribute('data-aide', 'annuel-tableau');
     tableAnnuel(ca, 'annuel', annuel, iA);
     panneau.appendChild(ca);
     const ce = carte('Exceptionnel');
@@ -471,6 +480,7 @@
     panneau.appendChild(ce);
 
     const a = carte('Ajouter une ligne');
+    a.setAttribute('data-aide', 'annuel-ajout');
     a.appendChild(formulaireAjout('annuel', brouillons.annuel, categoriesDe([annuel, exc, d.mensuel]), [['annuel', 'Annuel'], ['exceptionnel', 'Exceptionnel']]));
     panneau.appendChild(a);
   }

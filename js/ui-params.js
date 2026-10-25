@@ -138,9 +138,11 @@
     c.appendChild(el('p', 'Un seul fichier YAML contient vos données, événements, paramètres et paliers (pas l’historique CSV, regénéré à l’enregistrement). Importer ne remplace jamais un fichier sans confirmation.', { class: 'note' }));
     const ligne = el('div', '', { class: 'actions-accueil' });
     const exp = el('button', 'Exporter la sauvegarde', { type: 'button', class: 'btn', 'aria-label': 'Exporter la sauvegarde' });
+    exp.setAttribute('data-aide', 'param-export');
     exp.addEventListener('click', exporter);
     const zone = el('div', '', { class: 'zone-import' });
     const imp = el('button', 'Importer une sauvegarde', { type: 'button', class: 'btn', 'aria-label': 'Importer une sauvegarde' });
+    imp.setAttribute('data-aide', 'param-import');
     imp.addEventListener('click', function () { noteExport = ''; B.importerFichier(zone); });
     ligne.appendChild(exp);
     ligne.appendChild(imp);
@@ -157,6 +159,7 @@
     if (!state().donnees || !state().parametres) return;
 
     const c = el('div', '', { class: 'carte' });
+    c.setAttribute('data-aide', 'parametres-carte');
     c.appendChild(el('h2', 'Paramètres de la projection'));
     c.appendChild(el('p', 'Chaque changement valide est enregistré dans parametres.yaml.', { class: 'note' }));
 
@@ -164,6 +167,10 @@
     f.addEventListener('submit', function (ev) { ev.preventDefault(); });
     CHAMPS.forEach(function (ch) {
       const bloc = el('div', '', { class: 'champ-param' });
+      if (ch.cle === 'depart') bloc.setAttribute('data-aide', 'param-depart');
+      if (ch.cle === 'horizon') bloc.setAttribute('data-aide', 'param-horizon');
+      if (ch.cle === 'taux') bloc.setAttribute('data-aide', 'param-revalorisation');
+      if (ch.cle === 'solde_compte_courant') bloc.setAttribute('data-aide', 'param-solde');
       const id = 'param-' + ch.cle;
       bloc.appendChild(el('label', ch.label, { for: id }));
       const attrs = { id: id, type: ch.type || 'text', 'aria-label': ch.label, 'data-cle': ch.cle, 'aria-describedby': id + '-aide' };

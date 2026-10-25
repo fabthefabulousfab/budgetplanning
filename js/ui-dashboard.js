@@ -35,8 +35,9 @@
     return l;
   }
 
-  function canvas(carteEl, label) {
+  function canvas(carteEl, label, premier) {
     const w = el('div', '', { class: 'graphe' });
+    if (premier) w.setAttribute('data-aide', 'solde-periode-graphe');
     const c = el('canvas', '', { role: 'img', 'aria-label': label });
     w.appendChild(c);
     carteEl.appendChild(w);
@@ -153,6 +154,7 @@
     let sel = B.moisDePeriode(mois, periode);
     const c = carte('Solde cumulé sur la période', 'Solde en fin de mois sur la période choisie ; survolez un mois pour son détail : régulier, annuel, exceptionnel, futur et prêts.');
     const ligne = el('div', '', { class: 'choix-periode' });
+    ligne.setAttribute('data-aide', 'solde-periode-choix');
     ligne.appendChild(el('label', 'Période', { for: 'solde-periode' }));
     const select = el('select', '', { id: 'solde-periode' });
     opts.forEach(function (x) {
@@ -165,7 +167,7 @@
     c.appendChild(legende([{ couleur: css('--positif'), texte: 'Solde positif' }, { couleur: css('--negatif'), texte: 'Solde négatif' }]));
     const o = optionsCommunes();
     o.plugins.tooltip = tooltipDetail(function () { return sel; });
-    const chart = new Chart(canvas(c, 'Histogramme du solde cumulé en fin de mois sur la période choisie'), {
+    const chart = new Chart(canvas(c, 'Histogramme du solde cumulé en fin de mois sur la période choisie', true), {
       type: 'bar',
       data: donneesSolde(sel),
       options: o,
@@ -187,6 +189,7 @@
     const neg = css('--negatif');
 
     const c2 = carte('Solde cumulé', 'Compte courant + épargne de départ, puis résultat de chaque mois.');
+    c2.setAttribute('data-aide', 'solde-long');
     const ligneA = el('div', '', { class: 'choix-periode' });
     ligneA.appendChild(el('label', 'Durée affichée', { for: 'solde-annees' }));
     const selectA = el('select', '', { id: 'solde-annees' });
@@ -268,6 +271,7 @@
     if (!mois.some(function (m) { return m.ym === moisDetail; })) moisDetail = mois[0].ym;
     const c = carte('Détail d’un mois par catégorie', 'Revenus et dépenses du mois choisi, regroupés par catégorie, avec le détail de chaque ligne.');
     const ligne = el('div', '', { class: 'choix-periode' });
+    ligne.setAttribute('data-aide', 'detail-mois-choix');
     ligne.appendChild(el('label', 'Mois', { for: 'detail-mois' }));
     const select = el('select', '', { id: 'detail-mois' });
     mois.forEach(function (m) {
@@ -277,7 +281,7 @@
     });
     ligne.appendChild(select);
     c.appendChild(ligne);
-    const zone = el('div', '', { class: 'detail-zone', 'aria-live': 'polite' });
+    const zone = el('div', '', { class: 'detail-zone', 'aria-live': 'polite', 'data-aide': 'detail-mois-zone' });
     c.appendChild(zone);
     contenuDetail(zone, moisDetail);
     select.addEventListener('change', function () {

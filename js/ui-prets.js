@@ -234,17 +234,23 @@
     const simules = prets.filter(function (p) { return p.statut === 'simule'; });
 
     const c1 = carte('Prêts en cours', 'Prêts déjà souscrits : seulement la mensualité et la date de fin. Retirez la ligne équivalente de l’onglet Mensuel pour ne pas la compter deux fois.');
+    c1.setAttribute('data-aide', 'prets-encours');
     c1.appendChild(formulaire('en_cours'));
     c1.appendChild(tableau('en_cours', enCours, []));
     panneau.appendChild(c1);
 
     const c2 = carte('Prêts à simuler', 'Le montant est versé le mois de mise à disposition ; les mensualités commencent le mois suivant, décalées du différé (prêt étudiant). Sans taux, mensualité = montant ÷ durée ; avec un taux, annuité constante (intérêts non capitalisés pendant le différé).');
-    c2.appendChild(formulaire('simule'));
-    c2.appendChild(tableau('simule', simules, [
+    c2.setAttribute('data-aide', 'prets-simules');
+    const formSimule = formulaire('simule');
+    formSimule.setAttribute('data-aide', 'prets-simules-ajout');
+    c2.appendChild(formSimule);
+    const tableSimule = tableau('simule', simules, [
       { label: 'Mensualité', valeur: function (p) { const e = resume(p); return e ? eur.format(e.mensualite) : '—'; } },
       { label: 'Remboursement', valeur: function (p) { const e = resume(p); return e ? e.debut + ' → ' + e.fin : '—'; } },
       { label: 'Coût des intérêts', valeur: function (p) { const e = resume(p); return e ? eur.format(e.total - p.montant) : '—'; } },
-    ]));
+    ]);
+    tableSimule.setAttribute('data-aide', 'prets-simules-tableau');
+    c2.appendChild(tableSimule);
     panneau.appendChild(c2);
   }
 

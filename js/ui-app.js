@@ -65,7 +65,7 @@
       return;
     }
     accueil([
-      el('h2', 'Bienvenue'),
+      el('h2', 'Bienvenue', { 'data-aide': 'accueil-intro' }),
       el('p', 'Choisissez le dossier data/ du projet : les fichiers YAML y sont lus et enregistrés directement, rien ne quitte votre ordinateur. Vous pouvez aussi importer une sauvegarde exportée depuis un autre ordinateur.'),
     ].concat(boutonsOuverture()));
   }
@@ -128,9 +128,9 @@
 
   function boutonsOuverture() {
     const zone = el('div', '', { class: 'zone-import' });
-    const ouvrir = el('button', 'Ouvrir le dossier data/', { type: 'button', class: 'btn' });
+    const ouvrir = el('button', 'Ouvrir le dossier data/', { type: 'button', class: 'btn', 'data-aide': 'accueil-ouvrir' });
     ouvrir.addEventListener('click', ouvrirDossier);
-    const importer = el('button', 'Importer une sauvegarde', { type: 'button', class: 'btn', 'aria-label': 'Importer une sauvegarde' });
+    const importer = el('button', 'Importer une sauvegarde', { type: 'button', class: 'btn', 'aria-label': 'Importer une sauvegarde', 'data-aide': 'accueil-importer' });
     importer.addEventListener('click', function () { importerFichier(zone); });
     const ligne = el('div', '', { class: 'actions-accueil' });
     ligne.appendChild(ouvrir);
@@ -175,10 +175,22 @@
     const panneau = $('panneau-' + t.id);
     try {
       t.render(panneau);
+      marquerAide(panneau);
     } catch (e) {
       erreur('Erreur d’affichage (' + t.titre + ') : ' + e.message);
       console.error(e);
     }
+  }
+
+  // Cibles de la visite guidée communes aux onglets d'édition : première ligne (œil, case « Palier ») et premier palier
+  // du panneau. Ne change aucun comportement.
+  function marquerAide(panneau) {
+    const oeil = panneau.querySelector('.oeil');
+    if (oeil) oeil.setAttribute('data-aide', 'ligne-oeil');
+    const casePalier = panneau.querySelector('.case-palier');
+    if (casePalier) casePalier.setAttribute('data-aide', 'ligne-palier');
+    const palier = panneau.querySelector('tr.palier');
+    if (palier) palier.setAttribute('data-aide', 'palier-ligne');
   }
 
   function refresh() {
@@ -302,7 +314,7 @@
     if (B.paliersUI) B.paliersUI.reset();
     if (r.donnees === null) {
       accueil([
-        el('h2', 'Aucune donnée courante'),
+        el('h2', 'Aucune donnée courante', { 'data-aide': 'accueil-intro' }),
         el('p', 'Lancez ./demarrer.sh pour importer budget.xlsx, puis rouvrez le dossier data/.'),
       ]);
       ecranAccueilBouton();
@@ -318,7 +330,7 @@
     boutonsOuverture().forEach(function (n) { a.appendChild(n); });
   }
 
-  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, tableauBilan: tableauBilan, registerTab: registerTab, start: start, erreur: erreur, attendreEcritures: attendreEcritures, importerFichier: importerFichier });
+  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, tableauBilan: tableauBilan, registerTab: registerTab, ongletActif: function () { return actif; }, start: start, erreur: erreur, attendreEcritures: attendreEcritures, importerFichier: importerFichier });
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ecranAccueil);
     else ecranAccueil();

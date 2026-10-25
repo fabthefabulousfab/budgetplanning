@@ -111,6 +111,12 @@ La page (code seul, jamais les données) est publiée sur GitHub Pages, à l'adr
 
 Seuls les fichiers commités de l'application (`index.html`, `js/`, `css/`, `vendor/`) sont publiés, jamais les fichiers non commités ni les données. Pour une publication automatique à chaque push sur `main`, il faudrait un workflow GitHub Actions : cela demande le droit « Workflows » sur le jeton d'accès et la source « GitHub Actions » dans les réglages de Pages. Ce n'est pas en place aujourd'hui.
 
+## Aide
+
+Le bouton « ? » à droite de l'en-tête (toujours visible, y compris sur l'écran d'accueil) lance une visite guidée de l'onglet affiché : un cadre entoure tour à tour les zones de la page et une bulle explique ce qu'elles montrent et ce qu'on peut y faire. Elle ne démarre jamais seule et ne modifie aucune donnée. Flèches ← / → pour changer d'étape, Échap ou « × » pour fermer. Une étape dont la zone est absente (pas encore de palier ou de prêt, par exemple) est sautée.
+
+Les textes sont dans `js/visite-textes.js` (une liste d'étapes par onglet : `cible`, `titre`, `texte`). `cible` est la clé de l'attribut `data-aide` posé sur l'élément dans `js/ui-*.js` ; un test vérifie que chaque cible existe dans le code. Le moteur est `js/visite.js`.
+
 ## Limites
 
 - Chrome ou Edge uniquement (pas de Firefox ni Safari).
