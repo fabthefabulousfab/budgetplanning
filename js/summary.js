@@ -220,12 +220,39 @@
         Pj.normaliserTout(ligne, g[2]).forEach(function (l) {
           S.occurrences(l.schedule, l.bornes, win).forEach(function (o) {
             const m = l.revalorise ? o.montant * Pj.facteurReval(p, S.monthIndex(o.ym)) : o.montant;
-            rows.push({ ym: o.ym, origine: ligne.pret ? 'pret' : g[0], categorie: ligne.categorie || '', libelle: String(ligne.libelle), montant: (l.type === 'revenu' ? 1 : -1) * m });
+            rows.push({ ym: o.ym, type: l.type, origine: ligne.pret ? 'pret' : g[0], categorie: ligne.categorie || '', libelle: String(ligne.libelle), montant: (l.type === 'revenu' ? 1 : -1) * m });
           });
         });
       });
     });
     return rows.sort(function (a, b) { return S.monthIndex(a.ym) - S.monthIndex(b.ym); }); // tri stable : l'ordre des groupes est conservé
+  }
+
+  // Détail d'un mois par catégorie, revenus et dépenses séparés (montants positifs dans chaque colonne), à partir de
+  // detailHistorique donc cohérent avec project(). Mois hors fenêtre : colonnes vides, net 0, solde null.
+  function detailParCategorie(donnees, futurs, params, ym) {
+    const colonne = function () { return { total: 0, categories: [] }; };
+    const out = { ym: ym, revenus: colonne(), depenses: colonne(), net: 0, solde: null };
+    const m = Pj.project(donnees, futurs, params).find(function (x) { return x.ym === ym; });
+    if (!m) return out;
+    detailHistorique(donnees, futurs, params).filter(function (r) { return r.ym === ym; }).forEach(function (r) {
+      const col = r.type === 'revenu' ? out.revenus : out.depenses;
+      const montant = r.type === 'revenu' ? r.montant : -r.montant;
+      const nom = String(r.categorie || '').trim() || 'Sans catégorie';
+      let c = col.categories.find(function (x) { return x.categorie === nom; });
+      if (!c) { c = { categorie: nom, total: 0, lignes: [] }; col.categories.push(c); }
+      c.total += montant;
+      c.lignes.push({ libelle: r.libelle, montant: montant, origine: r.origine });
+      col.total += montant;
+    });
+    [out.revenus, out.depenses].forEach(function (col) {
+      col.categories = col.categories.filter(function (c) { return c.total !== 0; });
+      col.categories.forEach(function (c) { c.lignes.sort(function (a, b) { return b.montant - a.montant; }); });
+      col.categories.sort(function (a, b) { return b.total - a.total; });
+    });
+    out.net = m.net;
+    out.solde = m.solde;
+    return out;
   }
 
   // Options du sélecteur de période : 12 prochains mois, puis une option par année civile couverte.
@@ -252,6 +279,7 @@
     lignesInfobulle: lignesInfobulle,
     historiqueCsv: historiqueCsv,
     detailHistorique: detailHistorique,
+    detailParCategorie: detailParCategorie,
     bilanLignes: bilanLignes,
     bilanParMois: bilanParMois,
     bilanParAnnee: bilanParAnnee,
