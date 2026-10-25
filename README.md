@@ -99,6 +99,10 @@ Un seul fichier YAML (`budget-<nom>-AAAA-MM-JJ.yaml`) regroupe `donnees-courante
 - **Aucun remplacement silencieux** : si le dossier de destination contient déjà certains de ces fichiers, la liste vous est montrée et rien n'est écrit sans votre accord (exportez d'abord le dossier actuel). Les fichiers absents de la sauvegarde ne sont pas touchés.
 - **Partager** : le fichier est un simple fichier texte de moins de 5 Mo ; envoyez-le par e-mail ou déposez-le dans un drive. Il contient vos données financières : partagez-le avec soin.
 
+## Publication
+
+La page (code seul, jamais les données) peut être publiée sur GitHub Pages avec `./scripts/publier-pages.sh --push` ; voir [docs/publication.md](docs/publication.md).
+
 ## Limites
 
 - Chrome ou Edge uniquement (pas de Firefox ni Safari).
