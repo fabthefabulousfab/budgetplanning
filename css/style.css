@@ -171,7 +171,7 @@ tr.ligne-erreur td, .erreur-ligne { color: var(--negatif); background: var(--neg
 .ajout .btn { flex: none; margin-left: auto; min-height: 2.5rem; padding-block: 0; }
 .ajout .erreur-ligne { flex-basis: 100%; }
 .ajout + .defil { margin-top: var(--espace-4); }
-@media (max-width: 560px) { .ajout { gap: var(--espace-3); } .champ-ajout.champ-court, .champ-ajout.champ-mois { flex: 1 1 40%; } .champ-ajout.champ-moyen, .champ-ajout.champ-large { flex: 1 1 100%; } .ajout .btn { width: 100%; } }
+@media (max-width: 560px) { .ajout { gap: var(--espace-3); } .champ-ajout.champ-court, .champ-ajout.champ-mois { flex: 1 1 40%; } .champ-note { display: block; margin-left: 0; } .champ-ajout.champ-moyen, .champ-ajout.champ-large { flex: 1 1 100%; } .ajout .btn { width: 100%; } }
 /* Revalorise : la case garde sa taille, son libelle invisible agrandit la zone cliquable (24 px minimum). */
 .case-reval { display: inline-flex; align-items: center; justify-content: center; min-width: 1.75rem; min-height: 1.75rem; vertical-align: middle; cursor: pointer; border-radius: var(--rayon); }
 .case-reval:hover { background: var(--papier-2); }
@@ -226,10 +226,10 @@ table.releve .c-rbt { width: 10rem; white-space: nowrap; }
 table.releve td.c-impact, table.releve td.c-calc { padding-right: calc(var(--espace-1) + .45rem + 1px); white-space: nowrap; }
 table.releve td.c-rbt { padding-left: calc(var(--espace-1) + .45rem + 1px); }
 table.releve th.c-calc { padding-right: calc(var(--espace-1) + .45rem + 1px); }
-table.releve.t-annuel { min-width: 71rem; }
+table.releve.t-annuel { min-width: 71.5rem; }
 table.releve.t-annuel .c-type { width: 6.75rem; }
 table.releve.t-annuel .c-cat { width: 7rem; }
-table.releve.t-annuel .c-ech { width: 9rem; }
+table.releve.t-annuel .c-ech { width: 10.5rem; }
 table.releve.t-annuel .c-fin { width: 7.25rem; }
 table.releve.t-annuel .c-reval { width: 5.5rem; }
 table.releve.t-annuel .c-mont { width: 7rem; }
@@ -238,16 +238,17 @@ table.releve.t-futurs { min-width: 58rem; }
 table.releve.t-futurs .c-ech { width: 10.5rem; }
 table.releve.t-futurs .c-fin { width: 7.25rem; }
 table.releve.t-encours { min-width: 38rem; }
-table.releve.t-simules { min-width: 71.5rem; }
+table.releve.t-simules { min-width: 71rem; }
 table.releve.t-encours .c-mont { width: 8rem; }
 table.releve.t-encours .c-fin { width: 12rem; }
 table.releve.t-simules .c-mont { width: 6.5rem; }
 table.releve.t-simules .c-fin { width: 11.5rem; }
 table.releve.t-simules .c-int { width: 4.5rem; }
-table.releve.t-simules .c-calc { width: 6.25rem; }
+table.releve.t-simules .c-calc { width: 6.75rem; }
+table.releve.t-simules .c-mont { width: 6rem; }
 table.releve.t-simules .c-taux { width: 6.5rem; }
-table.releve.t-simules .c-rbt { width: 10rem; }
-table.releve.t-encours .c-act, table.releve.t-simules .c-act { width: 5.75rem; }
+table.releve.t-simules .c-rbt { width: 10.75rem; }
+table.releve.t-encours .c-act, table.releve.t-simules .c-act { width: 5.25rem; }
 /* En-tetes longs (AAAA-MM) : ils passent a la ligne */
 table.releve.t-annuel thead th, table.releve.t-futurs thead th, table.releve.t-encours thead th, table.releve.t-simules thead th { white-space: normal; }
 /* Synthese par type et categorie : un releve a largeur libre, une colonne par annee */

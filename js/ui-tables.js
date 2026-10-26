@@ -508,7 +508,7 @@
       tr.appendChild(td(champTexte(nature, i, l, 'libelle', 'Libellé', { title: l.libelle }), 'c-lib'));
       tr.appendChild(td(champTexte(nature, i, l, 'categorie', 'Catégorie', { placeholder: '—' }), 'c-cat'));
       tr.appendChild(td(champSelect(nature, i, l, 'type', 'Type', TYPES), 'c-type'));
-      tr.appendChild(td(champTexte(nature, i, l, 'echeances', 'Échéances', { placeholder: '6-500, 10-500' }), 'c-ech'));
+      tr.appendChild(td(champTexte(nature, i, l, 'echeances', 'Échéances', { placeholder: '6-500, 10-500', title: B.valeurCellule(l, 'echeances') }), 'c-ech'));
       // Les lignes exceptionnelles sont datées par leurs échéances : pas de début/fin/revalorisé.
       if (annuel) {
         tr.appendChild(td(B.champMois(champTexte(nature, i, l, 'debut', 'Début')), 'c-deb'));

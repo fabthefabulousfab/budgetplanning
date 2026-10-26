@@ -194,7 +194,7 @@
       tr.appendChild(td(champTexte(l, 'libelle', 'Libellé', { title: l.libelle }), 'c-lib'));
       tr.appendChild(td(champSelect(l, 'type', 'Type', TYPES), 'c-type'));
       tr.appendChild(td(champSelect(l, 'categorie', 'Catégorie', categories(l.categorie)), 'c-cat'));
-      tr.appendChild(td(champTexte(l, 'echeances', 'Montant', { placeholder: '800 ou 3-300' }), 'c-ech'));
+      tr.appendChild(td(champTexte(l, 'echeances', 'Montant', { placeholder: '800 ou 3-300', title: valeur(l, 'echeances') }), 'c-ech'));
       tr.appendChild(td(B.champMois(champTexte(l, 'debut', 'Début')), 'c-deb'));
       // Avec des paliers, la fin se saisit sur le dernier palier.
       tr.appendChild(td(B.proprietaireFin(l) === 'base' ? creerFin() : R.tiret('La fin se saisit sur le dernier palier'), 'c-fin'));
