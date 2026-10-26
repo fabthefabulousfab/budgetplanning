@@ -160,6 +160,20 @@ test('en-tete etroit : onglets sur leur ligne, defilement lateral, bouton d\'aid
   assert.ok(sel.some((r) => r.selecteur === '.bouton-aide' && /margin-left:\s*auto/.test(r.corps) && /order:\s*2/.test(r.corps)));
 });
 
+test('contraste eleve : l\'onglet choisi garde un marqueur, focus et cadre de visite en couleurs systeme', () => {
+  const r = regles(lire('css/mouvement.css'));
+  assert.ok(r.some((x) => x.selecteur === '.onglets button[aria-selected="true"]' && /border-bottom-color:\s*Highlight/.test(x.corps)));
+  assert.ok(r.some((x) => x.selecteur === ':focus-visible' && /outline-color:\s*Highlight/.test(x.corps)));
+  assert.ok(r.some((x) => x.selecteur === '.visite-cadre' && /border-color:\s*Highlight/.test(x.corps)));
+  assert.match(lire('css/mouvement.css'), /@media \(forced-colors: active\)/);
+});
+
+test('bandeau des chiffres cles : chaque chiffre s\'adapte a sa colonne (jamais de debordement de page)', () => {
+  const r = regles(lire('css/style.css'));
+  assert.ok(r.some((x) => x.selecteur === '.chiffres-cles .chiffre' && /container-type:\s*inline-size/.test(x.corps)));
+  assert.ok(r.some((x) => x.selecteur === '.chiffres-cles .chiffre-val' && /cqi/.test(x.corps)));
+});
+
 test('un seul fondu des chiffres cles : plus de classe apparait', () => {
   assert.ok(!/apparait/.test(lire('css/style.css')) && !/apparait/.test(lire('js/ui-dashboard.js')));
 });

@@ -97,7 +97,9 @@ table.edition input.num { text-align: right; }
 .chiffre-val::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: currentColor; opacity: .45; transform-origin: left center; }
 .chiffre-pos .chiffre-val { color: var(--positif); }
 .chiffre-neg .chiffre-val { color: var(--negatif); }
-@media (max-width: 720px) { .chiffre-val { font-size: clamp(var(--taille-2), 4.6vw, var(--taille-3)); } .chiffres-cles { gap: var(--espace-3) var(--espace-4); } }
+.chiffres-cles .chiffre { container-type: inline-size; } /* le chiffre se met a l echelle de sa colonne : un grand nombre ne la fait jamais deborder */
+.chiffres-cles .chiffre-val { font-size: clamp(var(--taille-2), 12cqi, var(--taille-4)); }
+@media (max-width: 720px) { .chiffres-cles .chiffre-val { font-size: clamp(var(--taille-2), 12cqi, var(--taille-3)); } .chiffres-cles { gap: var(--espace-3) var(--espace-4); } }
 @media (max-width: 460px) { .chiffres-cles { grid-template-columns: 1fr; } }
 
 /* Detail du mois : deux colonnes a filets */

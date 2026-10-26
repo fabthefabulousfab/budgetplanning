@@ -52,6 +52,16 @@
 .bouton-aide { transition: background var(--duree-courte) var(--ease), transform var(--duree-courte) var(--ease); }
 .bouton-aide:active { transform: scale(.94); }
 
+/* Contraste eleve (forced-colors) : les degrades, ombres et fonds sont retires par le systeme. L'onglet choisi garde sa bordure,
+   les anneaux de focus et le cadre de la visite passent en couleurs systeme. */
+@media (forced-colors: active) {
+  .onglets button[aria-selected="true"] { border-bottom-color: Highlight; }
+  :focus-visible { outline-color: Highlight; }
+  .visite-cadre { border-color: Highlight; }
+  .visite-bulle { border-color: CanvasText; }
+  .visite-btn-principal { border-color: Highlight; }
+}
+
 /* Mouvement reduit : plus aucune animation, transition ni transformation (le contenu est deja a sa place finale). */
 @media (prefers-reduced-motion: reduce) {
   .entree, .panneau-entree, .carte.entree:not(:first-child)::before, .param-section.entree::before, .accueil::before { animation: none; }
