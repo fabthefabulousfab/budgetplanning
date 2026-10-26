@@ -125,7 +125,7 @@ tr.ligne-erreur td, .erreur-ligne { color: var(--negatif); background: var(--neg
 .btn-icone:hover { color: var(--encre); background: var(--papier-2); }
 .btn-corbeille:hover { color: var(--negatif); }
 .oeil-ferme, .oeil-ferme:hover { color: var(--negatif); }
-table.edition:not(.releve) tr.masque td:not(:last-child), table.edition:not(.releve) tr.masque input, table.edition:not(.releve) tr.masque select { opacity: .5; }
+table.edition:not(.releve) tr.masque td:not(:last-child), table.edition:not(.releve) tr.masque input, table.edition:not(.releve) tr.masque select { opacity: .7; }
 .btn-lien { font: inherit; font-size: .85rem; color: var(--negatif); background: none; border: 0; cursor: pointer; text-decoration: underline; min-height: 2rem; padding: var(--espace-1); }
 .case-palier { display: inline-flex; align-items: center; gap: var(--espace-1); font-size: .85rem; color: var(--encre-2); cursor: pointer; }
 table.edition tr.palier td { background: var(--positif-fond); border-bottom-color: var(--filet); }
@@ -134,7 +134,7 @@ table.edition tr.palier td { background: var(--positif-fond); border-bottom-colo
 .palier-etiq { display: block; color: var(--encre-2); font-size: .75rem; }
 .btn-palier { font: inherit; font-size: .85rem; color: var(--positif); background: none; border: 0; cursor: pointer; text-decoration: underline; min-height: 2rem; padding: var(--espace-1) .8rem; }
 .palier-aide { color: var(--encre-2); font-size: .8rem; margin-left: var(--espace-3); }
-table.edition tr.masque.palier-ajout button, table.edition tr.masque.palier-ajout .palier-aide { opacity: .5; }
+table.edition tr.masque.palier-ajout button, table.edition tr.masque.palier-ajout .palier-aide { opacity: .7; }
 .btn-lien:focus-visible, .aide-btn:focus-visible, .btn-icone:focus-visible, .btn-palier:focus-visible, .case-palier input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* Paliers sans ligne : petit releve (description a gauche, corbeille discrete a droite) */
 .orphelins { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--trait); }
@@ -223,6 +223,13 @@ table.releve tr.ligne:hover td, table.releve tr.ligne:focus-within td { backgrou
   table.releve tr.ligne:hover td.c-act, table.releve tr.ligne:focus-within td.c-act { background-color: color-mix(in srgb, var(--papier-2) 65%, var(--fond)); }
   .defil { scroll-padding-inline: 11rem 9.5rem; }
 }
+/* Telephone (< 580 px) : Libelle (10,5 rem) + Actions (9,25 rem) figes ne laisseraient plus de place a Type et Montant.
+   Rien n'est figé : tout le tableau défile de côté et les contrôles s'atteignent en défilant. */
+@media (max-width: 579px) {
+  table.releve th.c-lib, table.releve td.c-lib, table.releve tr.groupe th, table.releve th.c-act, table.releve td.c-act,
+  table.releve tr.palier:not(.palier-ajout) td:first-child { position: static; box-shadow: none; }
+  .defil { scroll-padding-inline: 0; }
+}
 /* Champs : du texte souligne d'un fin pointille ; la case se dessine au survol et au focus */
 table.edition.releve input[type="text"], table.edition.releve select { min-width: 0; min-height: 2rem; padding: .2rem .45rem; color: var(--encre); background-color: transparent; border: 1px solid transparent; border-bottom: 1px dotted var(--pointille); border-radius: 0; }
 table.edition.releve input[type="text"]:hover, table.edition.releve select:hover { background-color: var(--carte); border: 1px solid var(--bord-champ); border-radius: var(--rayon); }
@@ -259,7 +266,7 @@ table.releve .btn-corbeille:hover { color: var(--negatif); }
 table.releve .oeil-ferme, table.releve tr:hover .oeil-ferme, table.releve tr:focus-within .oeil-ferme { color: var(--negatif); }
 /* Ligne masquee : en retrait, l'oeil reste net */
 /* Un seul mecanisme : le contenu des cellules s'estompe, les cellules (figees sur ecran etroit) restent opaques. */
-table.releve tr.masque td:not(.c-act) > * { opacity: .55; }
+table.releve tr.masque td:not(.c-act) > * { opacity: .7; }
 /* Ligne invalide : soulignement plein terre cuite, message juste dessous */
 table.edition.releve tr.invalide input[type="text"]:not(:hover):not(:focus-visible), table.edition.releve tr.invalide select:not(:hover):not(:focus-visible) { border-color: transparent; border-bottom: 1px solid var(--negatif); }
 table.releve tr.ligne-erreur td { padding: .35rem var(--espace-2); border-left: 2px solid var(--negatif); }
