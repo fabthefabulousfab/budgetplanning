@@ -62,8 +62,12 @@ Le mois va de 1 à 12. Ne pas mélanger des échéances avec année et sans ann�
 - `evenements-futurs.yaml` : revenus et dépenses futurs ajoutés dans l'onglet dédié, et prêts de l'onglet Prêts (entrées `nature: pret`, `statut: simule` ou `en_cours`). Jamais écrasé par l'import Excel.
 - `historique-comptes.csv` : historique mois par mois : résumé (revenus, dépenses, solde, euros arrondis), puis le détail de chaque revenu et dépense du mois (origine, catégorie, libellé, montant, revalorisation comprise ; lignes masquées exclues), regénéré après chaque enregistrement, à donner tel quel à un LLM pour un avis financier.
 - Une ligne peut être masquée avec l'icône œil (`actif: false`) : elle est ignorée dans toute la projection. Un nouvel import Excel remet les lignes de `donnees-courantes.yaml` à l'état actif.
-- `parametres.yaml` : départ, horizon, revalorisation, solde de départ (onglet Paramètres). Jamais écrasé par l'import Excel.
+- `parametres.yaml` : départ, horizon, revalorisation, solde de départ, catégories (onglet Paramètres). Jamais écrasé par l'import Excel.
 - `paliers.yaml` : paliers (changements de montant à une date donnée) des lignes importées (mensuelles, annuelles, exceptionnelles). Jamais écrasé par l'import Excel.
+
+### Catégories
+
+Les lignes mensuelles, annuelles et exceptionnelles ont une catégorie choisie dans une liste déroulante (Mensuel, Annuel & exceptionnel et formulaires « Ajouter une ligne ») ; « + Nouvelle catégorie… » en crée une à la volée. Un nouveau budget démarre avec une liste par défaut (dépenses : Logement, Alimentation, Transport, Santé, Enfants et éducation, Loisirs, Abonnements, Assurances, Impôts et taxes, Vêtements, Cadeaux, Épargne, Autre ; revenus : Salaires, Allocations, Primes, Loyers perçus, Autres revenus), enregistrée dans `parametres.yaml` sous la clé facultative `categories` (`depense` et `revenu`, noms uniques sans tenir compte de la casse, 60 caractères et 100 noms au plus par type). L'onglet Paramètres, section « Catégories », permet d'ajouter, de renommer (✎) et de supprimer ses catégories, avec le nombre de lignes qui les utilisent. Renommer met à jour toutes les lignes concernées (les paliers suivent) ; supprimer une catégorie utilisée demande vers quelle autre catégorie déplacer ses lignes. Une catégorie utilisée par une ligne reste toujours proposée, même absente de la liste. Un budget existant sans clé `categories` ne reçoit aucune liste par défaut : il propose exactement les catégories déjà utilisées par ses lignes. Les événements gardent leurs propres catégories fixes.
 
 ### Paliers
 
@@ -95,7 +99,7 @@ Si vous modifiez ces fichiers à la main :
 
 - Dans `evenements-futurs.yaml`, chaque événement décrit ses montants avec la clé `echeances` (même syntaxe que ci-dessus).
 - `revalorise` doit valoir `true` ou `false` (pas `oui`/`non`).
-- `parametres.yaml` n'accepte que les clés `depart`, `horizon_annees`, `revalorisation` (`taux`, `mois`) et `solde_depart` (`compte_courant`, `epargne`).
+- `parametres.yaml` n'accepte que les clés `depart`, `horizon_annees`, `revalorisation` (`taux`, `mois`), `solde_depart` (`compte_courant`, `epargne`) et `categories` (`depense`, `revenu`, listes de noms).
 - `solde_depart` fixe ce qu'il reste sur les comptes au premier mois de la projection, à la place des montants de l'Excel (section `situation` de `donnees-courantes.yaml`). Chaque champ est indépendant : `null` (ou absent) reprend la valeur de l'Excel, un nombre la remplace (les négatifs sont acceptés). Cette valeur est conservée lors d'un nouvel import Excel. Pour revenir aux valeurs de l'Excel, videz le champ dans l'onglet Paramètres, ou mettez `null` dans le fichier.
 - En cas de YAML invalide, le message d'erreur nomme le fichier concerné et rien n'est écrasé : corrigez le fichier puis rouvrez le dossier.
 

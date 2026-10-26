@@ -242,9 +242,14 @@ table.releve .c-rbt { width: 10rem; white-space: nowrap; }
 table.releve td.c-impact, table.releve td.c-calc { padding-right: calc(var(--espace-1) + .45rem + 1px); white-space: nowrap; }
 table.releve td.c-rbt { padding-left: calc(var(--espace-1) + .45rem + 1px); }
 table.releve th.c-calc { padding-right: calc(var(--espace-1) + .45rem + 1px); }
-table.releve.t-annuel { min-width: 71.5rem; }
+table.releve.t-annuel { min-width: 73.5rem; }
 table.releve.t-annuel .c-type { width: 6rem; }
-table.releve.t-annuel .c-cat { width: 6rem; }
+table.releve.t-annuel .c-cat { width: 8rem; }
+/* Mensuel : la catégorie est une colonne (liste déroulante) en plus du titre de groupe */
+table.releve.t-mensuel { min-width: 52rem; }
+table.releve.t-mensuel .c-cat { width: 9rem; }
+.cat-champ { display: block; min-width: 0; }
+table.releve .cat-champ select, table.releve .cat-champ input { max-width: 100%; text-overflow: ellipsis; }
 table.releve.t-annuel .c-ech { width: 9rem; }
 table.releve.t-annuel .c-deb { width: 6.5rem; }
 table.releve.t-annuel .c-fin { width: 6.5rem; }
@@ -294,6 +299,7 @@ table.releve tr.ligne:hover td, table.releve tr.ligne:focus-within td { backgrou
 /* Ecran etroit : colonnes resserrees, le tableau defile dans sa zone et le libelle reste visible a gauche */
 @media (max-width: 720px) {
   table.releve { min-width: 43.5rem; } /* Libellé 10,5 rem + Type + Montant + Actions tiennent dans la fenêtre : seuls Revalorisé et Fin défilent */
+  table.releve.t-mensuel { min-width: 51rem; } /* + la colonne Catégorie */
   table.releve .c-type { width: 6.25rem; }
   table.releve .c-mont { width: 5.75rem; }
   table.releve .c-reval { width: 5.75rem; }
@@ -414,6 +420,28 @@ table.releve tr.releve-vide .releve-vide-titre { margin-bottom: var(--espace-1);
 .solde-lib { color: var(--encre-2); font-size: .76rem; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
 .solde-val { font-family: var(--police-titre); font-weight: 600; font-size: var(--taille-4); line-height: 1.1; letter-spacing: -.01em; white-space: nowrap; font-variant-numeric: lining-nums proportional-nums; color: var(--encre); }
 .solde-val.neg { color: var(--negatif); }
+/* Catégories : deux listes (dépenses, revenus), une ligne par catégorie, actions discrètes */
+.categories { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--espace-4); align-items: start; }
+.categories-colonne { min-width: 0; }
+.categories-titre { margin: 0 0 var(--espace-2); font-size: 1.05rem; }
+.categories-liste { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--trait); }
+.categorie { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--espace-2); min-height: 2.25rem; padding: .1rem 0 .1rem var(--espace-1); border-bottom: 1px solid var(--grille); }
+.categorie-nom { flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }
+.categorie-usages { color: var(--encre-2); font-size: .8rem; white-space: nowrap; }
+.categorie-actions { display: inline-flex; flex: none; }
+.categorie .erreur-ligne, .categorie-ajout .erreur-ligne { flex-basis: 100%; margin: .2rem 0 .3rem; }
+.categorie-deplacer { display: flex; flex-wrap: wrap; align-items: center; gap: var(--espace-1) var(--espace-2); flex-basis: 100%; padding: var(--espace-1) 0 var(--espace-2); }
+.categorie-deplacer-lib { color: var(--encre-2); font-size: .85rem; }
+.categorie-deplacer .note { margin: 0; }
+.categorie-champ, .categorie-deplacer select, .categorie-ajout input { font: inherit; min-width: 0; min-height: 2.25rem; padding: .2rem .45rem; color: var(--encre); background-color: transparent; border: 1px solid transparent; border-bottom: 1px solid var(--bord-champ); border-radius: 0; }
+.categorie-champ { flex: 1 1 8rem; }
+.categorie-champ:hover, .categorie-deplacer select:hover, .categorie-ajout input:hover { background-color: var(--carte); border: 1px solid var(--bord-champ); border-radius: var(--rayon); }
+.categorie-champ:focus-visible, .categorie-deplacer select:focus-visible, .categorie-ajout input:focus-visible { background-color: var(--carte); border: 1px solid var(--accent); border-radius: var(--rayon); outline: 2px solid var(--accent); outline-offset: 1px; }
+.categorie-champ[aria-invalid="true"], .categorie-ajout input[aria-invalid="true"] { border-bottom: 2px solid var(--negatif); }
+.categorie-ajout { margin-top: var(--espace-2); }
+.categorie-ajout input { width: 100%; }
+.btn-petit { min-height: 2rem; padding: .2rem .8rem; }
+.btn-petit:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 720px) {
   .param-section { grid-template-columns: 1fr; gap: var(--espace-2); padding: var(--espace-3) 0; }
   .solde-val { font-size: clamp(var(--taille-3), 9vw, var(--taille-4)); }
