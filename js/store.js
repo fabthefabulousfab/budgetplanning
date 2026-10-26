@@ -155,7 +155,7 @@
     if (!num(r.mois) || !Number.isInteger(r.mois) || r.mois < 1 || r.mois > 12) throw new Error('revalorisation.mois doit être un entier entre 1 et 12.');
     CLES_SOLDE.forEach(function (k) {
       const v = p.solde_depart ? p.solde_depart[k] : null;
-      if (v != null && !num(v)) throw new Error('solde_depart.' + k + ' doit être un nombre (ou vide pour reprendre la valeur Excel).');
+      if (v != null && !num(v)) throw new Error('solde_depart.' + k + ' doit être un nombre (ou vide pour reprendre la valeur importée).');
     });
   }
 

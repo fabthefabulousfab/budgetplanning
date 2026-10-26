@@ -8,9 +8,10 @@
   const F = St.FICHIERS;
   const FICHIERS_BUDGET = [F.donnees, F.evenements, F.parametres, F.paliers];
   const A_CREER = [F.donnees, F.evenements, F.parametres]; // paliers.yaml n'est créé que lorsqu'il y a une entrée
-  const IGNORES = ['thumbs.db', 'desktop.ini'];
+  // Seuls ces fichiers de système ne comptent pas comme du contenu ; .git, .env et les autres comptent.
+  const IGNORES = ['.ds_store', '.localized', 'thumbs.db', 'desktop.ini'];
 
-  const estIgnore = function (nom) { return nom.charAt(0) === '.' || IGNORES.indexOf(nom.toLowerCase()) >= 0; };
+  const estIgnore = function (nom) { return nom.indexOf('._') === 0 || IGNORES.indexOf(nom.toLowerCase()) >= 0; };
 
   async function existe(dir, nom) {
     try {
@@ -61,7 +62,11 @@
   const ecrivains = {
     [F.donnees]: function (dir) { return St.saveDonneesSeules(dir, donneesVides()); },
     [F.evenements]: function (dir) { return St.saveEvenements(dir, [], []); },
-    [F.parametres]: function (dir) { return St.saveParametres(dir, P.PARAMETRES_DEFAUT); },
+    [F.parametres]: function (dir, maintenant) {
+      const d = maintenant();
+      const depart = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); // mois courant, heure locale
+      return St.saveParametres(dir, Object.assign({}, P.PARAMETRES_DEFAUT, { depart: depart }));
+    },
   };
 
   // Écrit uniquement des fichiers absents ; refuse (sans rien écrire) si l'un d'eux existe déjà.
@@ -76,10 +81,13 @@
       e.crees = [];
       throw e;
     }
+    const maintenant = options && typeof options.maintenant === 'function' ? options.maintenant : function () { return new Date(); };
     const crees = [];
     for (const n of cibles) {
       try {
-        await ecrivains[n](dir);
+        // Juste avant l'écriture : un fichier apparu entre-temps n'est jamais écrasé.
+        if (await existe(dir, n)) throw new Error('le fichier existe déjà (apparu pendant la création), il n’a pas été modifié');
+        await ecrivains[n](dir, maintenant);
       } catch (cause) {
         const detail = cause && cause.message ? cause.message : String(cause);
         const e = new Error('Création interrompue : ' + n + ' n’a pas pu être écrit (' + detail + '). ' + (crees.length ? 'Déjà créé : ' + crees.join(', ') + '.' : 'Aucun fichier n’a été créé.'));

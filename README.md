@@ -11,7 +11,8 @@ Application HTML autonome de projection budgétaire sur 10 à 15 ans (JavaScript
 
 Aucun fichier Excel n'est nécessaire. Ouvrez `index.html` (ou la page publiée), cliquez sur « Choisir un dossier » et choisissez un **dossier vide** : l'application y crée `donnees-courantes.yaml` (situation à 0 et listes vides), `evenements-futurs.yaml` (liste vide) et `parametres.yaml` (paramètres par défaut), puis s'ouvre sur un budget vide, prêt à remplir (onglet Mensuel pour commencer, réglages dans Paramètres).
 
-- Jamais d'écrasement : l'application n'écrit que des fichiers absents. Les fichiers système (`.DS_Store`, `Thumbs.db`…) ne comptent pas comme du contenu.
+- Un nouveau budget démarre au mois courant (heure de l'ordinateur) ; le mois de départ se change ensuite dans l'onglet Paramètres.
+- Jamais d'écrasement : l'application n'écrit que des fichiers absents, et revérifie l'absence de chaque fichier juste avant de l'écrire. Seuls `.DS_Store`, `.localized`, les fichiers `._*`, `Thumbs.db` et `desktop.ini` ne comptent pas comme du contenu ; tout le reste (y compris `.git` ou `.env`) déclenche la demande de confirmation.
 - Si le dossier contient déjà d'autres éléments (photos, sous-dossiers…), un écran demande confirmation avant de créer les fichiers ; « Choisir un autre dossier » ne modifie rien. Si le contenu du dossier ne peut pas être listé, la confirmation est aussi demandée.
 - Si le dossier contient des fichiers de budget mais pas `donnees-courantes.yaml`, l'application propose de créer ce seul fichier ; les autres ne sont pas touchés.
 - Si la création échoue en cours de route, le message nomme le fichier en cause et indique ceux qui ont déjà été créés.

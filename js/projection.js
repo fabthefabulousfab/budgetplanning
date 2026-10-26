@@ -5,7 +5,7 @@
 
   const PARAMETRES_DEFAUT = { depart: '2026-10', horizon_annees: 15, revalorisation: { taux: 0.02, mois: 1 }, solde_depart: { compte_courant: null, epargne: null } };
 
-  // Solde de départ : chaque champ surchargé (nombre) remplace la valeur Excel (donnees.situation), sinon Excel, sinon 0.
+  // Solde de départ : chaque champ surchargé (nombre) remplace la valeur de la situation (donnees.situation), sinon la situation, sinon 0.
   function soldeDepart(donnees, params) {
     const sit = (donnees && donnees.situation) || {};
     const sd = (params && params.solde_depart) || {};
