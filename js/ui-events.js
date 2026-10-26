@@ -177,35 +177,34 @@
   // ---- Rendu ------------------------------------------------------------------------------
 
   function liste(panneau) {
+    const R = B.releve;
     const evs = B.state.evenements;
     const c = carte('Événements enregistrés', 'Modifiables sur place ; chaque changement est enregistré dans evenements-futurs.yaml.');
-    const cols = ['Libellé', 'Type', 'Catégorie', 'Montant / échéances', 'Début', 'Fin', 'Actions'];
-    const t = el('table', '', { class: 'edition' });
-    const tr0 = el('tr');
-    cols.forEach(function (h) { tr0.appendChild(el('th', h, { scope: 'col' })); });
-    const th = el('thead');
-    th.appendChild(tr0);
-    t.appendChild(th);
+    const cols = [
+      { t: 'Libellé', classe: 'c-lib' }, { t: 'Type', classe: 'c-type' }, { t: 'Catégorie', classe: 'c-cat' },
+      { t: 'Montant / échéances', classe: 'c-ech' }, { t: 'Début (AAAA-MM)', classe: 'c-deb' }, { t: 'Fin (AAAA-MM)', classe: 'c-fin' },
+      { t: 'Actions', classe: 'c-act', cache: true },
+    ];
+    const t = el('table', '', { class: 'edition releve t-futurs' });
+    t.appendChild(R.entetes(cols));
     const tb = el('tbody');
     evs.forEach(function (l) {
-      const creerFin = function () { return champTexte(l, 'fin', 'Fin', { placeholder: 'AAAA-MM' }); };
-      const tr = el('tr', '', { class: (erreurs.has(l) ? 'invalide ' : '') + (l.actif === false ? 'masque' : '') });
-      tr.appendChild(td(champTexte(l, 'libelle', 'Libellé')));
-      tr.appendChild(td(champSelect(l, 'type', 'Type', TYPES)));
-      tr.appendChild(td(champSelect(l, 'categorie', 'Catégorie', categories(l.categorie))));
-      tr.appendChild(td(champTexte(l, 'echeances', 'Montant', { placeholder: '800 ou 3-300' })));
-      tr.appendChild(td(champTexte(l, 'debut', 'Début', { placeholder: 'AAAA-MM' })));
+      const creerFin = function () { return B.champMois(champTexte(l, 'fin', 'Fin')); };
+      const tr = el('tr', '', { class: 'ligne' + (erreurs.has(l) ? ' invalide' : '') + (l.actif === false ? ' masque' : '') });
+      tr.appendChild(td(champTexte(l, 'libelle', 'Libellé', { title: l.libelle }), 'c-lib'));
+      tr.appendChild(td(champSelect(l, 'type', 'Type', TYPES), 'c-type'));
+      tr.appendChild(td(champSelect(l, 'categorie', 'Catégorie', categories(l.categorie)), 'c-cat'));
+      tr.appendChild(td(champTexte(l, 'echeances', 'Montant', { placeholder: '800 ou 3-300', title: valeur(l, 'echeances') }), 'c-ech'));
+      tr.appendChild(td(B.champMois(champTexte(l, 'debut', 'Début')), 'c-deb'));
       // Avec des paliers, la fin se saisit sur le dernier palier.
-      tr.appendChild(td(B.proprietaireFin(l) === 'base' ? creerFin() : null));
-      const b = el('button', 'Supprimer', { type: 'button', class: 'btn-lien', 'aria-label': 'Supprimer l’événement ' + l.libelle, 'data-cle': l.id + ':suppr' });
-      b.addEventListener('click', function () { supprimer(l); });
+      tr.appendChild(td(B.proprietaireFin(l) === 'base' ? creerFin() : R.tiret('La fin se saisit sur le dernier palier'), 'c-fin'));
       const act = el('span', '', { class: 'actions' });
       act.appendChild(B.paliersUI.caseCoche(l, l.id, function (coche) {
         B.paliersUI.basculer(l, coche, function (copie) { return commit(l, copie); });
       }));
       act.appendChild(B.boutonOeil(l.actif !== false, l.libelle, function () { modifier(l, 'actif', l.actif === false); }, l.id + ':actif'));
-      act.appendChild(b);
-      tr.appendChild(td(act));
+      act.appendChild(B.boutonIcone('corbeille', 'Supprimer l’événement ' + l.libelle, 'Supprimer l’événement (après confirmation)', l.id + ':suppr', function () { supprimer(l); }));
+      tr.appendChild(td(act, 'c-act'));
       tb.appendChild(tr);
       B.paliersUI.sousLignes({
         ligne: l, nature: 'evenement', cle: l.id, nbCols: cols.length, col: { depuis: 1, montant: 3, fin: 5, actions: 6 }, creerFin: creerFin, aide: { placeholder: '800 ou 3-300' },
@@ -213,16 +212,11 @@
         onAjouter: function () { commit(l, B.ajouterPalier(l, 'evenement', B.state.parametres.depart)); },
         onSupprimer: function (i) { commit(l, B.retirerPalier(l, i)); },
       }).forEach(function (s) { tb.appendChild(s); });
-      if (erreurs.has(l)) {
-        const e = el('tr', '', { class: 'ligne-erreur' });
-        e.appendChild(el('td', erreurs.get(l), { colspan: String(cols.length), role: 'alert' }));
-        tb.appendChild(e);
-      }
+      const e = R.ligneMessage(erreurs.get(l), cols.length);
+      if (e) tb.appendChild(e);
     });
     if (!evs.length) {
-      const tr = el('tr');
-      tr.appendChild(el('td', 'Aucun événement.', { colspan: String(cols.length), class: 'vide' }));
-      tb.appendChild(tr);
+      tb.appendChild(R.releveVide('Aucun événement pour l’instant.', 'Études, achat d’une voiture, prime… Ajoutez un projet à venir avec le formulaire « Ajouter un événement », juste au-dessus.', cols.length));
     }
     t.appendChild(tb);
     const defil = el('div', '', { class: 'defil' });
@@ -243,40 +237,49 @@
     panneau.appendChild(c);
   }
 
+  // Synthèse : un relevé par type (titre à empattement), une ligne par catégorie, une colonne par année.
   function synthese(panneau) {
+    const R = B.releve;
     const c = carte('Synthèse par type, catégorie et année', 'Montants de départ (hors revalorisation), sur l’horizon de projection.');
     c.setAttribute('data-aide', 'evenements-synthese');
     const groupes = B.syntheseEvenements(B.state.evenements, B.state.parametres);
     if (!groupes.length) {
-      c.appendChild(el('p', 'Aucun événement dans l’horizon de projection.', { class: 'vide' }));
+      const t = el('table', '', { class: 'releve synthese' });
+      t.appendChild(el('tbody')).appendChild(R.releveVide('Aucun événement dans l’horizon de projection.', 'Dès qu’un événement tombe dans la période projetée, ses montants apparaissent ici, par catégorie et par année.', 1));
+      const defil = el('div', '', { class: 'defil' });
+      defil.appendChild(t);
+      c.appendChild(defil);
       panneau.appendChild(c);
       return;
     }
     const annees = Array.from(new Set([].concat.apply([], groupes.map(function (g) { return Object.keys(g.par_annee); })))).sort();
-    const t = el('table', '', { class: 'synthese' });
+    const nbCols = annees.length + 2;
+    const t = el('table', '', { class: 'releve synthese' });
     const tr0 = el('tr');
-    tr0.appendChild(el('th', 'Type', { scope: 'col' }));
-    tr0.appendChild(el('th', 'Catégorie', { scope: 'col' }));
+    tr0.appendChild(el('th', 'Catégorie', { scope: 'col', class: 'c-lib' }));
     annees.forEach(function (a) { tr0.appendChild(el('th', a, { scope: 'col', class: 'num' })); });
-    tr0.appendChild(el('th', 'Total', { scope: 'col', class: 'num' }));
+    tr0.appendChild(el('th', 'Total', { scope: 'col', class: 'num c-total' }));
     const th = el('thead');
     th.appendChild(tr0);
     t.appendChild(th);
     const tb = el('tbody');
     ['revenu', 'depense'].forEach(function (type) {
-      groupes.filter(function (g) { return g.type === type; })
-        .sort(function (a, b) { return a.categorie < b.categorie ? -1 : 1; })
-        .forEach(function (g) {
-          const tr = el('tr');
-          tr.appendChild(el('td', NOM_TYPE[type]));
-          tr.appendChild(el('td', g.categorie));
-          annees.forEach(function (a) {
-            const v = g.par_annee[a] || 0;
-            tr.appendChild(el('td', v ? fmt(v) : '—', { class: v < 0 ? 'num neg' : 'num' }));
-          });
-          tr.appendChild(el('td', fmt(g.total), { class: g.total < 0 ? 'num neg' : 'num' }));
-          tb.appendChild(tr);
+      const lignes = groupes.filter(function (g) { return g.type === type; }).sort(function (a, b) { return a.categorie < b.categorie ? -1 : 1; });
+      if (!lignes.length) return;
+      const titre = el('tr', '', { class: 'groupe' });
+      titre.appendChild(el('th', NOM_TYPE[type], { scope: 'rowgroup', class: 'groupe-nom c-lib ' + (type === 'revenu' ? 'groupe-pos' : 'groupe-neg') }));
+      titre.appendChild(el('td', '', { colspan: String(nbCols - 1) }));
+      tb.appendChild(titre);
+      lignes.forEach(function (g) {
+        const tr = el('tr', '', { class: 'ligne' });
+        tr.appendChild(el('th', g.categorie, { scope: 'row', class: 'c-lib' }));
+        annees.forEach(function (a) {
+          const v = g.par_annee[a] || 0;
+          tr.appendChild(el('td', v ? fmt(v) : '—', { class: (v < 0 ? 'num neg' : 'num') + (v ? '' : ' nul') }));
         });
+        tr.appendChild(el('td', fmt(g.total), { class: (g.total < 0 ? 'num neg' : 'num') + ' c-total' }));
+        tb.appendChild(tr);
+      });
     });
     t.appendChild(tb);
     const defil = el('div', '', { class: 'defil' });
@@ -286,13 +289,14 @@
   }
 
   function champAjout(cle, label, attrs) {
-    const i = el('input', '', Object.assign({ type: 'text', 'aria-label': label, placeholder: label, 'data-cle': 'ajout:' + cle }, attrs || {}));
+    const i = el('input', '', Object.assign({ type: 'text', 'aria-label': label, 'data-cle': 'ajout:' + cle }, attrs || {}));
     i.value = brouillon[cle] || '';
     i.addEventListener('input', function () { brouillon[cle] = i.value; });
     return i;
   }
 
   function formulaire(panneau) {
+    const E = B.releve.champEtiquete;
     const c = carte('Ajouter un événement', 'Études, achat d’une voiture, prime, prêt… Le type est à choisir explicitement.');
     c.setAttribute('data-aide', 'evenements-ajout');
     const tete = el('div', '', { class: 'aide-ligne' });
@@ -308,7 +312,7 @@
       selType.appendChild(o);
     });
     selType.addEventListener('change', function () { brouillon.type = selType.value; });
-    f.appendChild(selType);
+    f.appendChild(E('Type', selType, 'champ-court'));
 
     const selCat = el('select', '', { 'aria-label': 'Catégorie', 'data-cle': 'ajout:categorie' });
     B.CATEGORIES_EVENEMENT.forEach(function (n) {
@@ -317,12 +321,12 @@
       selCat.appendChild(o);
     });
     selCat.addEventListener('change', function () { brouillon.categorie = selCat.value; });
-    f.appendChild(selCat);
+    f.appendChild(E('Catégorie', selCat, 'champ-court'));
 
-    f.appendChild(champAjout('libelle', 'Libellé'));
-    f.appendChild(champAjout('echeances', 'Montant', { placeholder: '800 ou 3-300 ou 2026-3-300' }));
-    f.appendChild(champAjout('debut', 'Début', { placeholder: 'Début AAAA-MM' }));
-    f.appendChild(champAjout('fin', 'Fin', { placeholder: 'Fin AAAA-MM' }));
+    f.appendChild(E('Libellé', champAjout('libelle', 'Libellé'), 'champ-large'));
+    f.appendChild(E('Montant', champAjout('echeances', 'Montant', { placeholder: '800 ou 3-300' }), 'champ-moyen'));
+    f.appendChild(E('Début', champAjout('debut', 'Début', { placeholder: 'AAAA-MM' }), 'champ-mois'));
+    f.appendChild(E('Fin', champAjout('fin', 'Fin', { placeholder: 'AAAA-MM' }), 'champ-mois'));
     f.appendChild(el('button', 'Ajouter l’événement', { type: 'submit', class: 'btn' }));
     if (erreurAjout) f.appendChild(el('p', erreurAjout, { class: 'erreur-ligne', role: 'alert' }));
 

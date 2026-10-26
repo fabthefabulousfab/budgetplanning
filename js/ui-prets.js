@@ -6,19 +6,20 @@
 
   // Champs numériques : saisie en texte, convertie à l'enregistrement (les virgules françaises sont acceptées).
   const NUMERIQUES = ['montant', 'mensualite', 'duree_mois', 'differe_mois', 'taux'];
+  // classe : colonne du relevé ; mois : champ AAAA-MM (« — » au repos) ; facultatif : vide = valeur par défaut.
   const COLONNES = {
     en_cours: [
-      { champ: 'libelle', label: 'Libellé' },
-      { champ: 'mensualite', label: 'Mensualité (€)', placeholder: '300', num: true },
-      { champ: 'fin', label: 'Fin du remboursement', placeholder: 'AAAA-MM' },
+      { champ: 'libelle', label: 'Libellé', classe: 'c-lib' },
+      { champ: 'mensualite', label: 'Mensualité (€)', placeholder: '300', num: true, classe: 'c-mont' },
+      { champ: 'fin', label: 'Fin du remboursement', entete: 'Fin du remboursement (AAAA-MM)', placeholder: 'AAAA-MM', mois: true, classe: 'c-fin' },
     ],
     simule: [
-      { champ: 'libelle', label: 'Libellé' },
-      { champ: 'montant', label: 'Montant (€)', placeholder: '20000', num: true },
-      { champ: 'mise_a_disposition', label: 'Mise à disposition', placeholder: 'AAAA-MM' },
-      { champ: 'duree_mois', label: 'Durée (mois)', placeholder: '120', num: true },
-      { champ: 'differe_mois', label: 'Différé (mois)', placeholder: '0', num: true },
-      { champ: 'taux', label: 'Taux annuel (%)', placeholder: '0', num: true },
+      { champ: 'libelle', label: 'Libellé', classe: 'c-lib' },
+      { champ: 'montant', label: 'Montant (€)', placeholder: '20000', num: true, classe: 'c-mont' },
+      { champ: 'mise_a_disposition', label: 'Mise à disposition', entete: 'Mise à disposition (AAAA-MM)', placeholder: 'AAAA-MM', mois: true, classe: 'c-fin' },
+      { champ: 'duree_mois', label: 'Durée (mois)', placeholder: '120', num: true, classe: 'c-int' },
+      { champ: 'differe_mois', label: 'Différé (mois)', placeholder: '0', num: true, facultatif: true, classe: 'c-int' },
+      { champ: 'taux', label: 'Taux annuel (%)', placeholder: '0', num: true, facultatif: true, classe: 'c-int c-taux' },
     ],
   };
 
@@ -146,49 +147,43 @@
   function champTexte(ligne, col) {
     const i = el('input', '', {
       type: 'text', 'aria-label': col.label + ' — ' + ligne.libelle, 'data-cle': ligne.id + ':' + col.champ,
-      placeholder: col.placeholder || '',
     });
+    if (col.champ === 'libelle') i.setAttribute('title', ligne.libelle);
     if (col.num) { i.setAttribute('inputmode', 'decimal'); i.className = 'num'; }
     i.value = valeur(ligne, col.champ);
     i.addEventListener('change', function () { modifier(ligne, col.champ, i.value); });
+    if (col.mois) return B.champMois(i); // « — » quand vide, AAAA-MM au focus
+    if (col.facultatif) { i.setAttribute('placeholder', '—'); i.setAttribute('title', 'Facultatif : vide = 0'); }
     return i;
   }
 
-  function enTete(cols) {
-    const tr = el('tr');
-    cols.forEach(function (h) { tr.appendChild(el('th', h, { scope: 'col' })); });
-    const th = el('thead');
-    th.appendChild(tr);
-    return th;
-  }
-
   function tableau(statut, prets, calculs) {
+    const R = B.releve;
     const cols = COLONNES[statut];
-    const entetes = cols.map(function (c) { return c.label; }).concat(calculs.map(function (c) { return c.label; }), ['Actions']);
-    const t = el('table', '', { class: 'edition' });
-    t.appendChild(enTete(entetes));
+    const entetes = cols.map(function (c) { return { t: c.entete || c.label, num: !!c.num, classe: c.classe }; })
+      .concat(calculs.map(function (c) { return { t: c.label, num: !!c.num, classe: c.classe }; }), [{ t: 'Actions', classe: 'c-act', cache: true }]);
+    const t = el('table', '', { class: 'edition releve ' + (statut === 'simule' ? 't-simules' : 't-encours') });
+    t.appendChild(R.entetes(entetes));
     const tb = el('tbody');
     prets.forEach(function (p) {
-      const tr = el('tr', '', { class: (erreurs.has(p) ? 'invalide ' : '') + (p.actif === false ? 'masque' : '') });
-      cols.forEach(function (c) { tr.appendChild(td(champTexte(p, c))); });
-      calculs.forEach(function (c) { tr.appendChild(td(el('span', c.valeur(p)), 'num')); });
-      const b = el('button', 'Supprimer', { type: 'button', class: 'btn-lien', 'aria-label': 'Supprimer le prêt ' + p.libelle, 'data-cle': p.id + ':suppr' });
-      b.addEventListener('click', function () { supprimer(p); });
+      const tr = el('tr', '', { class: 'ligne' + (erreurs.has(p) ? ' invalide' : '') + (p.actif === false ? ' masque' : '') });
+      cols.forEach(function (c) { tr.appendChild(td(champTexte(p, c), (c.num ? 'num ' : '') + c.classe)); });
+      calculs.forEach(function (c) {
+        const v = c.valeur(p);
+        tr.appendChild(td(v === '—' ? R.tiret('Non calculable : prêt incomplet') : el('span', v), (c.num ? 'num ' : '') + c.classe));
+      });
       const act = el('span', '', { class: 'actions' });
       act.appendChild(B.boutonOeil(p.actif !== false, p.libelle, function () { modifier(p, 'actif', p.actif === false); }, p.id + ':actif'));
-      act.appendChild(b);
-      tr.appendChild(td(act));
+      act.appendChild(B.boutonIcone('corbeille', 'Supprimer le prêt ' + p.libelle, 'Supprimer le prêt (après confirmation)', p.id + ':suppr', function () { supprimer(p); }));
+      tr.appendChild(td(act, 'c-act'));
       tb.appendChild(tr);
-      if (erreurs.has(p)) {
-        const e = el('tr', '', { class: 'ligne-erreur' });
-        e.appendChild(el('td', erreurs.get(p), { colspan: String(entetes.length), role: 'alert' }));
-        tb.appendChild(e);
-      }
+      const e = R.ligneMessage(erreurs.get(p), entetes.length);
+      if (e) tb.appendChild(e);
     });
     if (!prets.length) {
-      const tr = el('tr');
-      tr.appendChild(el('td', 'Aucun prêt.', { colspan: String(entetes.length), class: 'vide' }));
-      tb.appendChild(tr);
+      tb.appendChild(statut === 'simule'
+        ? R.releveVide('Aucun prêt à simuler pour l’instant.', 'Indiquez un montant, une date et une durée avec le formulaire ci-dessus pour voir la mensualité, les dates de remboursement et le coût des intérêts.', entetes.length)
+        : R.releveVide('Aucun prêt en cours pour l’instant.', 'Ajoutez un crédit déjà souscrit avec le formulaire ci-dessus : sa mensualité sera comptée jusqu’à sa date de fin.', entetes.length));
     }
     t.appendChild(tb);
     const defil = el('div', '', { class: 'defil' });
@@ -199,11 +194,12 @@
   function formulaire(statut) {
     const f = el('form', '', { class: 'ajout', 'aria-label': statut === 'simule' ? 'Ajouter un prêt à simuler' : 'Ajouter un prêt en cours' });
     COLONNES[statut].forEach(function (col) {
-      const i = el('input', '', { type: 'text', 'aria-label': col.label, placeholder: col.label + (col.placeholder ? ' (' + col.placeholder + ')' : ''), 'data-cle': 'ajout:' + statut + ':' + col.champ });
+      const i = el('input', '', { type: 'text', 'aria-label': col.label, 'data-cle': 'ajout:' + statut + ':' + col.champ });
+      if (col.placeholder) i.setAttribute('placeholder', col.placeholder);
       if (col.num) i.setAttribute('inputmode', 'decimal');
       i.value = brouillons[statut][col.champ] || '';
       i.addEventListener('input', function () { brouillons[statut][col.champ] = i.value; });
-      f.appendChild(i);
+      f.appendChild(B.releve.champEtiquete(col.label, i, col.champ === 'libelle' ? 'champ-large' : 'champ-court', col.facultatif ? 'facultatif' : ''));
     });
     f.appendChild(el('button', statut === 'simule' ? 'Ajouter le prêt simulé' : 'Ajouter le prêt en cours', { type: 'submit', class: 'btn' }));
     if (erreursAjout[statut]) f.appendChild(el('p', erreursAjout[statut], { class: 'erreur-ligne', role: 'alert' }));
@@ -245,9 +241,9 @@
     formSimule.setAttribute('data-aide', 'prets-simules-ajout');
     c2.appendChild(formSimule);
     const tableSimule = tableau('simule', simules, [
-      { label: 'Mensualité', valeur: function (p) { const e = resume(p); return e ? eur.format(e.mensualite) : '—'; } },
-      { label: 'Remboursement', valeur: function (p) { const e = resume(p); return e ? e.debut + ' → ' + e.fin : '—'; } },
-      { label: 'Coût des intérêts', valeur: function (p) { const e = resume(p); return e ? eur.format(e.total - p.montant) : '—'; } },
+      { label: 'Mensualité', num: true, classe: 'c-calc', valeur: function (p) { const e = resume(p); return e ? eur.format(e.mensualite) : '—'; } },
+      { label: 'Remboursement', classe: 'c-rbt', valeur: function (p) { const e = resume(p); return e ? e.debut + ' → ' + e.fin : '—'; } },
+      { label: 'Coût des intérêts', num: true, classe: 'c-calc', valeur: function (p) { const e = resume(p); return e ? eur.format(e.total - p.montant) : '—'; } },
     ]);
     tableSimule.setAttribute('data-aide', 'prets-simules-tableau');
     c2.appendChild(tableSimule);

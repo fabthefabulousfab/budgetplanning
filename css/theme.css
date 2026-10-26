@@ -1,0 +1,108 @@
+/* Variables partagees : couleurs (jeu clair, puis jeu sombre « papier de nuit »),
+   polices, espacements, rayons, durees. Aucune couleur n'est ecrite ailleurs.
+   Les noms de couleur lus par le JavaScript (--encre-2, --grille, --positif, --negatif) sont stables. */
+:root {
+  color-scheme: light dark;
+
+  /* Couleurs : papier creme, encre, vert sapin, terre cuite */
+  --fond: #f7f1e6;
+  --carte: #fcf9f2;
+  --papier-2: #f0e8d7;
+  --encre: #2b2a24;
+  --encre-2: #675f4c;
+  --trait: #cfc4a9;
+  --filet: #d9cfb8;
+  --grille: #e6dcc6;
+  --bord-champ: #8a7e66;
+  --pointille: #9d9177; /* soulignement pointille des champs du releve, au repos */
+  --aire-force: .24; /* opacite du lavis des graphiques en aire, pres de la courbe */
+  --accent: #2f5d50;
+  --accent-fond: #2f5d50; /* aplat des boutons pleins (plus profond que --accent en mode sombre) */
+  --accent-survol: #234a3f; /* aplat des boutons pleins au survol */
+  --accent-appui: #193a31; /* ... et pendant l'appui */
+  --sur-accent: #fcf9f2; /* texte sur --accent-fond */
+  --positif: #2f5d50;
+  --negatif: #a8451e;
+  --positif-fond: #e2ebdc;
+  --negatif-fond: #f6e0d3;
+  --voile: rgba(30, 24, 14, .62);
+  --ombre: rgba(43, 42, 36, .22);
+  --cadre-visite: #fffdf8;
+
+  /* Polices du systeme, rien a telecharger */
+  --police-titre: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --police-texte: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Echelle typographique : texte, titre de section, titre de page, grand chiffre, tres grand chiffre */
+  --taille-1: .95rem;
+  --taille-2: 1.3rem;
+  --taille-3: 1.85rem;
+  --taille-4: 2.4rem;
+  --taille-5: 3.2rem;
+
+  /* Espacements, rayon, mouvement */
+  --espace-1: .25rem;
+  --espace-2: .5rem;
+  --espace-3: 1rem;
+  --espace-4: 1.75rem;
+  --espace-5: 3rem;
+  --rayon: 6px;
+  --duree-courte: .15s;
+  --duree-longue: .45s;
+  --duree-glisse: .36s; /* glissade du cadre de la visite guidee */
+  --ease: cubic-bezier(.22, .61, .36, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fond: #1f1a14;
+    --carte: #28221a;
+    --papier-2: #2c251c;
+    --encre: #f1e8d6;
+    --encre-2: #b9ad94;
+    --trait: #54483a;
+    --filet: #4a4033;
+    --grille: #382f25;
+    --bord-champ: #857866;
+    --pointille: #6e6151;
+    --aire-force: .26;
+    --accent: #88bda9;
+    --accent-fond: #2f5d50;
+    --accent-survol: #274c41;
+    --accent-appui: #1f3e35;
+    --sur-accent: #f1e8d6;
+    --positif: #8fc4b0;
+    --negatif: #e89068;
+    --positif-fond: #25352e;
+    --negatif-fond: #3e2b20;
+    --voile: rgba(0, 0, 0, .72);
+    --ombre: rgba(0, 0, 0, .55);
+    --cadre-visite: #f1e8d6;
+  }
+}
+/* Impression : papier blanc, encre noire, vert et terre cuite assombris pour rester lisibles en niveaux de gris.
+   Prend le pas sur le thème sombre (ce bloc vient après lui). */
+@media print {
+  :root {
+    color-scheme: light;
+    --fond: #ffffff;
+    --carte: #ffffff;
+    --papier-2: #f4f4f2;
+    --encre: #000000;
+    --encre-2: #3f3f3b;
+    --trait: #8f8f88;
+    --filet: #b8b8b0;
+    --grille: #dcdcd6;
+    --bord-champ: #6e6e66;
+    --pointille: #8f8f88;
+    --accent: #1d4a3c;
+    --accent-fond: #1d4a3c;
+    --accent-survol: #1d4a3c;
+    --accent-appui: #1d4a3c;
+    --sur-accent: #ffffff;
+    --positif: #1d4a3c;
+    --negatif: #8a3512;
+    --positif-fond: #eef3ea;
+    --negatif-fond: #f8e8df;
+    --ombre: rgba(0, 0, 0, 0);
+  }
+}

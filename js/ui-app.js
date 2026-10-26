@@ -37,6 +37,7 @@
     $('onglets').hidden = true;
     a.textContent = '';
     contenu.forEach(function (n) { a.appendChild(n); });
+    if (B.echelonner) B.echelonner(a);
   }
 
   function el(tag, texte, attrs) {
@@ -60,13 +61,13 @@
     if (!B.supported()) {
       accueil([
         el('h2', 'Navigateur non pris en charge', { 'data-aide': 'accueil-navigateur' }),
-        el('p', "Cette application a besoin de l'accès aux dossiers locaux (File System Access API). Ouvrez cette page dans Chrome ou Edge sur ordinateur."),
+        el('p', "Cette application a besoin de l'accès aux dossiers locaux (File System Access API). Ouvrez cette page dans Chrome ou Edge sur ordinateur.", { class: 'accueil-texte' }),
       ]);
       return;
     }
     accueil([
       el('h2', 'Bienvenue', { 'data-aide': 'accueil-intro' }),
-      el('p', 'Choisissez le dossier data/ du projet : les fichiers YAML y sont lus et enregistrés directement, rien ne quitte votre ordinateur. Vous pouvez aussi importer une sauvegarde exportée depuis un autre ordinateur.'),
+      el('p', 'Choisissez le dossier data/ du projet : les fichiers YAML y sont lus et enregistrés directement, rien ne quitte votre ordinateur. Vous pouvez aussi importer une sauvegarde exportée depuis un autre ordinateur.', { class: 'accueil-texte' }),
     ].concat(boutonsOuverture()));
   }
 
@@ -130,7 +131,7 @@
     const zone = el('div', '', { class: 'zone-import' });
     const ouvrir = el('button', 'Ouvrir le dossier data/', { type: 'button', class: 'btn', 'data-aide': 'accueil-ouvrir' });
     ouvrir.addEventListener('click', ouvrirDossier);
-    const importer = el('button', 'Importer une sauvegarde', { type: 'button', class: 'btn', 'aria-label': 'Importer une sauvegarde', 'data-aide': 'accueil-importer' });
+    const importer = el('button', 'Importer une sauvegarde', { type: 'button', class: 'btn btn-secondaire', 'aria-label': 'Importer une sauvegarde', 'data-aide': 'accueil-importer' });
     importer.addEventListener('click', function () { importerFichier(zone); });
     const ligne = el('div', '', { class: 'actions-accueil' });
     ligne.appendChild(ouvrir);
@@ -150,13 +151,35 @@
     panneaux.textContent = '';
     tabs.forEach(function (t) {
       const b = el('button', t.titre, { type: 'button', role: 'tab', id: 'tab-' + t.id, 'aria-controls': 'panneau-' + t.id });
-      b.addEventListener('click', function () { activer(t.id); });
+      // Un clic sur l'onglet déjà actif ne fait rien : l'entrée en cascade ne se rejoue pas.
+      b.addEventListener('click', function () { if (t.id !== actif) activer(t.id); });
       nav.appendChild(b);
-      panneaux.appendChild(el('section', '', { id: 'panneau-' + t.id, role: 'tabpanel', 'aria-labelledby': 'tab-' + t.id, hidden: '' }));
+      const p = el('section', '', { id: 'panneau-' + t.id, role: 'tabpanel', 'aria-labelledby': 'tab-' + t.id, hidden: '' });
+      // Fin de l'entrée d'un bloc : on retire sa classe, qui ne sert qu'à l'animation.
+      p.addEventListener('animationend', function (ev) {
+        if (ev.animationName === 'entree' && ev.target.classList) ev.target.classList.remove('entree');
+      });
+      panneaux.appendChild(p);
     });
     nav.hidden = tabs.length < 2;
+    if (!nav.$fondus) {
+      nav.$fondus = true;
+      nav.addEventListener('scroll', fondusOnglets, { passive: true });
+      // Au clavier, l'onglet qui prend le focus se dévoile (instantané : le focus ne doit pas attendre une animation).
+      nav.addEventListener('focusin', function (ev) { if (ev.target.scrollIntoView) ev.target.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'auto' }); });
+      root.addEventListener('resize', fondusOnglets);
+    }
+    root.requestAnimationFrame(fondusOnglets);
     panneaux.hidden = false;
     if (tabs.length) activer(actif && tabs.some(function (t) { return t.id === actif; }) ? actif : tabs[0].id);
+  }
+
+  // Écran étroit : les onglets défilent ; un bord s'estompe tant qu'il reste des onglets à découvrir de ce côté.
+  function fondusOnglets() {
+    const nav = $('onglets');
+    const reste = nav.scrollWidth - nav.clientWidth > 1;
+    nav.classList.toggle('fondu-gauche', reste && nav.scrollLeft > 6);
+    nav.classList.toggle('fondu-droite', reste && nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 6);
   }
 
   function activer(id) {
@@ -166,6 +189,19 @@
       $('panneau-' + t.id).hidden = t.id !== id;
     });
     dessiner();
+    entrer($('panneau-' + id));
+    // Onglets défilants (écran étroit) : l'onglet choisi reste visible ; instantané si les animations sont réduites.
+    $('tab-' + id).scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: B.animationsReduites && B.animationsReduites() ? 'auto' : 'smooth' });
+  }
+
+  // Entrée de l'onglet : fondu court du panneau, blocs en cascade. Seulement à l'activation : les
+  // redessins après une saisie ou un changement de thème ne rejouent rien.
+  function entrer(panneau) {
+    if (!panneau || !B.echelonner) return;
+    panneau.classList.remove('panneau-entree');
+    void panneau.offsetWidth;
+    panneau.classList.add('panneau-entree');
+    B.echelonner(panneau);
   }
 
   // Seul l'onglet visible est dessiné (Chart.js mesure mal un canvas masqué) ; les autres le sont à l'activation.
@@ -176,6 +212,7 @@
     try {
       t.render(panneau);
       marquerAide(panneau);
+      if (B.impression) B.impression.siImpression(panneau);
     } catch (e) {
       erreur('Erreur d’affichage (' + t.titre + ') : ' + e.message);
       console.error(e);
@@ -270,27 +307,29 @@
 
   // Bouton « œil » : masque ou réaffiche une ligne (actif: false = ignorée par la projection).
   function boutonOeil(actifLigne, libelle, onClick, cle) {
-    const b = el('button', '', { type: 'button', class: 'oeil' + (actifLigne ? '' : ' oeil-ferme'), 'aria-pressed': String(!actifLigne), 'aria-label': (actifLigne ? 'Masquer la ligne ' : 'Afficher la ligne ') + libelle, title: actifLigne ? 'Masquer (ignorée dans la projection)' : 'Masquée : cliquer pour la reprendre en compte' });
+    const b = el('button', '', { type: 'button', class: 'btn-icone oeil' + (actifLigne ? '' : ' oeil-ferme'), 'aria-pressed': String(!actifLigne), 'aria-label': (actifLigne ? 'Masquer la ligne ' : 'Afficher la ligne ') + libelle, title: actifLigne ? 'Masquer (ignorée dans la projection)' : 'Masquée : cliquer pour la reprendre en compte' });
     if (cle) b.setAttribute('data-cle', cle);
-    const ns = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.setAttribute('width', '18');
-    svg.setAttribute('height', '18');
-    svg.setAttribute('aria-hidden', 'true');
-    ['M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z', 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'].concat(actifLigne ? [] : ['M3 3l18 18']).forEach(function (d) {
-      const p = document.createElementNS(ns, 'path');
-      p.setAttribute('d', d);
-      p.setAttribute('fill', 'none');
-      p.setAttribute('stroke', 'currentColor');
-      p.setAttribute('stroke-width', '2');
-      p.setAttribute('stroke-linecap', 'round');
-      p.setAttribute('stroke-linejoin', 'round');
-      svg.appendChild(p);
-    });
-    b.appendChild(svg);
+    b.appendChild(B.creerIcone(actifLigne ? 'oeil' : 'oeil-barre'));
     b.addEventListener('click', onClick);
     return b;
+  }
+
+  // Petit bouton-icône (corbeille…) : nom accessible et info-bulle obligatoires, l'icône est décorative.
+  function boutonIcone(icone, label, titre, cle, onClick) {
+    const b = el('button', '', { type: 'button', class: 'btn-icone btn-' + icone, 'aria-label': label, title: titre });
+    if (cle) b.setAttribute('data-cle', cle);
+    b.appendChild(B.creerIcone(icone));
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  // Champ de mois : « — » quand il est vide ; le format attendu apparaît au focus et en info-bulle.
+  function champMois(input) {
+    input.setAttribute('placeholder', '—');
+    input.setAttribute('title', 'Mois au format AAAA-MM, par exemple 2028-06');
+    input.addEventListener('focus', function () { input.setAttribute('placeholder', 'AAAA-MM'); });
+    input.addEventListener('blur', function () { input.setAttribute('placeholder', '—'); });
+    return input;
   }
 
   async function start(dir) {
@@ -313,9 +352,12 @@
     avertir(state.avertissements);
     if (B.paliersUI) B.paliersUI.reset();
     if (r.donnees === null) {
+      const consigne = el('p', 'Lancez ', { class: 'accueil-texte' });
+      consigne.appendChild(el('code', './demarrer.sh'));
+      consigne.appendChild(document.createTextNode(' pour importer budget.xlsx, puis rouvrez le dossier data/.'));
       accueil([
         el('h2', 'Aucune donnée courante', { 'data-aide': 'accueil-intro' }),
-        el('p', 'Lancez ./demarrer.sh pour importer budget.xlsx, puis rouvrez le dossier data/.'),
+        consigne,
       ]);
       ecranAccueilBouton();
       return;
@@ -330,7 +372,7 @@
     boutonsOuverture().forEach(function (n) { a.appendChild(n); });
   }
 
-  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, tableauBilan: tableauBilan, registerTab: registerTab, ongletActif: function () { return actif; }, start: start, erreur: erreur, attendreEcritures: attendreEcritures, importerFichier: importerFichier });
+  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, boutonIcone: boutonIcone, champMois: champMois, tableauBilan: tableauBilan, registerTab: registerTab, ongletActif: function () { return actif; }, start: start, erreur: erreur, attendreEcritures: attendreEcritures, importerFichier: importerFichier });
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ecranAccueil);
     else ecranAccueil();

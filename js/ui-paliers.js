@@ -70,9 +70,12 @@
       const tr = el('tr', '', { class: classe });
       const tds = [];
       for (let k = 0; k < cfg.nbCols; k++) { const t = el('td'); tds.push(t); tr.appendChild(t); }
-      tds[0].appendChild(el('span', '↳ palier ' + n, { class: 'palier-lib' }));
+      const lib = el('span', '', { class: 'palier-lib' });
+      lib.appendChild(B.creerIcone('palier'));
+      lib.appendChild(document.createTextNode('palier ' + n));
+      tds[0].appendChild(lib);
       tds[cfg.col.depuis].appendChild(el('span', 'à partir de', { class: 'palier-etiq' }));
-      const dep = el('input', '', { type: 'text', placeholder: 'AAAA-MM', 'aria-label': 'Palier ' + n + ' à partir de — ' + ligne.libelle, 'data-cle': cfg.cle + ':p' + i + ':depuis' });
+      const dep = B.champMois(el('input', '', { type: 'text', 'aria-label': 'Palier ' + n + ' à partir de — ' + ligne.libelle, 'data-cle': cfg.cle + ':p' + i + ':depuis' }));
       dep.value = p.depuis == null ? '' : String(p.depuis);
       dep.addEventListener('change', function () { cfg.onEdit(i, 'depuis', dep.value); });
       tds[cfg.col.depuis].appendChild(dep);
@@ -83,17 +86,18 @@
       mont.addEventListener('change', function () { cfg.onEdit(i, 'montant', mont.value); });
       tds[cfg.col.montant].appendChild(mont);
       if (i === ps.length - 1 && cfg.col.fin != null && cfg.creerFin) tds[cfg.col.fin].appendChild(cfg.creerFin());
-      const sup = el('button', 'Supprimer', { type: 'button', class: 'btn-lien', 'aria-label': 'Supprimer le palier ' + n + ' — ' + ligne.libelle, 'data-cle': cfg.cle + ':p' + i + ':suppr' });
-      sup.addEventListener('click', function () { cfg.onSupprimer(i); });
-      tds[cfg.col.actions].appendChild(sup);
+      tds[cfg.col.actions].className = 'c-act';
+      tds[cfg.col.actions].appendChild(B.boutonIcone('corbeille', 'Supprimer le palier ' + n + ' — ' + ligne.libelle, 'Supprimer ce palier', cfg.cle + ':p' + i + ':suppr', function () { cfg.onSupprimer(i); }));
       out.push(tr);
     });
     const tr = el('tr', '', { class: classe + ' palier-ajout' });
     const c = el('td', '', { colspan: String(cfg.nbCols) });
     const b = el('button', '+ ajouter un palier', { type: 'button', class: 'btn-palier', 'aria-label': 'Ajouter un palier — ' + ligne.libelle, 'data-cle': cfg.cle + ':palier+' });
     b.addEventListener('click', function () { cfg.onAjouter(); });
-    c.appendChild(b);
-    c.appendChild(el('span', '0 = plus rien à partir de cette date', { class: 'palier-aide' }));
+    const contenu = el('div', '', { class: 'colle-gauche' }); // reste visible quand le tableau défile (écran étroit)
+    contenu.appendChild(b);
+    contenu.appendChild(el('span', '0 = plus rien à partir de cette date', { class: 'palier-aide' }));
+    c.appendChild(contenu);
     tr.appendChild(c);
     out.push(tr);
     return out;

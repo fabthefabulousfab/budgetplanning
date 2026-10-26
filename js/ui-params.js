@@ -133,7 +133,7 @@
   }
 
   function carteSauvegarde() {
-    const c = el('div', '', { class: 'carte' });
+    const c = el('div', '', { class: 'carte export-import' });
     c.appendChild(el('h2', 'Sauvegarde'));
     c.appendChild(el('p', 'Un seul fichier YAML contient vos données, événements, paramètres et paliers (pas l’historique CSV, regénéré à l’enregistrement). Importer ne remplace jamais un fichier sans confirmation.', { class: 'note' }));
     const ligne = el('div', '', { class: 'actions-accueil' });
@@ -141,15 +141,25 @@
     exp.setAttribute('data-aide', 'param-export');
     exp.addEventListener('click', exporter);
     const zone = el('div', '', { class: 'zone-import' });
-    const imp = el('button', 'Importer une sauvegarde', { type: 'button', class: 'btn', 'aria-label': 'Importer une sauvegarde' });
+    const imp = el('button', 'Importer une sauvegarde', { type: 'button', class: 'btn btn-secondaire', 'aria-label': 'Importer une sauvegarde' });
     imp.setAttribute('data-aide', 'param-import');
     imp.addEventListener('click', function () { noteExport = ''; B.importerFichier(zone); });
     ligne.appendChild(exp);
     ligne.appendChild(imp);
     c.appendChild(ligne);
-    if (noteExport) c.appendChild(el('p', noteExport, { class: 'note', role: 'status', 'data-note-export': '1' }));
+    if (noteExport) c.appendChild(el('p', noteExport, { class: 'note note-export', role: 'status', 'data-note-export': '1' }));
     c.appendChild(zone);
     return c;
+  }
+
+  // Section à filet : titre à empattement à gauche, champs alignés à droite.
+  function section(titre, contenu) {
+    const s = el('section', '', { class: 'param-section' });
+    s.appendChild(el('h3', titre, { class: 'param-titre' }));
+    const d = el('div', '', { class: 'param-corps' });
+    contenu.forEach(function (n) { d.appendChild(n); });
+    s.appendChild(d);
+    return s;
   }
 
   function render(panneau) {
@@ -163,9 +173,10 @@
     c.appendChild(el('h2', 'Paramètres de la projection'));
     c.appendChild(el('p', 'Chaque changement valide est enregistré dans parametres.yaml.', { class: 'note' }));
 
-    const f = el('form', '', { class: 'ajout', 'aria-label': 'Paramètres de la projection' });
+    const f = el('form', '', { class: 'param-form', 'aria-label': 'Paramètres de la projection' });
     f.addEventListener('submit', function (ev) { ev.preventDefault(); });
     // Revalorisation (taux + mois) et soldes de départ (compte courant + épargne) forment deux groupes ciblés par la visite guidée.
+    const groupePeriode = el('div', '', { class: 'groupe-param' });
     const groupeReval = el('div', '', { class: 'groupe-param' });
     groupeReval.setAttribute('data-aide', 'param-revalorisation');
     const groupeSolde = el('div', '', { class: 'groupe-param' });
@@ -189,15 +200,26 @@
       i.value = brouillons[ch.cle] !== undefined ? brouillons[ch.cle] : lire(ch.cle, state().parametres);
       i.addEventListener('change', function () { modifier(ch.cle, i.value); });
       bloc.appendChild(i);
-      bloc.appendChild(el('small', ch.aide, { id: id + '-aide', class: 'note' }));
-      if (erreurs[ch.cle]) bloc.appendChild(el('p', erreurs[ch.cle], { id: id + '-err', class: 'erreur-ligne', role: 'alert' }));
-      if (ch.cle === 'taux' || ch.cle === 'mois') { if (!groupeReval.parentNode) f.appendChild(groupeReval); groupeReval.appendChild(bloc); }
-      else if (ch.solde) { if (!groupeSolde.parentNode) f.appendChild(groupeSolde); groupeSolde.appendChild(bloc); }
-      else f.appendChild(bloc);
+      const aideChamp = el('div', '', { class: 'champ-aide' });
+      aideChamp.appendChild(el('small', ch.aide, { id: id + '-aide', class: 'note' }));
+      if (erreurs[ch.cle]) aideChamp.appendChild(el('p', erreurs[ch.cle], { id: id + '-err', class: 'erreur-ligne', role: 'alert' }));
+      bloc.appendChild(aideChamp);
+      if (ch.cle === 'taux' || ch.cle === 'mois') groupeReval.appendChild(bloc);
+      else if (ch.solde) groupeSolde.appendChild(bloc);
+      else groupePeriode.appendChild(bloc);
     });
-    c.appendChild(f);
+    f.appendChild(section('Période', [groupePeriode]));
+    f.appendChild(section('Revalorisation', [groupeReval]));
+
+    // Total des deux soldes : grand chiffre à empattement sous les champs.
     const total = B.soldeDepart(state().donnees, state().parametres).total;
-    c.appendChild(el('p', 'Solde de départ : ' + eur.format(total), { class: 'note', 'data-total-solde': '1' }));
+    const p = el('p', '', { class: 'solde-total', 'data-total-solde': '1' });
+    const lib = el('span', 'Solde de départ', { class: 'solde-lib' });
+    lib.appendChild(el('span', ' : ', { class: 'visuellement-cache' }));
+    p.appendChild(lib);
+    p.appendChild(el('strong', eur.format(total), { class: 'solde-val' + (total < 0 ? ' neg' : '') }));
+    f.appendChild(section('Soldes de départ', [groupeSolde, p]));
+    c.appendChild(f);
     panneau.appendChild(c);
     panneau.appendChild(carteSauvegarde());
 
