@@ -53,7 +53,17 @@ const PAIRES = [
   ['--negatif', '--fond'], ['--negatif', '--carte'],
   ['--carte', '--accent'],
   ['--positif', '--positif-fond'], ['--negatif', '--negatif-fond'],
+  // Texte dans les champs et bandes de categorie (fond --papier-2)
+  ['--encre-2', '--papier-2'], ['--negatif', '--papier-2'],
 ];
+// Elements graphiques (WCAG 1.4.11, 3:1) : bord des champs sur leur fond, au repos et au survol.
+const PAIRES_GRAPHIQUES = [['--bord-champ', '--papier-2'], ['--bord-champ', '--carte']];
+
+// Melange de la couleur `hex` d'opacite `a` sur le fond `fond`.
+function melange(hex, a, fond) {
+  const c = (h, i) => parseInt(h.slice(1 + i, 3 + i), 16);
+  return '#' + [0, 2, 4].map((i) => Math.round(c(hex, i) * a + c(fond, i) * (1 - a)).toString(16).padStart(2, '0')).join('');
+}
 
 for (const nom of ['clair', 'sombre']) {
   test('contrastes AA (4.5) du jeu ' + nom, () => {
@@ -63,11 +73,32 @@ for (const nom of ['clair', 'sombre']) {
       assert.ok(r >= 4.5, `${a} sur ${b} (${nom}) : ${r.toFixed(2)} < 4.5`);
     }
   });
+  test('contrastes non textuels (3:1) du jeu ' + nom, () => {
+    const v = jeux[nom];
+    for (const [a, b] of PAIRES_GRAPHIQUES) {
+      const r = contraste(v[a], v[b]);
+      assert.ok(r >= 3, `${a} sur ${b} (${nom}) : ${r.toFixed(2)} < 3`);
+    }
+  });
+  test('texte d\'exemple (::placeholder) lisible sur le fond des champs, jeu ' + nom, () => {
+    const css = style.replace(/\/\*[\s\S]*?\*\//g, '');
+    const regle = /::placeholder\s*\{([^}]*)\}/.exec(css);
+    assert.ok(regle, 'regle ::placeholder absente de style.css');
+    const couleur = /color:\s*var\((--[a-z0-9-]+)\)/.exec(regle[1]);
+    assert.ok(couleur, 'couleur du placeholder en variable attendue');
+    const op = /opacity:\s*([0-9.]+)/.exec(regle[1]);
+    const a = op ? Number(op[1]) : 1;
+    const v = jeux[nom];
+    for (const fond of ['--papier-2', '--carte']) {
+      const r = contraste(melange(v[couleur[1]], a, v[fond]), v[fond]);
+      assert.ok(r >= 4.5, `placeholder sur ${fond} (${nom}) : ${r.toFixed(2)} < 4.5`);
+    }
+  });
 }
 
 test('variables du theme presentes et pas de couleur en dur dans style.css', () => {
   const colorees = ['--fond', '--carte', '--encre', '--encre-2', '--trait', '--grille', '--accent',
-    '--positif', '--negatif', '--positif-fond', '--negatif-fond', '--filet', '--papier-2'];
+    '--positif', '--negatif', '--positif-fond', '--negatif-fond', '--filet', '--papier-2', '--bord-champ'];
   for (const nom of colorees) {
     assert.ok(jeux.clair[nom], nom + ' absent du jeu clair');
     assert.ok(jeux.sombre[nom], nom + ' absent du jeu sombre');

@@ -158,7 +158,9 @@
     const c = el('input', '', { type: 'checkbox', 'aria-label': 'Revalorisé — ' + ligne.libelle, 'data-cle': nature + ':' + index + ':revalorise' });
     c.checked = ligne.revalorise === true;
     c.addEventListener('change', function () { modifier(nature, ligne, 'revalorise', c.checked); });
-    return c;
+    const zone = el('label', '', { class: 'case-reval' }); // zone cliquable d'au moins 24 px autour de la case
+    zone.appendChild(c);
+    return zone;
   }
 
   function boutonOeil(nature, index, ligne) {

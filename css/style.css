@@ -10,9 +10,10 @@ h1, h2, h3 { font-family: var(--police-titre); font-weight: 600; letter-spacing:
 .entete { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: var(--espace-2) var(--espace-4); padding: var(--espace-2) var(--espace-4); background: var(--fond); border-bottom: 1px solid var(--filet); }
 .entete h1 { font-size: var(--taille-2); margin: 0; font-weight: 600; white-space: nowrap; }
 .onglets { display: flex; flex-wrap: wrap; gap: var(--espace-1) var(--espace-3); }
-.onglets button { font: inherit; color: var(--encre-2); background: none; border: 0; border-bottom: 2px solid transparent; min-height: 2.5rem; padding: var(--espace-1) var(--espace-1); cursor: pointer; transition: color var(--duree-courte) var(--ease), border-color var(--duree-courte) var(--ease); }
+/* Graisse constante (500) : l'onglet choisi se distingue par la couleur et le filet, sans decaler ses voisins. */
+.onglets button { font: inherit; font-weight: 500; color: var(--encre-2); background: none; border: 0; border-bottom: 2px solid transparent; min-height: 2.5rem; padding: var(--espace-1) var(--espace-1); cursor: pointer; transition: color var(--duree-courte) var(--ease), border-color var(--duree-courte) var(--ease); }
 .onglets button:hover { color: var(--encre); border-bottom-color: var(--filet); }
-.onglets button[aria-selected="true"] { color: var(--encre); border-bottom-color: var(--accent); font-weight: 600; }
+.onglets button[aria-selected="true"] { color: var(--encre); border-bottom-color: var(--accent); }
 .onglets button:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--rayon); }
 main { max-width: 1200px; margin: 0 auto; padding: var(--espace-4) var(--espace-4) var(--espace-5); }
 
@@ -48,9 +49,11 @@ td.num, th.num { text-align: right; }
 
 /* Choix de periode et champs */
 .choix-periode { display: flex; align-items: center; gap: var(--espace-2); margin-bottom: var(--espace-2); font-size: .9rem; color: var(--encre-2); }
-.choix-periode select, table.edition input[type="text"], table.edition select, .ajout input, .ajout select { font: inherit; color: var(--encre); background: var(--papier-2); border: 1px solid var(--grille); border-radius: var(--rayon); min-height: 2.25rem; padding: var(--espace-1) var(--espace-2); transition: border-color var(--duree-courte) var(--ease), background var(--duree-courte) var(--ease); }
+.choix-periode select, table.edition input[type="text"], table.edition select, .ajout input, .ajout select { font: inherit; color: var(--encre); background: var(--papier-2); border: 1px solid var(--bord-champ); border-radius: var(--rayon); min-height: 2.25rem; padding: var(--espace-1) var(--espace-2); transition: border-color var(--duree-courte) var(--ease), background var(--duree-courte) var(--ease); }
 table.edition input[type="text"], table.edition select, .ajout input, .ajout select { width: 100%; min-width: 5rem; }
-.choix-periode select:hover, table.edition input[type="text"]:hover, table.edition select:hover, .ajout input:hover, .ajout select:hover { border-color: var(--trait); background: var(--carte); }
+.choix-periode select:hover, table.edition input[type="text"]:hover, table.edition select:hover, .ajout input:hover, .ajout select:hover { border-color: var(--encre-2); background: var(--carte); }
+/* Texte d'exemple : --encre-2 a pleine opacite (4.5 minimum sur --papier-2, verifie par tests/js/contraste.test.js). */
+input::placeholder { color: var(--encre-2); opacity: 1; }
 .choix-periode select:focus-visible, table.edition input:focus-visible, table.edition select:focus-visible, .ajout input:focus-visible, .ajout select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); background: var(--carte); }
 table.edition input.num { text-align: right; }
 
@@ -105,6 +108,13 @@ table.edition tr.masque.palier-ajout button, table.edition tr.masque.palier-ajou
 .orphelin-etapes { color: var(--encre-2); font-size: .85rem; flex: 1 1 14rem; }
 .ajout { display: flex; flex-wrap: wrap; gap: var(--espace-2); align-items: center; }
 .ajout input, .ajout select { width: auto; flex: 1 1 10rem; }
+/* Champs et bouton d'un formulaire d'ajout : meme hauteur. */
+.ajout input:not([type="checkbox"]), .ajout select, .ajout .btn { min-height: 2.5rem; }
+.ajout .btn { padding-block: 0; }
+/* Revalorise : la case garde sa taille, son libelle invisible agrandit la zone cliquable (24 px minimum). */
+.case-reval { display: inline-flex; align-items: center; justify-content: center; min-width: 1.75rem; min-height: 1.75rem; vertical-align: middle; cursor: pointer; border-radius: var(--rayon); }
+.case-reval:hover { background: var(--papier-2); }
+.case-reval input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Aide et info-bulles */
 .aide-ligne { display: flex; align-items: center; gap: var(--espace-2); color: var(--encre-2); font-size: .85rem; margin-bottom: var(--espace-2); }
@@ -120,7 +130,9 @@ table.edition tr.masque.palier-ajout button, table.edition tr.masque.palier-ajou
 
 /* Parametres */
 .champ-param { display: flex; flex-direction: column; gap: var(--espace-1); flex: 1 1 14rem; }
-.groupe-param { display: flex; flex-wrap: wrap; gap: var(--espace-2); flex: 2 1 28rem; }
+.groupe-param { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--espace-2); flex: 2 1 28rem; }
+/* Parametres : les blocs (libelle, champ, aide) s'alignent en haut. */
+.ajout:has(> .champ-param) { align-items: flex-start; }
 .champ-param label { font-weight: 600; font-size: .9rem; }
 .ajout .champ-param input, .champ-param input { width: 100%; flex: none; }
 .actions-accueil { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }

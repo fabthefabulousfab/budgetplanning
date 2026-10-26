@@ -13,6 +13,7 @@
   --trait: #cfc4a9;
   --filet: #d9cfb8;
   --grille: #e6dcc6;
+  --bord-champ: #8a7e66;
   --accent: #2f5d50;
   --positif: #2f5d50;
   --negatif: #a8451e;
@@ -54,6 +55,7 @@
     --trait: #54483a;
     --filet: #4a4033;
     --grille: #382f25;
+    --bord-champ: #857866;
     --accent: #88bda9;
     --positif: #8fc4b0;
     --negatif: #e89068;
