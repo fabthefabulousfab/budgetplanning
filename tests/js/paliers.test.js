@@ -428,3 +428,23 @@ test('store : echec d ecriture de paliers.yaml : erreur remontee, donnees sans p
   const r2 = await store.loadAll(d);
   assert.deepStrictEqual(r2.donnees.mensuel[0].paliers, ENTREE.etapes);
 });
+
+test('categories : une ligne a paliers renommee de categorie garde ses paliers apres enregistrement et rechargement', async () => {
+  const C = require('../../js/categories.js');
+  const ligne = { type: 'depense', categorie: 'Logement', libelle: 'Loyer', montant: 800, paliers: [{ depuis: '2027-03', montant: 850 }] };
+  const d = fakeDir({
+    'donnees-courantes.yaml': dump({ situation: { compte_courant: 1, epargne: 2 }, mensuel: [{ type: 'depense', categorie: 'Logement', libelle: 'Loyer', montant: 800 }], annuel: [], exceptionnel: [] }),
+    'paliers.yaml': dump({ paliers: [{ ligne: { nature: 'mensuel', type: 'depense', categorie: 'Logement', libelle: 'Loyer' }, etapes: ligne.paliers }] }),
+  });
+  const r = await store.loadAll(d);
+  assert.deepStrictEqual(r.donnees.mensuel[0].paliers, ligne.paliers);
+  const params = Object.assign({}, r.parametres, { categories: { depense: ['Logement'], revenu: [] } });
+  const nouveau = C.renommerCategorie(r.donnees, params, 'depense', 'Logement', 'Habitat');
+  await store.saveDonnees(d, nouveau.donnees, r.orphelins);
+  assert.match(d.files.get('paliers.yaml'), /categorie: Habitat/);
+  assert.ok(!/categorie: Logement/.test(d.files.get('paliers.yaml')));
+  const r2 = await store.loadAll(d);
+  assert.deepStrictEqual(r2.orphelins, []);
+  assert.strictEqual(r2.donnees.mensuel[0].categorie, 'Habitat');
+  assert.deepStrictEqual(r2.donnees.mensuel[0].paliers, ligne.paliers);
+});

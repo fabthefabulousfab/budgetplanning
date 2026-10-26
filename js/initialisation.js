@@ -4,6 +4,7 @@
   const isNode = typeof module !== 'undefined';
   const St = isNode ? require('./store.js') : root.Budget;
   const P = isNode ? require('./projection.js') : root.Budget;
+  const Ca = isNode ? require('./categories.js') : root.Budget;
 
   const F = St.FICHIERS;
   const FICHIERS_BUDGET = [F.donnees, F.evenements, F.parametres, F.paliers];
@@ -65,7 +66,8 @@
     [F.parametres]: function (dir, maintenant) {
       const d = maintenant();
       const depart = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); // mois courant, heure locale
-      return St.saveParametres(dir, Object.assign({}, P.PARAMETRES_DEFAUT, { depart: depart }));
+      const categories = { depense: Ca.CATEGORIES_DEFAUT.depense.slice(), revenu: Ca.CATEGORIES_DEFAUT.revenu.slice() }; // copie : la liste par défaut n'est jamais partagée
+      return St.saveParametres(dir, Object.assign({}, P.PARAMETRES_DEFAUT, { depart: depart, categories: categories }));
     },
   };
 

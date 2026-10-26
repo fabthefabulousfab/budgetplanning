@@ -11,7 +11,8 @@ const P = 'parametres.yaml';
 const PAL = 'paliers.yaml';
 const horloge = (y, m, j) => () => new Date(y, m - 1, j || 15, 12);
 const H = { maintenant: horloge(2027, 3) };
-const DEFAUT_H = Object.assign({}, PARAMETRES_DEFAUT, { depart: '2027-03' });
+const { CATEGORIES_DEFAUT } = require('../../js/categories.js');
+const DEFAUT_H = Object.assign({}, PARAMETRES_DEFAUT, { depart: '2027-03', categories: CATEGORIES_DEFAUT });
 
 // Dossier en memoire. options : liste (false = pas de values()), dossiers (sous-dossiers), echec (nom de fichier dont l'ecriture echoue).
 function fakeDir(initial, options) {
@@ -241,4 +242,40 @@ test('fichier apparu entre le controle initial et l ecriture : jamais ecrase', a
   assert.deepStrictEqual(err.crees, [D]);
   assert.strictEqual(d.files.get(E), '# apparu\n- id: x\n');
   assert.ok(!d.files.has(P));
+});
+
+test('budget cree : parametres.yaml contient la liste de categories par defaut (copie), chargee sans erreur', async () => {
+  const d = fakeDir();
+  await ini.creerBudgetVide(d, H);
+  assert.match(d.files.get(P), /categories:/);
+  const c = await store.loadAll(d);
+  assert.deepStrictEqual(c.parametres.categories, CATEGORIES_DEFAUT);
+  assert.notStrictEqual(c.parametres.categories, CATEGORIES_DEFAUT);
+  c.parametres.categories.depense.push('x');
+  assert.ok(!CATEGORIES_DEFAUT.depense.includes('x'));
+  assert.deepStrictEqual(c.avertissements, []);
+});
+
+test('sauvegarde : un budget avec categories fait l aller-retour (export, lecture, import, rechargement)', async () => {
+  const d = fakeDir();
+  await ini.creerBudgetVide(d, H);
+  const p = (await store.loadAll(d)).parametres;
+  p.categories.depense.push('Animaux');
+  await store.saveParametres(d, p);
+  const { texte } = await sauv.exporterSauvegarde(d, { maintenant: new Date('2027-03-15T12:00:00Z') });
+  const lue = await sauv.lireSauvegarde(texte);
+  const cible = fakeDir();
+  await sauv.importerSauvegarde(lue, cible, {});
+  const c = await store.loadAll(cible);
+  assert.deepStrictEqual(c.parametres.categories.depense, CATEGORIES_DEFAUT.depense.concat(['Animaux']));
+  assert.deepStrictEqual(c.parametres.categories.revenu, CATEGORIES_DEFAUT.revenu);
+});
+
+test('sauvegarde : une sauvegarde dont categories est invalide est refusee avant toute ecriture', async () => {
+  const d = fakeDir();
+  await ini.creerBudgetVide(d, H);
+  const { texte } = await sauv.exporterSauvegarde(d, { maintenant: new Date('2027-03-15T12:00:00Z') });
+  const mauvais = texte.replace('        - Autre\n', '        - Autre\n        - autre\n');
+  assert.notStrictEqual(mauvais, texte);
+  await assert.rejects(sauv.lireSauvegarde(mauvais), /Sauvegarde invalide.*parametres\.yaml.*double/);
 });

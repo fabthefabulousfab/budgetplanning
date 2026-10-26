@@ -169,3 +169,59 @@ test('solde_depart: cle imbriquee inconnue refusee, autres cles toujours refusee
   const r = await store.loadAll(fakeDir({ 'parametres.yaml': 'solde_depart: ~\n' }));
   assert.deepStrictEqual(r.parametres.solde_depart, { compte_courant: null, epargne: null });
 });
+
+// ---- parametres.yaml : cle optionnelle « categories » ----
+const CAT_OK = 'categories:\n  depense: [Logement, Santé]\n  revenu: [Salaires]\n';
+
+test('parametres.yaml: categories valides, chargees et reecrites', async () => {
+  const d = fakeDir({ 'parametres.yaml': 'horizon_annees: 12\n' + CAT_OK });
+  const r = await store.loadAll(d);
+  assert.deepStrictEqual(r.parametres.categories, { depense: ['Logement', 'Santé'], revenu: ['Salaires'] });
+  await store.saveParametres(d, r.parametres);
+  const r2 = await store.loadAll(d);
+  assert.deepStrictEqual(r2.parametres.categories, r.parametres.categories);
+});
+
+test('parametres.yaml: sans categories, la cle reste absente (anciens budgets)', async () => {
+  const d = fakeDir({ 'parametres.yaml': 'horizon_annees: 12\n' });
+  const r = await store.loadAll(d);
+  assert.ok(!('categories' in r.parametres));
+  await store.saveParametres(d, r.parametres);
+  assert.ok(!/categories/.test(d.files.get('parametres.yaml')));
+});
+
+test('parametres.yaml: categories, listes vides acceptees, un seul type accepte', async () => {
+  const r = await store.loadAll(fakeDir({ 'parametres.yaml': 'categories:\n  depense: []\n' }));
+  assert.deepStrictEqual(r.parametres.categories, { depense: [] });
+});
+
+test('parametres.yaml: categories invalides refusees avec un message nommant parametres.yaml', async () => {
+  const cas = {
+    'categories: 3\n': /categories doit être un objet/,
+    'categories: [a]\n': /categories doit être un objet/,
+    'categories:\n  depense: Logement\n': /categories\.depense doit être une liste/,
+    'categories:\n  depense: [1]\n': /texte/,
+    'categories:\n  depense: [""]\n': /vide/,
+    'categories:\n  depense: ["   "]\n': /vide/,
+    'categories:\n  depense: [Logement, " logement"]\n': /en double/,
+    ['categories:\n  revenu: [' + 'x'.repeat(61) + ']\n']: /60/,
+    'categories:\n  autre: [a]\n': /clé inconnue « categories\.autre »/,
+    ['categories:\n  depense: [' + Array.from({ length: 101 }, (_, i) => 'c' + i).join(', ') + ']\n']: /100/,
+  };
+  for (const [contenu, motif] of Object.entries(cas)) {
+    const d = fakeDir({ 'parametres.yaml': contenu });
+    await assert.rejects(store.loadAll(d), (e) => { assert.match(e.message, /^parametres\.yaml/); assert.match(e.message, motif); return true; }, contenu);
+    assert.strictEqual(d.files.get('parametres.yaml'), contenu);
+  }
+});
+
+test('parametres.yaml: les noms sont nettoyes (espaces) a la lecture', async () => {
+  const r = await store.loadAll(fakeDir({ 'parametres.yaml': 'categories:\n  depense: ["  Enfants   et éducation "]\n' }));
+  assert.deepStrictEqual(r.parametres.categories.depense, ['Enfants et éducation']);
+});
+
+test('saveParametres : categories invalides refusees avant ecriture', async () => {
+  const d = fakeDir({ 'parametres.yaml': 'horizon_annees: 12\n' });
+  await assert.rejects(store.saveParametres(d, Object.assign({}, PARAMETRES_DEFAUT, { categories: { depense: ['a', 'A'] } })), /parametres\.yaml.*double/);
+  assert.strictEqual(d.files.get('parametres.yaml'), 'horizon_annees: 12\n');
+});

@@ -6,6 +6,7 @@
   const P = isNode ? require('./projection.js') : root.Budget;
   const Su = isNode ? require('./summary.js') : root.Budget;
   const Pr = isNode ? require('./prets.js') : root.Budget;
+  const Ca = isNode ? require('./categories.js') : root.Budget;
   const yaml = isNode ? require('../vendor/js-yaml.min.js') : root.jsyaml;
   const PARAMETRES_DEFAUT = P.PARAMETRES_DEFAUT;
 
@@ -157,6 +158,35 @@
       const v = p.solde_depart ? p.solde_depart[k] : null;
       if (v != null && !num(v)) throw new Error('solde_depart.' + k + ' doit être un nombre (ou vide pour reprendre la valeur importée).');
     });
+    validerCategories(p.categories);
+  }
+
+  const TYPES_CATEGORIE = ['depense', 'revenu'];
+
+  // categories : { depense: [noms], revenu: [noms] }, clé facultative ; noms non vides, ≤ 60 caractères, uniques (casse ignorée), 100 au plus par type.
+  function validerCategories(c) {
+    if (c === null || c === undefined) return;
+    if (!estObjet(c)) throw new Error('categories doit être un objet (' + TYPES_CATEGORIE.join(', ') + ').');
+    Object.keys(c).forEach(function (k) {
+      if (TYPES_CATEGORIE.indexOf(k) < 0) throw new Error('clé inconnue « categories.' + k + ' » (attendues : ' + TYPES_CATEGORIE.join(', ') + ').');
+    });
+    TYPES_CATEGORIE.forEach(function (type) {
+      const liste = c[type];
+      if (liste === null || liste === undefined) return;
+      const nom = 'categories.' + type;
+      if (!Array.isArray(liste)) throw new Error(nom + ' doit être une liste de noms (texte).');
+      if (liste.length > Ca.CATEGORIES_MAX) throw new Error(nom + ' : ' + Ca.CATEGORIES_MAX + ' catégories au maximum.');
+      const vues = new Set();
+      liste.forEach(function (x, i) {
+        if (typeof x !== 'string') throw new Error(nom + ' #' + (i + 1) + ' : le nom doit être du texte.');
+        const n = Ca.nomCategorieValide(x);
+        if (n === '') throw new Error(nom + ' #' + (i + 1) + ' : le nom ne peut pas être vide.');
+        if (n.length > Ca.CATEGORIE_LONGUEUR_MAX) throw new Error(nom + ' #' + (i + 1) + ' : « ' + n.slice(0, 20) + '… » dépasse ' + Ca.CATEGORIE_LONGUEUR_MAX + ' caractères.');
+        const k = n.toLowerCase();
+        if (vues.has(k)) throw new Error(nom + ' : « ' + n + ' » est en double (majuscules et minuscules ne les distinguent pas).');
+        vues.add(k);
+      });
+    });
   }
 
   // Fusion profonde des défauts avec le contenu ; clés inconnues (ex. prets_etudiants) ignorées ; undefined/null ignorés.
@@ -174,10 +204,17 @@
     if (s && typeof s === 'object') {
       CLES_SOLDE.forEach(function (k) { if (s[k] != null) out.solde_depart[k] = s[k]; });
     }
+    // Les catégories (facultatives) ne sont reprises que si le fichier les contient ; les noms sont nettoyés.
+    if (estObjet(c.categories)) {
+      out.categories = {};
+      TYPES_CATEGORIE.forEach(function (type) {
+        if (Array.isArray(c.categories[type])) out.categories[type] = c.categories[type].map(Ca.nomCategorieValide);
+      });
+    }
     return out;
   }
 
-  const CLES_PARAMETRES = ['depart', 'horizon_annees', 'revalorisation', 'solde_depart'];
+  const CLES_PARAMETRES = ['depart', 'horizon_annees', 'revalorisation', 'solde_depart', 'categories'];
   const CLES_OBSOLETES = ['prets_etudiants'];
 
   function estObjet(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
@@ -200,6 +237,7 @@
         if (CLES_SOLDE.indexOf(k) < 0) throw new Error('clé inconnue « solde_depart.' + k + ' » (attendues : ' + CLES_SOLDE.join(', ') + ').');
       });
     }
+    validerCategories(c.categories);
   }
 
   async function lire(dir, nom) {
@@ -387,6 +425,7 @@
   }
 
   async function saveParametres(dir, params) {
+    enFichier(FICHIERS.parametres, function () { validerCategories(params && params.categories); }); // avant la fusion : rien n'est corrigé en silence
     const p = fusionnerParametres(params);
     enFichier(FICHIERS.parametres, function () { validerParametres(p); });
     await ecrire(dir, FICHIERS.parametres, p);

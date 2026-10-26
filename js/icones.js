@@ -24,6 +24,10 @@
     palier: [
       'M3.5 19h5.5v-5h5.5V9h6',
     ],
+    crayon: [
+      'M4.5 19.5l.9-4.1L16.2 4.6a1.9 1.9 0 0 1 2.7 0l.5.5a1.9 1.9 0 0 1 0 2.7L8.6 18.6l-4.1.9z',
+      'M14.5 6.3l3.2 3.2',
+    ],
   };
 
   // options.titre : icône porteuse de sens (role="img" + <title>) ; sans titre, elle est décorative (aria-hidden).

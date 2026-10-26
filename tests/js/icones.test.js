@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { ICONES, creerIcone } = require('../../js/icones.js');
 
-const NOMS = ['oeil', 'oeil-barre', 'corbeille', 'palier'];
+const NOMS = ['oeil', 'oeil-barre', 'corbeille', 'palier', 'crayon'];
 
 test('icones : chaque nom attendu a au moins un tracé non vide', () => {
   for (const nom of NOMS) {
