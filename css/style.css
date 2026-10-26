@@ -125,7 +125,7 @@ tr.ligne-erreur td, .erreur-ligne { color: var(--negatif); background: var(--neg
 .btn-icone:hover { color: var(--encre); background: var(--papier-2); }
 .btn-corbeille:hover { color: var(--negatif); }
 .oeil-ferme, .oeil-ferme:hover { color: var(--negatif); }
-table.edition tr.masque td:not(:last-child), table.edition tr.masque input, table.edition tr.masque select { opacity: .5; }
+table.edition:not(.releve) tr.masque td:not(:last-child), table.edition:not(.releve) tr.masque input, table.edition:not(.releve) tr.masque select { opacity: .5; }
 .btn-lien { font: inherit; font-size: .85rem; color: var(--negatif); background: none; border: 0; cursor: pointer; text-decoration: underline; min-height: 2rem; padding: var(--espace-1); }
 .case-palier { display: inline-flex; align-items: center; gap: var(--espace-1); font-size: .85rem; color: var(--encre-2); cursor: pointer; }
 table.edition tr.palier td { background: var(--positif-fond); border-bottom-color: var(--filet); }
@@ -205,13 +205,23 @@ table.releve tr.ligne td { transition: background var(--duree-courte) var(--ease
 table.releve tr.ligne:hover td, table.releve tr.ligne:focus-within td { background: color-mix(in srgb, var(--papier-2) 65%, var(--fond)); }
 /* Ecran etroit : colonnes resserrees, le tableau defile dans sa zone et le libelle reste visible a gauche */
 @media (max-width: 720px) {
-  table.releve { min-width: 47rem; }
+  table.releve { min-width: 43.5rem; } /* Libellé 10,5 rem + Type + Montant + Actions tiennent dans la fenêtre : seuls Revalorisé et Fin défilent */
   table.releve .c-type { width: 6.25rem; }
   table.releve .c-mont { width: 5.75rem; }
-  table.releve .c-reval { width: 5.25rem; }
+  table.releve .c-reval { width: 5.75rem; }
+  table.releve th.c-reval { padding-right: var(--espace-3); }
+  table.releve .c-act { width: 9.25rem; }
   table.releve .c-fin { width: 6rem; }
   table.releve th.c-lib, table.releve td.c-lib, table.releve tr.groupe th { position: sticky; left: 0; z-index: 1; background: var(--fond); }
   table.releve td.c-lib { box-shadow: 1px 0 0 var(--grille); }
+  /* Sous-lignes de paliers : premiere cellule figee et opaque (couleur seule, le fil vertical est conserve) */
+  .colle-gauche { position: sticky; left: 1rem; width: max-content; max-width: calc(100vw - 5rem); white-space: normal; }
+  table.releve tr.palier:not(.palier-ajout) td:first-child { position: sticky; left: 0; z-index: 1; background-color: var(--fond); }
+  /* Actions (palier, oeil, corbeille) : colonne figee a droite, opaque ; son bord adouci indique qu'il reste des colonnes a faire defiler */
+  table.releve th.c-act, table.releve td.c-act { position: sticky; right: 0; z-index: 1; background-color: var(--fond); box-shadow: -1px 0 0 var(--grille), -8px 0 10px -6px color-mix(in srgb, var(--encre) 16%, transparent); }
+  table.releve tr.palier td.c-act, table.releve tr.palier-ajout td:last-child { background-color: var(--fond); }
+  table.releve tr.ligne:hover td.c-act, table.releve tr.ligne:focus-within td.c-act { background-color: color-mix(in srgb, var(--papier-2) 65%, var(--fond)); }
+  .defil { scroll-padding-inline: 11rem 9.5rem; }
 }
 /* Champs : du texte souligne d'un fin pointille ; la case se dessine au survol et au focus */
 table.edition.releve input[type="text"], table.edition.releve select { min-width: 0; min-height: 2rem; padding: .2rem .45rem; color: var(--encre); background-color: transparent; border: 1px solid transparent; border-bottom: 1px dotted var(--pointille); border-radius: 0; }
@@ -248,9 +258,8 @@ table.releve .btn-icone:hover { background: var(--carte); }
 table.releve .btn-corbeille:hover { color: var(--negatif); }
 table.releve .oeil-ferme, table.releve tr:hover .oeil-ferme, table.releve tr:focus-within .oeil-ferme { color: var(--negatif); }
 /* Ligne masquee : en retrait, l'oeil reste net */
-table.releve tr.masque td:not(.c-act):not(.c-lib) { opacity: .55; }
-/* Libelle (colonne figee sur ecran etroit) : opaque, seul le champ s'estompe, sinon le defilement transparait. */
-table.releve tr.masque td.c-lib input { opacity: .55; }
+/* Un seul mecanisme : le contenu des cellules s'estompe, les cellules (figees sur ecran etroit) restent opaques. */
+table.releve tr.masque td:not(.c-act) > * { opacity: .55; }
 /* Ligne invalide : soulignement plein terre cuite, message juste dessous */
 table.edition.releve tr.invalide input[type="text"]:not(:hover):not(:focus-visible), table.edition.releve tr.invalide select:not(:hover):not(:focus-visible) { border-color: transparent; border-bottom: 1px solid var(--negatif); }
 table.releve tr.ligne-erreur td { padding: .35rem var(--espace-2); border-left: 2px solid var(--negatif); }

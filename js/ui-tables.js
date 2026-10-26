@@ -235,7 +235,9 @@
     const msg = erreurs.get(ligne);
     if (!msg) return null;
     const tr = el('tr', '', { class: 'ligne-erreur' });
-    tr.appendChild(el('td', msg, { colspan: String(nbCols), role: 'alert' }));
+    const c = el('td', '', { colspan: String(nbCols), role: 'alert' });
+    c.appendChild(el('div', msg, { class: 'colle-gauche' })); // le message reste lisible quand le tableau défile
+    tr.appendChild(c);
     return tr;
   }
 

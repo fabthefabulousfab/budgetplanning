@@ -94,8 +94,10 @@
     const c = el('td', '', { colspan: String(cfg.nbCols) });
     const b = el('button', '+ ajouter un palier', { type: 'button', class: 'btn-palier', 'aria-label': 'Ajouter un palier — ' + ligne.libelle, 'data-cle': cfg.cle + ':palier+' });
     b.addEventListener('click', function () { cfg.onAjouter(); });
-    c.appendChild(b);
-    c.appendChild(el('span', '0 = plus rien à partir de cette date', { class: 'palier-aide' }));
+    const contenu = el('div', '', { class: 'colle-gauche' }); // reste visible quand le tableau défile (écran étroit)
+    contenu.appendChild(b);
+    contenu.appendChild(el('span', '0 = plus rien à partir de cette date', { class: 'palier-aide' }));
+    c.appendChild(contenu);
     tr.appendChild(c);
     out.push(tr);
     return out;
