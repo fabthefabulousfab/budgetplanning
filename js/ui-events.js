@@ -324,9 +324,9 @@
     f.appendChild(E('Catégorie', selCat, 'champ-court'));
 
     f.appendChild(E('Libellé', champAjout('libelle', 'Libellé'), 'champ-large'));
-    f.appendChild(E('Montant', champAjout('echeances', 'Montant', { placeholder: '800 ou 3-300 ou 2026-3-300' }), 'champ-large'));
-    f.appendChild(E('Début', champAjout('debut', 'Début', { placeholder: 'AAAA-MM' }), 'champ-court'));
-    f.appendChild(E('Fin', champAjout('fin', 'Fin', { placeholder: 'AAAA-MM' }), 'champ-court'));
+    f.appendChild(E('Montant', champAjout('echeances', 'Montant', { placeholder: '800 ou 3-300' }), 'champ-moyen'));
+    f.appendChild(E('Début', champAjout('debut', 'Début', { placeholder: 'AAAA-MM' }), 'champ-mois'));
+    f.appendChild(E('Fin', champAjout('fin', 'Fin', { placeholder: 'AAAA-MM' }), 'champ-mois'));
     f.appendChild(el('button', 'Ajouter l’événement', { type: 'submit', class: 'btn' }));
     if (erreurAjout) f.appendChild(el('p', erreurAjout, { class: 'erreur-ligne', role: 'alert' }));
 

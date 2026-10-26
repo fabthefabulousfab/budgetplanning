@@ -19,7 +19,7 @@
       { champ: 'mise_a_disposition', label: 'Mise à disposition', entete: 'Mise à disposition (AAAA-MM)', placeholder: 'AAAA-MM', mois: true, classe: 'c-fin' },
       { champ: 'duree_mois', label: 'Durée (mois)', placeholder: '120', num: true, classe: 'c-int' },
       { champ: 'differe_mois', label: 'Différé (mois)', placeholder: '0', num: true, facultatif: true, classe: 'c-int' },
-      { champ: 'taux', label: 'Taux annuel (%)', placeholder: '0', num: true, facultatif: true, classe: 'c-int' },
+      { champ: 'taux', label: 'Taux annuel (%)', placeholder: '0', num: true, facultatif: true, classe: 'c-int c-taux' },
     ],
   };
 

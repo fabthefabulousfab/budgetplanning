@@ -335,7 +335,9 @@
     const g = el('div', '', { class: 'mensuel-chiffres' });
     grands.forEach(function (it) {
       const d = el('div', '', { class: 'mensuel-chiffre ' + it.filet });
-      d.appendChild(el('span', it.t, { class: 'mensuel-lib' }));
+      const lib = el('span', it.t, { class: 'mensuel-lib' });
+      if (it.detail) lib.appendChild(el('span', ' ' + it.detail, { class: 'mensuel-lib-detail' })); // masqué visuellement sur écran étroit, lu par les lecteurs d'écran
+      d.appendChild(lib);
       d.appendChild(el('strong', signe(it.v), { class: 'mensuel-val' + (it.signe && it.v < 0 ? ' neg' : '') }));
       g.appendChild(d);
     });
@@ -549,7 +551,7 @@
     resume.appendChild(chiffresReleve('Sur les douze premiers mois projetés', [
       { t: 'Revenus sur 12 mois', v: bilan.revenus, filet: 'filet-positif' },
       { t: 'Dépenses sur 12 mois', v: -bilan.depenses, filet: 'filet-negatif' },
-      { t: 'Impact bilan sur 12 mois (revenus − dépenses)', v: bilan.net, filet: 'filet-encre', signe: true },
+      { t: 'Impact bilan sur 12 mois', detail: '(revenus − dépenses)', v: bilan.net, filet: 'filet-encre', signe: true },
     ], [
       { t: 'Impact mensuel total', v: total, signe: true },
       { t: 'Restant moyen mensuel (montants de départ)', v: B.restantMoyen(d, params), signe: true },
