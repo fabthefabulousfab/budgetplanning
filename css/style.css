@@ -134,7 +134,7 @@ table.edition tr.palier td { background: var(--positif-fond); border-bottom-colo
 .palier-etiq { display: block; color: var(--encre-2); font-size: .75rem; }
 .btn-palier { font: inherit; font-size: .85rem; color: var(--positif); background: none; border: 0; cursor: pointer; text-decoration: underline; min-height: 2rem; padding: var(--espace-1) .8rem; }
 .palier-aide { color: var(--encre-2); font-size: .8rem; margin-left: var(--espace-3); }
-table.edition tr.masque.palier-ajout button, table.edition tr.masque.palier-ajout .palier-aide { opacity: .7; }
+table.edition:not(.releve) tr.masque.palier-ajout button, table.edition:not(.releve) tr.masque.palier-ajout .palier-aide { opacity: .7; }
 .btn-lien:focus-visible, .aide-btn:focus-visible, .btn-icone:focus-visible, .btn-palier:focus-visible, .case-palier input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* Paliers sans ligne : petit releve (description a gauche, corbeille discrete a droite) */
 .orphelins { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--trait); }
@@ -267,6 +267,8 @@ table.releve .oeil-ferme, table.releve tr:hover .oeil-ferme, table.releve tr:foc
 /* Ligne masquee : en retrait, l'oeil reste net */
 /* Un seul mecanisme : le contenu des cellules s'estompe, les cellules (figees sur ecran etroit) restent opaques. */
 table.releve tr.masque td:not(.c-act) > * { opacity: .7; }
+/* Ligne masquee : le vert et le gris d'aide, deja clairs, ne passeraient plus 4,5:1 une fois estompes ; ils prennent la couleur du texte (4,9:1 en clair a .7). */
+table.releve tr.masque.palier-ajout .btn-palier, table.releve tr.masque.palier-ajout .palier-aide { color: var(--encre); }
 /* Ligne invalide : soulignement plein terre cuite, message juste dessous */
 table.edition.releve tr.invalide input[type="text"]:not(:hover):not(:focus-visible), table.edition.releve tr.invalide select:not(:hover):not(:focus-visible) { border-color: transparent; border-bottom: 1px solid var(--negatif); }
 table.releve tr.ligne-erreur td { padding: .35rem var(--espace-2); border-left: 2px solid var(--negatif); }
