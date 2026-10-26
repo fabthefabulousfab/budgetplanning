@@ -14,7 +14,7 @@
   --filet: #d9cfb8;
   --grille: #e6dcc6;
   --bord-champ: #8a7e66;
-  --aire-force: .2; /* opacite du lavis des graphiques en aire, pres de la courbe */
+  --aire-force: .24; /* opacite du lavis des graphiques en aire, pres de la courbe */
   --accent: #2f5d50;
   --positif: #2f5d50;
   --negatif: #a8451e;

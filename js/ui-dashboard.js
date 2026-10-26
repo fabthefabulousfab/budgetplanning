@@ -63,6 +63,7 @@
     const k = B.chiffresCles(mois);
     if (!k) return;
     const b = el('div', '', { class: 'chiffres-cles', role: 'group', 'aria-label': 'Chiffres clés' });
+    b.setAttribute('data-aide', 'chiffres-cles');
     b.appendChild(chiffre('Solde fin ' + B.moisLong(k.debut.ym), k.debut.solde, fmt(k.debut.solde)));
     b.appendChild(chiffre('Net du mois', k.debut.net, signe(k.debut.net)));
     b.appendChild(chiffre('Solde fin ' + B.moisLong(k.fin.ym), k.fin.solde, fmt(k.fin.solde)));
@@ -98,10 +99,11 @@
       const z = partZero(ch);
       const g = ch.ctx.createLinearGradient(0, a.top, 0, a.bottom);
       const f = c.aire; // lavis plus soutenu pres de la courbe, presque nul sur la ligne de zero
+      const fn = z <= 0 ? f * 0.6 : f; // courbe entierement negative : une grande aire terre cuite, adoucie
       g.addColorStop(0, B.transparence(c.positif, f));
       g.addColorStop(z, B.transparence(c.positif, 0.02));
       g.addColorStop(z, B.transparence(c.negatif, 0.02));
-      g.addColorStop(1, B.transparence(c.negatif, f));
+      g.addColorStop(1, B.transparence(c.negatif, fn));
       return g;
     };
   }
@@ -136,7 +138,7 @@
         fill: 'origin',
         backgroundColor: aire(c),
         borderColor: trait(c),
-        borderWidth: 2,
+        borderWidth: sel.length > 60 ? 1.75 : 2, // longues durées : trait un peu plus fin, plus fluide
         borderCapStyle: 'round',
         borderJoinStyle: 'round',
         cubicInterpolationMode: 'monotone',
@@ -191,12 +193,15 @@
     },
   };
 
+  // Un jeton par tracé : un nouveau tracé (changement rapide de menu) arrête la boucle précédente.
   function lancerTrace(chart, ms) {
-    if (!ms) { chart.$trace = 1; return; }
+    const jeton = (chart.$traceId || 0) + 1;
+    chart.$traceId = jeton;
+    if (!ms) { chart.$trace = 1; chart.draw(); return; }
     const t0 = root.performance.now();
     chart.$trace = 0;
     function pas(t) {
-      if (chart.$detruit) return;
+      if (chart.$detruit || chart.$traceId !== jeton) return;
       const x = Math.min(1, Math.max(0, (t - t0) / ms));
       chart.$trace = 1 - Math.pow(1 - x, 3); // décélération douce
       chart.draw();
