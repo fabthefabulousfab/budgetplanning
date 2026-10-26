@@ -23,7 +23,7 @@ table.releve th.c-act, table.releve td.c-act { width: 0 !important; padding: 0 !
 .carte.entree::before, .param-section.entree::before { display: none !important; } /* trait decoratif de l'entree */
 
 /* Pas de pliage au milieu d'une ligne, d'un chiffre, d'un graphique ni d'une categorie */
-.carte, .param-section { break-inside: avoid-page; }
+.carte:not(:has(table)), .param-section { break-inside: avoid-page; } /* pas les sections a tableau : un long releve doit couler d'une page a l'autre */
 .graphe, .chiffres-cles, .mensuel-chiffres, .detail-cat, .solde-total, .orphelins li { break-inside: avoid; }
 .carte h2, .param-titre, .surtitre, .detail-entete { break-after: avoid; }
 table.releve tr, table.bilan tr, table.synthese tr { break-inside: avoid; }
