@@ -151,13 +151,35 @@
     panneaux.textContent = '';
     tabs.forEach(function (t) {
       const b = el('button', t.titre, { type: 'button', role: 'tab', id: 'tab-' + t.id, 'aria-controls': 'panneau-' + t.id });
-      b.addEventListener('click', function () { activer(t.id); });
+      // Un clic sur l'onglet déjà actif ne fait rien : l'entrée en cascade ne se rejoue pas.
+      b.addEventListener('click', function () { if (t.id !== actif) activer(t.id); });
       nav.appendChild(b);
-      panneaux.appendChild(el('section', '', { id: 'panneau-' + t.id, role: 'tabpanel', 'aria-labelledby': 'tab-' + t.id, hidden: '' }));
+      const p = el('section', '', { id: 'panneau-' + t.id, role: 'tabpanel', 'aria-labelledby': 'tab-' + t.id, hidden: '' });
+      // Fin de l'entrée d'un bloc : on retire sa classe, qui ne sert qu'à l'animation.
+      p.addEventListener('animationend', function (ev) {
+        if (ev.animationName === 'entree' && ev.target.classList) ev.target.classList.remove('entree');
+      });
+      panneaux.appendChild(p);
     });
     nav.hidden = tabs.length < 2;
+    if (!nav.$fondus) {
+      nav.$fondus = true;
+      nav.addEventListener('scroll', fondusOnglets, { passive: true });
+      // Au clavier, l'onglet qui prend le focus se dévoile (instantané : le focus ne doit pas attendre une animation).
+      nav.addEventListener('focusin', function (ev) { if (ev.target.scrollIntoView) ev.target.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'auto' }); });
+      root.addEventListener('resize', fondusOnglets);
+    }
+    root.requestAnimationFrame(fondusOnglets);
     panneaux.hidden = false;
     if (tabs.length) activer(actif && tabs.some(function (t) { return t.id === actif; }) ? actif : tabs[0].id);
+  }
+
+  // Écran étroit : les onglets défilent ; un bord s'estompe tant qu'il reste des onglets à découvrir de ce côté.
+  function fondusOnglets() {
+    const nav = $('onglets');
+    const reste = nav.scrollWidth - nav.clientWidth > 1;
+    nav.classList.toggle('fondu-gauche', reste && nav.scrollLeft > 6);
+    nav.classList.toggle('fondu-droite', reste && nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 6);
   }
 
   function activer(id) {
@@ -168,6 +190,8 @@
     });
     dessiner();
     entrer($('panneau-' + id));
+    // Onglets défilants (écran étroit) : l'onglet choisi reste visible ; instantané si les animations sont réduites.
+    $('tab-' + id).scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: B.animationsReduites && B.animationsReduites() ? 'auto' : 'smooth' });
   }
 
   // Entrée de l'onglet : fondu court du panneau, blocs en cascade. Seulement à l'activation : les
@@ -188,6 +212,7 @@
     try {
       t.render(panneau);
       marquerAide(panneau);
+      if (B.impression) B.impression.siImpression(panneau);
     } catch (e) {
       erreur('Erreur d’affichage (' + t.titre + ') : ' + e.message);
       console.error(e);

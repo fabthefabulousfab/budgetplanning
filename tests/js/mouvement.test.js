@@ -127,3 +127,39 @@ test('echelonner : conteneur absent ou vide sans erreur', () => {
   assert.doesNotThrow(() => echelonner(null));
   assert.doesNotThrow(() => echelonner({ children: [] }));
 });
+
+// ---- impression : valeurs en entier -------------------------------------------------------------
+
+const { valeurAffichee, SELECTEUR } = require('../../js/impression.js');
+
+test('valeurAffichee : valeur du champ, texte d\'exemple si vide, option choisie pour une liste', () => {
+  const champ = (value, placeholder) => ({ tagName: 'INPUT', type: 'text', value, getAttribute: (n) => (n === 'placeholder' ? placeholder : null) });
+  assert.strictEqual(valeurAffichee(champ('2026-12-50, 2027-1-50', '')), '2026-12-50, 2027-1-50');
+  assert.strictEqual(valeurAffichee(champ('', '—')), '—');
+  assert.strictEqual(valeurAffichee({ tagName: 'SELECT', selectedIndex: 1, options: [{ textContent: 'Revenu' }, { textContent: 'Dépense' }] }), 'Dépense');
+  assert.strictEqual(valeurAffichee({ tagName: 'SELECT', selectedIndex: -1, options: [] }), '');
+  assert.strictEqual(valeurAffichee({ tagName: 'INPUT', type: 'checkbox', checked: true }), null);
+  assert.strictEqual(valeurAffichee(null), null);
+  assert.match(SELECTEUR, /table\.releve input/);
+});
+
+test('impression.css : le champ avec jumeau est masque, le jumeau s\'affiche et passe a la ligne', () => {
+  const css = lire('css/impression.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.match(css, /input\[type="text"\]:has\(\+ \.valeur-impression\)[^{]*\{[^}]*display:\s*none/);
+  assert.match(css, /\.valeur-impression\s*\{[^}]*display:\s*block[^}]*white-space:\s*normal[^}]*overflow-wrap:\s*anywhere/);
+  assert.match(lire('css/style.css'), /\.valeur-impression\s*\{\s*display:\s*none/); // invisible a l'ecran
+  assert.ok(lire('index.html').includes('js/impression.js'));
+});
+
+test('en-tete etroit : onglets sur leur ligne, defilement lateral, bouton d\'aide a droite', () => {
+  const sel = regles(lire('css/style.css')).filter((r) => r.selecteur === '.onglets' || r.selecteur === '.bouton-aide');
+  const etroit = sel.filter((r) => /flex:\s*1 1 100%/.test(r.corps));
+  assert.ok(etroit.length, 'ligne propre pour les onglets');
+  assert.match(etroit[0].corps, /overflow-x:\s*auto/);
+  assert.match(etroit[0].corps, /flex-wrap:\s*nowrap/);
+  assert.ok(sel.some((r) => r.selecteur === '.bouton-aide' && /margin-left:\s*auto/.test(r.corps) && /order:\s*2/.test(r.corps)));
+});
+
+test('un seul fondu des chiffres cles : plus de classe apparait', () => {
+  assert.ok(!/apparait/.test(lire('css/style.css')) && !/apparait/.test(lire('js/ui-dashboard.js')));
+});

@@ -24,12 +24,13 @@
   70% { transform: scaleX(1); opacity: 1; }
   100% { transform: scaleX(1); opacity: 0; }
 }
-.carte.entree, .param-section.entree { position: relative; }
+/* Le positionnement et le trait n'existent que le temps de l'entree : js/ui-app.js retire la classe `entree` a la fin de l'animation. */
+.carte.entree:not(:first-child), .param-section.entree { position: relative; }
 .carte.entree:not(:first-child)::before, .param-section.entree::before {
   content: ""; position: absolute; top: -1px; left: 0; right: 0; height: 1px;
   background: var(--accent); transform-origin: left center; pointer-events: none;
-  animation: filet-section calc(var(--duree-longue) * 1.6) var(--ease) both; /* both : le trait reste efface une fois trace */
-  animation-delay: calc(var(--i, 0) * 40ms + 60ms);
+  animation: filet-section calc(var(--duree-longue) * .8) var(--ease) both; /* meme duree et meme depart que l'entree du bloc */
+  animation-delay: calc(var(--i, 0) * 40ms);
 }
 @keyframes filet-accueil { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .accueil::before { transform-origin: center; animation: filet-accueil var(--duree-longue) var(--ease) backwards; }
@@ -40,7 +41,8 @@
   background-origin: border-box;
   transition: color var(--duree-courte) var(--ease), border-color var(--duree-courte) var(--ease), background-size var(--duree-longue) var(--ease);
 }
-.onglets button[aria-selected="true"] { background-size: 100% 2px; }
+/* Le trait de l'onglet choisi est celui du dessin (la bordure devient transparente), il se trace de gauche a droite. */
+.onglets button[aria-selected="true"] { background-size: 100% 2px; border-bottom-color: transparent; }
 
 /* Boutons et champs : transitions courtes, appui net */
 .btn { transition: background var(--duree-courte) var(--ease), color var(--duree-courte) var(--ease), border-color var(--duree-courte) var(--ease), transform var(--duree-courte) var(--ease); }

@@ -9,7 +9,6 @@
 
   const DUREE_TRACE = 900; // la courbe se trace de gauche à droite
   const DUREE_TRACE_MAJ = 500; // après un changement de période ou de durée
-  const DUREE_FONDU = 600; // apparition du bandeau de chiffres
   let sansAnimation = false; // redessin dû au changement de thème : pas de nouvelle entrée
 
   function css(nom) { return getComputedStyle(document.documentElement).getPropertyValue(nom).trim(); }
@@ -67,8 +66,6 @@
     b.appendChild(chiffre('Solde fin ' + B.moisLong(k.debut.ym), k.debut.solde, fmt(k.debut.solde)));
     b.appendChild(chiffre('Net du mois', k.debut.net, signe(k.debut.net)));
     b.appendChild(chiffre('Solde fin ' + B.moisLong(k.fin.ym), k.fin.solde, fmt(k.fin.solde)));
-    const ms = duree(DUREE_FONDU);
-    if (ms) { b.classList.add('apparait'); b.style.setProperty('--duree-entree', ms + 'ms'); }
     root_.appendChild(b);
   }
 
