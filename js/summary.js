@@ -274,7 +274,16 @@
     return r.length ? r : null;
   }
 
+  // Chiffres du bandeau du tableau de bord, repris tels quels de project() : aucun nouveau calcul.
+  function chiffresCles(mois) {
+    if (!mois || !mois.length) return null;
+    const a = mois[0];
+    const z = mois[mois.length - 1];
+    return { debut: { ym: a.ym, solde: a.solde, net: a.net }, fin: { ym: z.ym, solde: z.solde } };
+  }
+
   const api = {
+    chiffresCles: chiffresCles,
     detailMois: detailMois,
     lignesInfobulle: lignesInfobulle,
     historiqueCsv: historiqueCsv,
