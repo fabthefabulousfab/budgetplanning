@@ -44,6 +44,18 @@ test('surChangementTheme : rappel au changement, plus rien après désabonnement
   assert.strictEqual(env.nb(SOMBRE), 0);
 });
 
+test('surChangementTheme : rappel aussi au début et à la fin de l\'impression (couleurs de la feuille d\'impression)', () => {
+  const env = fauxEnv({});
+  let n = 0;
+  const stop = G.surChangementTheme(() => { n++; }, env);
+  env.declencher('print');
+  assert.strictEqual(n, 1);
+  stop();
+  env.declencher('print');
+  assert.strictEqual(n, 1);
+  assert.strictEqual(env.nb('print'), 0);
+});
+
 test('surChangementTheme : sans matchMedia, désabonnement sans erreur', () => {
   const stop = G.surChangementTheme(() => {}, {});
   assert.doesNotThrow(stop);

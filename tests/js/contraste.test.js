@@ -43,8 +43,12 @@ function variables(texte) {
 const sansCommentaires = theme.replace(/\/\*[\s\S]*?\*\//g, '');
 const media = bloc(sansCommentaires, '@media (prefers-color-scheme: dark)');
 const sombreTexte = bloc(media, ':root');
-const clairTexte = bloc(sansCommentaires.replace(media, ''), ':root');
+const mediaImpression = bloc(sansCommentaires, '@media print');
+const impressionTexte = bloc(mediaImpression, ':root');
+const clairTexte = bloc(sansCommentaires.replace(media, '').replace(mediaImpression, ''), ':root');
 const jeux = { clair: variables(clairTexte), sombre: variables(sombreTexte) };
+// Papier blanc : le bloc print complete le jeu clair (les variables non redefinies restent celles du jeu clair).
+jeux.impression = Object.assign({}, jeux.clair, variables(impressionTexte));
 
 const PAIRES = [
   ['--encre', '--fond'], ['--encre', '--carte'],
@@ -61,10 +65,14 @@ const PAIRES = [
   ['--encre-2', '--papier-2'], ['--negatif', '--papier-2'],
   // Releve : « oui » vert sur la ligne survolee (lavis de --papier-2)
   ['--positif', '--papier-2'],
+  // Etats : bouton secondaire appuye (--grille), bouton d'aide survole (--positif-fond)
+  ['--encre', '--grille'], ['--accent', '--positif-fond'],
 ];
 // Elements graphiques (WCAG 1.4.11, 3:1) : bord des champs sur leur fond, au repos et au survol ;
 // icones discretes du releve (--bord-champ) sur le papier, au repos.
-const PAIRES_GRAPHIQUES = [['--bord-champ', '--papier-2'], ['--bord-champ', '--carte'], ['--bord-champ', '--fond']];
+// Anneau de focus (--accent) sur chaque fond ou un controle peut se trouver.
+const PAIRES_GRAPHIQUES = [['--bord-champ', '--papier-2'], ['--bord-champ', '--carte'], ['--bord-champ', '--fond'],
+  ['--accent', '--fond'], ['--accent', '--carte'], ['--accent', '--papier-2']];
 
 // Melange de la couleur `hex` d'opacite `a` sur le fond `fond`.
 function melange(hex, a, fond) {
@@ -72,7 +80,16 @@ function melange(hex, a, fond) {
   return '#' + [0, 2, 4].map((i) => Math.round(c(hex, i) * a + c(fond, i) * (1 - a)).toString(16).padStart(2, '0')).join('');
 }
 
-for (const nom of ['clair', 'sombre']) {
+for (const nom of ['clair', 'sombre', 'impression']) {
+  // Etats survole et appuye des boutons pleins (.btn, .visite-btn-principal) : aplats dedies, plus profonds.
+  test('texte des boutons pleins sur leurs etats survol et appui, jeu ' + nom, () => {
+    const v = jeux[nom];
+    for (const etat of ['--accent-survol', '--accent-appui']) {
+      assert.ok(v[etat], etat + ' absent du jeu ' + nom);
+      const r = contraste(v['--sur-accent'], v[etat]);
+      assert.ok(r >= 4.5, `--sur-accent sur ${etat} (${nom}) : ${r.toFixed(2)} < 4.5`);
+    }
+  });
   test('contrastes AA (4.5) du jeu ' + nom, () => {
     const v = jeux[nom];
     for (const [a, b] of PAIRES) {

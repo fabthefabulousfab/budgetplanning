@@ -37,6 +37,7 @@
     $('onglets').hidden = true;
     a.textContent = '';
     contenu.forEach(function (n) { a.appendChild(n); });
+    if (B.echelonner) B.echelonner(a);
   }
 
   function el(tag, texte, attrs) {
@@ -166,6 +167,17 @@
       $('panneau-' + t.id).hidden = t.id !== id;
     });
     dessiner();
+    entrer($('panneau-' + id));
+  }
+
+  // Entrée de l'onglet : fondu court du panneau, blocs en cascade. Seulement à l'activation : les
+  // redessins après une saisie ou un changement de thème ne rejouent rien.
+  function entrer(panneau) {
+    if (!panneau || !B.echelonner) return;
+    panneau.classList.remove('panneau-entree');
+    void panneau.offsetWidth;
+    panneau.classList.add('panneau-entree');
+    B.echelonner(panneau);
   }
 
   // Seul l'onglet visible est dessiné (Chart.js mesure mal un canvas masqué) ; les autres le sont à l'activation.

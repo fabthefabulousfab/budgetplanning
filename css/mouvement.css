@@ -1,0 +1,60 @@
+/* Mouvement : entrees en cascade, fondu entre onglets, filets qui se tracent, transitions courtes.
+   Charge apres style.css. Regle d'or : jamais d'opacite 0 au repos. Les etats de depart ne vivent que
+   dans les images cles (fill-mode backwards) : si le script ou l'animation manque, tout reste visible.
+   Les durees viennent de css/theme.css ; l'ensemble s'eteint sous prefers-reduced-motion (bloc en fin de fichier). */
+
+/* Entree d'un bloc : fondu avec un leger glissement ; --i (pose par echelonner) decale les blocs successifs.
+   Duree .8 x --duree-longue, decalage 40 ms, rang 4 au plus : tout est en place en moins de 0,55 s. */
+@keyframes entree {
+  from { opacity: 0; transform: translateY(.6rem); }
+  to { opacity: 1; transform: none; }
+}
+.entree {
+  animation: entree calc(var(--duree-longue) * .8) var(--ease) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+/* Changement d'onglet : le panneau se fond en un instant (les blocs arrivent en cascade par-dessus) */
+@keyframes panneau-fondu { from { opacity: 0; } to { opacity: 1; } }
+.panneau-entree { animation: panneau-fondu var(--duree-courte) var(--ease) backwards; }
+
+/* Filets qui se tracent : un trait d'accent file de gauche a droite sur le filet gris de la section, puis s'efface. */
+@keyframes filet-section {
+  0% { transform: scaleX(0); opacity: 1; }
+  70% { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+.carte.entree, .param-section.entree { position: relative; }
+.carte.entree:not(:first-child)::before, .param-section.entree::before {
+  content: ""; position: absolute; top: -1px; left: 0; right: 0; height: 1px;
+  background: var(--accent); transform-origin: left center; pointer-events: none;
+  animation: filet-section calc(var(--duree-longue) * 1.6) var(--ease) both; /* both : le trait reste efface une fois trace */
+  animation-delay: calc(var(--i, 0) * 40ms + 60ms);
+}
+@keyframes filet-accueil { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.accueil::before { transform-origin: center; animation: filet-accueil var(--duree-longue) var(--ease) backwards; }
+
+/* Onglets : le soulignement choisi se dessine de gauche a droite */
+.onglets button {
+  background: linear-gradient(var(--accent), var(--accent)) no-repeat left bottom / 0 2px;
+  background-origin: border-box;
+  transition: color var(--duree-courte) var(--ease), border-color var(--duree-courte) var(--ease), background-size var(--duree-longue) var(--ease);
+}
+.onglets button[aria-selected="true"] { background-size: 100% 2px; }
+
+/* Boutons et champs : transitions courtes, appui net */
+.btn { transition: background var(--duree-courte) var(--ease), color var(--duree-courte) var(--ease), border-color var(--duree-courte) var(--ease), transform var(--duree-courte) var(--ease); }
+.btn:active { transform: translateY(1px); }
+.btn-icone { transition: color var(--duree-courte) var(--ease), background var(--duree-courte) var(--ease), transform var(--duree-courte) var(--ease); }
+.btn-icone:active { transform: scale(.92); }
+.bouton-aide { transition: background var(--duree-courte) var(--ease), transform var(--duree-courte) var(--ease); }
+.bouton-aide:active { transform: scale(.94); }
+
+/* Mouvement reduit : plus aucune animation, transition ni transformation (le contenu est deja a sa place finale). */
+@media (prefers-reduced-motion: reduce) {
+  .entree, .panneau-entree, .carte.entree:not(:first-child)::before, .param-section.entree::before, .accueil::before { animation: none; }
+  .onglets button, .btn, .btn-icone, .bouton-aide { transition: none; }
+  .carte.entree:not(:first-child)::before, .param-section.entree::before { display: none; } /* trait decoratif : sans animation il resterait fige */
+  .btn:active, .btn-icone:active, .bouton-aide:active { transform: none; }
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

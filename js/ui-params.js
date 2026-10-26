@@ -133,7 +133,7 @@
   }
 
   function carteSauvegarde() {
-    const c = el('div', '', { class: 'carte' });
+    const c = el('div', '', { class: 'carte export-import' });
     c.appendChild(el('h2', 'Sauvegarde'));
     c.appendChild(el('p', 'Un seul fichier YAML contient vos données, événements, paramètres et paliers (pas l’historique CSV, regénéré à l’enregistrement). Importer ne remplace jamais un fichier sans confirmation.', { class: 'note' }));
     const ligne = el('div', '', { class: 'actions-accueil' });

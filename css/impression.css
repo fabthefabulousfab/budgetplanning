@@ -1,0 +1,63 @@
+/* Impression : encre noire sur papier blanc (les couleurs de remplacement sont dans css/theme.css, bloc print).
+   Chargee pour le media print uniquement. On garde les relevés, les grands chiffres et les graphiques ;
+   on retire tout ce qui sert a agir (onglets, aide, visite, formulaires d'ajout, actions, export). */
+@page { size: A4 landscape; margin: 12mm 12mm; }
+
+html, body { background: var(--fond); }
+html { font-size: 13px; } /* les largeurs en rem des releves se resserrent d un cinquieme */
+body { font-size: 10.5pt; line-height: 1.4; }
+main { max-width: none; padding: 0; }
+
+/* Retire : tout ce qui sert a agir, plus les bandeaux d'ecran */
+.onglets, .bouton-aide, .visite, .bandeau, .avertissements, .ajout, .export-import, .zone-import,
+.bulle-graphe, .aide, .aide-ligne, .palier-aide, .btn, .btn-lien, .btn-icone, .btn-palier, .case-palier,
+table.releve tr.palier-ajout, table.releve .c-act > *, .orphelins .btn-icone { display: none !important; }
+/* La colonne des actions se referme sans disparaitre (les titres de categorie couvrent un nombre fixe de colonnes) */
+table.releve th.c-act, table.releve td.c-act { width: 0 !important; padding: 0 !important; border: 0 !important; overflow: hidden; }
+.carte:has(> .ajout):not(:has(table)) { display: none !important; } /* sections qui ne sont qu'un formulaire d'ajout (le formulaire d'une section a tableau est masque plus haut) */
+.entete { position: static; padding: 0 0 var(--espace-2); border-bottom: 1px solid var(--trait); margin-bottom: var(--espace-3); }
+
+/* Aucune animation, aucun glissement : le papier est a sa place finale (au cas ou une feuille d'ecran en poserait) */
+*, *::before, *::after { animation: none !important; transition: none !important; }
+.entree, .panneau-entree { opacity: 1 !important; transform: none !important; }
+.carte.entree::before, .param-section.entree::before { display: none !important; } /* trait decoratif de l'entree */
+
+/* Pas de pliage au milieu d'une ligne, d'un chiffre, d'un graphique ni d'une categorie */
+.carte, .param-section { break-inside: avoid-page; }
+.graphe, .chiffres-cles, .mensuel-chiffres, .detail-cat, .solde-total, .orphelins li { break-inside: avoid; }
+.carte h2, .param-titre, .surtitre, .detail-entete { break-after: avoid; }
+table.releve tr, table.bilan tr, table.synthese tr { break-inside: avoid; }
+table.releve tr.groupe { break-after: avoid; }
+thead { display: table-header-group; }
+
+/* Graphiques : une hauteur sobre, rendus tels que dessines (les couleurs ont ete relues pour l'impression) */
+.graphe { height: 230px; }
+.graphe canvas { max-width: 100%; }
+
+/* Les petits traits dessines en fond ne partent pas : on demande leur impression */
+.chiffre-val::after, table.releve tr.palier td, table.releve .case-oui-non input:checked, .detail-entete,
+table.bilan th:last-child, table.bilan td:last-child, table.synthese td.c-total { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.carte, .carte-tete { box-shadow: none; }
+
+/* Releves : pleine largeur de la page, plus de colonnes figees ni de defilement, champs lus comme du texte */
+.defil { overflow: visible !important; }
+table.releve, table.releve.t-annuel, table.releve.t-futurs, table.releve.t-encours, table.releve.t-simules { min-width: 0 !important; width: 100%; table-layout: fixed; font-size: 9.5pt; }
+table.releve th.c-lib, table.releve td.c-lib, table.releve tr.groupe th, table.releve tr.palier:not(.palier-ajout) td:first-child { position: static !important; box-shadow: none !important; }
+.colle-gauche { position: static !important; width: auto; max-width: none; }
+table.releve thead th { white-space: normal; }
+table.edition input[type="text"], table.edition select, table.edition.releve input[type="text"], table.edition.releve select {
+  appearance: none; -webkit-appearance: none; background: none !important; background-image: none !important; border: 0 !important; border-radius: 0;
+  padding: 0 .2rem; min-height: 0; width: auto; max-width: 100%; color: var(--encre); box-shadow: none; outline: 0;
+}
+table.releve input.num { text-align: right; }
+table.releve td { padding-top: .25rem; padding-bottom: .25rem; }
+table.releve td.c-impact, table.releve td.c-calc, table.releve td.c-rbt { white-space: normal; }
+
+/* Selecteurs de periode : on garde la valeur choisie, sans la boite */
+.choix-periode select { appearance: none; -webkit-appearance: none; background: none; border: 0; padding: 0; min-height: 0; font-weight: 600; color: var(--encre); }
+
+/* Parametres : titre a gauche, champs en texte */
+.champ-param input { appearance: none; border: 0; border-bottom: 1px solid var(--grille); background: none; min-height: 0; }
+.param-section { grid-template-columns: 12rem minmax(0, 1fr); }
+.champ-param { padding-bottom: 0; }
+.champ-aide small { display: none; }

@@ -18,6 +18,8 @@
   --aire-force: .24; /* opacite du lavis des graphiques en aire, pres de la courbe */
   --accent: #2f5d50;
   --accent-fond: #2f5d50; /* aplat des boutons pleins (plus profond que --accent en mode sombre) */
+  --accent-survol: #234a3f; /* aplat des boutons pleins au survol */
+  --accent-appui: #193a31; /* ... et pendant l'appui */
   --sur-accent: #fcf9f2; /* texte sur --accent-fond */
   --positif: #2f5d50;
   --negatif: #a8451e;
@@ -47,6 +49,7 @@
   --rayon: 6px;
   --duree-courte: .15s;
   --duree-longue: .45s;
+  --duree-glisse: .36s; /* glissade du cadre de la visite guidee */
   --ease: cubic-bezier(.22, .61, .36, 1);
 }
 @media (prefers-color-scheme: dark) {
@@ -64,6 +67,8 @@
     --aire-force: .26;
     --accent: #88bda9;
     --accent-fond: #2f5d50;
+    --accent-survol: #274c41;
+    --accent-appui: #1f3e35;
     --sur-accent: #f1e8d6;
     --positif: #8fc4b0;
     --negatif: #e89068;
@@ -72,5 +77,32 @@
     --voile: rgba(0, 0, 0, .72);
     --ombre: rgba(0, 0, 0, .55);
     --cadre-visite: #f1e8d6;
+  }
+}
+/* Impression : papier blanc, encre noire, vert et terre cuite assombris pour rester lisibles en niveaux de gris.
+   Prend le pas sur le thème sombre (ce bloc vient après lui). */
+@media print {
+  :root {
+    color-scheme: light;
+    --fond: #ffffff;
+    --carte: #ffffff;
+    --papier-2: #f4f4f2;
+    --encre: #000000;
+    --encre-2: #3f3f3b;
+    --trait: #8f8f88;
+    --filet: #b8b8b0;
+    --grille: #dcdcd6;
+    --bord-champ: #6e6e66;
+    --pointille: #8f8f88;
+    --accent: #1d4a3c;
+    --accent-fond: #1d4a3c;
+    --accent-survol: #1d4a3c;
+    --accent-appui: #1d4a3c;
+    --sur-accent: #ffffff;
+    --positif: #1d4a3c;
+    --negatif: #8a3512;
+    --positif-fond: #eef3ea;
+    --negatif-fond: #f8e8df;
+    --ombre: rgba(0, 0, 0, 0);
   }
 }

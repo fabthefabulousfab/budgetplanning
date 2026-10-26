@@ -7,6 +7,7 @@
 
   const SOMBRE = '(prefers-color-scheme: dark)';
   const REDUIT = '(prefers-reduced-motion: reduce)';
+  const IMPRESSION = 'print';
   const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
   const fmt = function (v) { return eur.format(Math.round(v) + 0); }; // + 0 : évite « -0 € »
 
@@ -80,13 +81,25 @@
 
   function dureeAnimation(reduit, ms) { return reduit ? 0 : ms; }
 
-  // Appelle `rappel` quand le thème du système change ; rend la fonction de désabonnement.
+  // Entrée en cascade : chaque enfant direct reçoit son rang (--i, plafonné pour que l'ensemble reste bref)
+  // et la classe `entree` de css/mouvement.css (le CSS coupe tout si l'ordinateur réduit les animations).
+  const RANG_MAX = 4;
+  function echelonner(conteneur) {
+    if (!conteneur || !conteneur.children) return;
+    Array.prototype.forEach.call(conteneur.children, function (enfant, i) {
+      enfant.style.setProperty('--i', String(Math.min(i, RANG_MAX)));
+      enfant.classList.add('entree');
+    });
+  }
+
+  // Appelle `rappel` quand le thème du système change, ou quand l'impression commence ou se termine (la feuille
+  // d'impression a ses propres couleurs : les canvas doivent être redessinés avec) ; rend le désabonnement.
   function surChangementTheme(rappel, env) {
-    const m = requete(env, SOMBRE);
-    if (!m || typeof m.addEventListener !== 'function') return function () {};
     const f = function () { rappel(); };
-    m.addEventListener('change', f);
-    return function () { m.removeEventListener('change', f); };
+    const abonnes = [SOMBRE, IMPRESSION].map(function (q) { return requete(env, q); })
+      .filter(function (m) { return m && typeof m.addEventListener === 'function'; });
+    abonnes.forEach(function (m) { m.addEventListener('change', f); });
+    return function () { abonnes.forEach(function (m) { m.removeEventListener('change', f); }); };
   }
 
   const api = {
@@ -95,6 +108,7 @@
     optionsCommunes: optionsCommunes,
     animationsReduites: animationsReduites,
     dureeAnimation: dureeAnimation,
+    echelonner: echelonner,
     surChangementTheme: surChangementTheme,
   };
   if (typeof module !== 'undefined') module.exports = api;

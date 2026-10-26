@@ -111,6 +111,12 @@ La page (code seul, jamais les données) est publiée sur GitHub Pages, à l'adr
 
 Seuls les fichiers commités de l'application (`index.html`, `js/`, `css/`, `vendor/`) sont publiés, jamais les fichiers non commités ni les données. Pour une publication automatique à chaque push sur `main`, il faudrait un workflow GitHub Actions : cela demande le droit « Workflows » sur le jeton d'accès et la source « GitHub Actions » dans les réglages de Pages. Ce n'est pas en place aujourd'hui.
 
+## Apparence
+
+Le thème suit l'ordinateur : clair (papier crème, vert sapin, terre cuite) ou sombre (« papier de nuit »), sans réglage ni bouton ; les graphiques se redessinent quand le thème du système change. Si l'ordinateur demande de réduire les animations, l'application n'en joue aucune (entrées en cascade, fondu entre onglets, tracé des courbes, glissade de la visite guidée). À l'impression (Ctrl/Cmd + P), la page passe sur papier blanc en encre noire, en paysage : onglets, boutons, formulaires d'ajout et colonnes d'actions disparaissent, relevés et graphiques restent lisibles.
+
+Pour changer la palette, éditez `css/theme.css` : un jeu de variables pour le thème clair, un pour le sombre (`@media (prefers-color-scheme: dark)`) et un pour l'impression (`@media print`). Aucune couleur n'est écrite ailleurs. Le test `tests/js/contraste.test.js` vérifie le contraste (AA, 4,5:1 pour le texte, 3:1 pour les éléments graphiques) des paires de couleurs de chaque jeu : si vous modifiez une couleur, relancez `npm test`. Les animations vivent dans `css/mouvement.css` (durées dans `css/theme.css`), la feuille d'impression dans `css/impression.css`.
+
 ## Aide
 
 Le bouton « ? » à droite de l'en-tête (toujours visible, y compris sur l'écran d'accueil) lance une visite guidée de l'onglet affiché : un cadre entoure tour à tour les zones de la page et une bulle explique ce qu'elles montrent et ce qu'on peut y faire. Elle ne démarre jamais seule et ne modifie aucune donnée. Flèches ← / → pour changer d'étape, Échap ou « × » pour fermer. Une étape dont la zone est absente (pas encore de palier ou de prêt, par exemple) est sautée.

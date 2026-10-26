@@ -36,8 +36,9 @@ main { max-width: 1200px; margin: 0 auto; padding: var(--espace-4) var(--espace-
 
 /* Boutons : aplat vert profond (variable dediee, plus calme en mode sombre) ; le secondaire est a filet */
 .btn { font: inherit; font-weight: 600; background: var(--accent-fond); color: var(--sur-accent); border: 1px solid var(--accent-fond); border-radius: var(--rayon); min-height: 2.5rem; padding: var(--espace-2) var(--espace-3); cursor: pointer; transition: background var(--duree-courte) var(--ease), color var(--duree-courte) var(--ease), border-color var(--duree-courte) var(--ease); }
-.btn:hover { background: color-mix(in srgb, var(--accent-fond) 82%, var(--encre)); border-color: color-mix(in srgb, var(--accent-fond) 82%, var(--encre)); }
-.btn:active { background: color-mix(in srgb, var(--accent-fond) 66%, var(--encre)); }
+.btn:hover { background: var(--accent-survol); border-color: var(--accent-survol); }
+.btn:active { background: var(--accent-appui); border-color: var(--accent-appui); }
+.btn:disabled, .btn-icone:disabled { opacity: .5; cursor: not-allowed; }
 .btn-secondaire { background: transparent; color: var(--encre); border-color: var(--bord-champ); }
 .btn-secondaire:hover { background: var(--papier-2); border-color: var(--encre-2); }
 .btn-secondaire:active { background: var(--grille); }
@@ -413,32 +414,39 @@ table.releve tr.releve-vide .releve-vide-titre { margin-bottom: var(--espace-1);
 .bouton-aide { margin-left: auto; font: inherit; font-weight: 700; width: 2.25rem; height: 2.25rem; padding: 0; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); background: none; cursor: pointer; transition: background var(--duree-courte) var(--ease); }
 .bouton-aide:hover { background: var(--positif-fond); }
 .bouton-aide:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Visite guidée (js/visite.js) : un cadre fin qui glisse de cible en cible sous un voile, une bulle de papier
+   (filet d'accent, titre à empattement, compteur en petites capitales, bouton plein vert profond). */
 .visite { position: fixed; inset: 0; z-index: 1000; }
 .visite-voile { position: absolute; inset: 0; }
-.visite-cadre { position: fixed; border: 3px solid var(--cadre-visite); border-radius: 10px; pointer-events: none; box-shadow: 0 0 0 200vmax var(--voile); transition: top .35s ease, left .35s ease, width .35s ease, height .35s ease; }
-.visite-cadre::after { content: ""; position: absolute; inset: -8px; border: 2px solid var(--cadre-visite); border-radius: 14px; opacity: 0; animation: visite-pulse 1.8s ease-out infinite; }
-@keyframes visite-pulse { 0% { opacity: .85; transform: scale(.99); } 70%, 100% { opacity: 0; transform: scale(1.03); } }
-.visite-bulle { position: fixed; width: min(22rem, calc(100vw - 16px)); max-height: calc(100vh - 16px); overflow-y: auto; padding: 1rem 1.1rem .9rem; background: var(--carte); color: var(--encre); border: 1px solid var(--trait); border-radius: 10px; box-shadow: 0 8px 28px var(--ombre); opacity: 0; transition: opacity .25s ease; }
-.visite-bulle.visible { opacity: 1; }
+.visite-cadre { position: fixed; border: 2px solid var(--cadre-visite); border-radius: 8px; pointer-events: none; box-shadow: 0 0 0 200vmax var(--voile); transition: top var(--duree-glisse) var(--ease), left var(--duree-glisse) var(--ease), width var(--duree-glisse) var(--ease), height var(--duree-glisse) var(--ease); }
+.visite-cadre::after { content: ""; position: absolute; inset: -7px; border: 1px solid var(--cadre-visite); border-radius: 13px; opacity: 0; animation: visite-pulse 2.4s ease-out infinite; }
+@keyframes visite-pulse { 0% { opacity: .8; transform: scale(.99); } 65%, 100% { opacity: 0; transform: scale(1.025); } }
+.visite-bulle { position: fixed; width: min(23rem, calc(100vw - 16px)); max-height: calc(100vh - 16px); overflow-y: auto; padding: 1.3rem 1.4rem 1rem; background: var(--carte); color: var(--encre); border: 1px solid var(--trait); border-radius: var(--rayon); box-shadow: 0 10px 32px var(--ombre); opacity: 0; transform: translateY(6px); transition: opacity var(--duree-longue) var(--ease), transform var(--duree-longue) var(--ease); }
+.visite-bulle.visible { opacity: 1; transform: none; }
 .visite-centre .visite-voile { background: var(--voile); }
 .visite-centre .visite-cadre { display: none; }
-.visite-titre { font-size: 1.1rem; margin: 0 1.6rem .4rem 0; }
-.visite-texte { margin: 0 0 .9rem; font-size: .92rem; color: var(--encre-2); }
-.visite-fermer { position: absolute; top: .4rem; right: .5rem; width: 1.8rem; height: 1.8rem; padding: 0; font: inherit; font-size: 1.3rem; line-height: 1; color: var(--encre-2); background: none; border: 0; border-radius: 4px; cursor: pointer; }
-.visite-fermer:hover { color: var(--encre); }
-.visite-pied { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
-.visite-compteur { font-size: .85rem; color: var(--encre-2); font-variant-numeric: tabular-nums; }
+.visite-titre { margin: 0 1.8rem .5rem 0; font-size: 1.3rem; line-height: 1.2; text-wrap: balance; }
+.visite-titre::before { content: ""; display: block; width: 2.25rem; height: 2px; margin-bottom: .7rem; background: var(--accent); }
+.visite-texte { margin: 0 0 1rem; font-size: .92rem; line-height: 1.6; color: var(--encre); }
+.visite-fermer { position: absolute; top: .55rem; right: .6rem; width: 2rem; height: 2rem; padding: 0; font: inherit; font-size: 1.4rem; line-height: 1; color: var(--encre-2); background: none; border: 0; border-radius: var(--rayon); cursor: pointer; transition: color var(--duree-courte) var(--ease), background var(--duree-courte) var(--ease); }
+.visite-fermer:hover { color: var(--encre); background: var(--papier-2); }
+.visite-pied { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding-top: .8rem; border-top: 1px solid var(--grille); }
+.visite-compteur { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--encre-2); font-variant-numeric: tabular-nums; }
 .visite-boutons { display: flex; gap: var(--espace-2); }
-.visite-btn { font: inherit; font-weight: 600; color: var(--accent); background: none; border: 1px solid var(--accent); border-radius: var(--rayon); min-height: 2.25rem; padding: var(--espace-1) .9rem; cursor: pointer; }
-.visite-btn-principal { color: var(--carte); background: var(--accent); }
+.visite-btn { font: inherit; font-weight: 600; color: var(--encre); background: transparent; border: 1px solid var(--bord-champ); border-radius: var(--rayon); min-height: 2.25rem; padding: var(--espace-1) .95rem; cursor: pointer; transition: background var(--duree-courte) var(--ease), border-color var(--duree-courte) var(--ease), color var(--duree-courte) var(--ease); }
+.visite-btn:hover { background: var(--papier-2); border-color: var(--encre-2); }
+.visite-btn-principal { color: var(--sur-accent); background: var(--accent-fond); border-color: var(--accent-fond); }
+.visite-btn-principal:hover { background: var(--accent-survol); border-color: var(--accent-survol); }
+.visite-btn-principal:active { background: var(--accent-appui); border-color: var(--accent-appui); }
 .visite-fermer:focus-visible, .visite-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Mouvement réduit : rien ne s'anime plus (la visite se pose, sans glisser ni pulser). Le filet universel
+   en fin de bloc couvre aussi ce qu'on ajoutera ; css/mouvement.css a son propre bloc. */
 @media (prefers-reduced-motion: reduce) {
   .chiffres-cles.apparait .chiffre, .chiffres-cles.apparait .chiffre-val::after { animation: none; }
-  .visite-cadre, .visite-bulle { transition: none; }
+  .visite-cadre, .visite-bulle, .visite-fermer, .visite-btn { transition: none; }
+  .visite-bulle { transform: none; }
   .visite-cadre::after { animation: none; }
-}
-@media print {
-  .visite, .bouton-aide { display: none !important; }
-  .entete { position: static; }
-  .chiffres-cles.apparait .chiffre, .chiffres-cles.apparait .chiffre-val::after { animation: none; }
+  .onglets button, .btn, .btn-icone, .bouton-aide { transition: none; }
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
