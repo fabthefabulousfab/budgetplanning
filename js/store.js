@@ -366,6 +366,12 @@
     }
   }
 
+  // Création de donnees-courantes.yaml seul : paliers.yaml (même s'il existe) n'est ni lu ni réécrit.
+  async function saveDonneesSeules(dir, donnees) {
+    enFichier(FICHIERS.donnees, function () { validerDonnees(donnees); });
+    await ecrire(dir, FICHIERS.donnees, sansPaliers(donnees));
+  }
+
   async function saveEvenements(dir, evenements, prets) {
     const lesPrets = (prets || []).map(function (p) { return Object.assign({}, p, { nature: 'pret' }); });
     enFichier(FICHIERS.evenements, function () { validerEvenements(evenements); validerPrets(lesPrets); });
@@ -392,7 +398,7 @@
 
   const api = {
     FICHIERS: FICHIERS, CATEGORIES_EVENEMENT: CATEGORIES_EVENEMENT, validerLigne: validerLigne,
-    loadAll: loadAll, saveDonnees: saveDonnees, saveEvenements: saveEvenements, ecrireHistorique: ecrireHistorique, saveParametres: saveParametres, supported: supported,
+    loadAll: loadAll, saveDonnees: saveDonnees, saveDonneesSeules: saveDonneesSeules, saveEvenements: saveEvenements, ecrireHistorique: ecrireHistorique, saveParametres: saveParametres, supported: supported,
   };
   if (typeof module !== 'undefined') module.exports = api;
   else root.Budget = Object.assign(root.Budget || {}, api);

@@ -4,10 +4,22 @@ Application HTML autonome de projection budgétaire sur 10 à 15 ans (JavaScript
 
 ## Prérequis
 
-- [uv](https://docs.astral.sh/uv/) (exécute le convertisseur Python Excel vers YAML).
 - Google Chrome ou Microsoft Edge sur ordinateur (l'application utilise l'API d'accès aux dossiers locaux).
+- [uv](https://docs.astral.sh/uv/) uniquement pour l'import Excel facultatif (voir plus bas).
 
-## Démarrer
+## Démarrer un budget
+
+Aucun fichier Excel n'est nécessaire. Ouvrez `index.html` (ou la page publiée), cliquez sur « Choisir un dossier » et choisissez un **dossier vide** : l'application y crée `donnees-courantes.yaml` (situation à 0 et listes vides), `evenements-futurs.yaml` (liste vide) et `parametres.yaml` (paramètres par défaut), puis s'ouvre sur un budget vide, prêt à remplir (onglet Mensuel pour commencer, réglages dans Paramètres).
+
+- Jamais d'écrasement : l'application n'écrit que des fichiers absents. Les fichiers système (`.DS_Store`, `Thumbs.db`…) ne comptent pas comme du contenu.
+- Si le dossier contient déjà d'autres éléments (photos, sous-dossiers…), un écran demande confirmation avant de créer les fichiers ; « Choisir un autre dossier » ne modifie rien. Si le contenu du dossier ne peut pas être listé, la confirmation est aussi demandée.
+- Si le dossier contient des fichiers de budget mais pas `donnees-courantes.yaml`, l'application propose de créer ce seul fichier ; les autres ne sont pas touchés.
+- Si la création échoue en cours de route, le message nomme le fichier en cause et indique ceux qui ont déjà été créés.
+- Aux visites suivantes, rouvrez le même dossier : il contient un budget, il s'ouvre tel quel (l'autorisation d'accès est à redonner à chaque session).
+
+## Importer un Excel existant (facultatif, avancé)
+
+Si vous avez déjà un `budget.xlsx`, le script `demarrer.sh` peut le convertir en fichiers YAML dans `data/`. C'est une façon avancée et facultative d'initialiser un budget : l'Excel n'est nécessaire à rien d'autre.
 
 ```
 ./demarrer.sh [--depuis-excel]
@@ -16,10 +28,10 @@ Application HTML autonome de projection budgétaire sur 10 à 15 ans (JavaScript
 - Si `budget.xlsx` existe et que `data/donnees-courantes.yaml` n'existe pas encore, ou avec `--depuis-excel`, le fichier Excel est converti (`uv run python scripts/excel_to_yaml.py budget.xlsx`).
 - Si `data/donnees-courantes.yaml` existe déjà et qu'aucune option n'est donnée : en terminal interactif, le script demande « Repartir de budget.xlsx (écrase les modifications faites dans la page) ? [o/N] » ; sans terminal, il repart des YAML existants.
 - Si la conversion échoue, le script s'arrête avec un message ; les YAML existants ne sont pas modifiés.
-- Puis Chrome ouvre `index.html`. Cliquez sur « Ouvrir le dossier data/ » et choisissez le dossier `data/` du projet.
+- Puis Chrome ouvre `index.html`. Cliquez sur « Choisir un dossier » et choisissez le dossier `data/` du projet.
 - `DEMARRER_SANS_OUVRIR=1 ./demarrer.sh` fait tout sauf ouvrir Chrome (utile pour les tests).
 
-## Format de `budget.xlsx`
+## Format de `budget.xlsx` (import Excel facultatif)
 
 Quatre feuilles, en-têtes en ligne 1 :
 
@@ -43,9 +55,9 @@ Type : `revenu` ou `depense`. Revalorisé : `oui` ou `non`. Début et Fin : `AAA
 
 Le mois va de 1 à 12. Ne pas mélanger des échéances avec année et sans année dans une même cellule. La virgule décimale n'est pas acceptée (utiliser le point).
 
-## Les trois fichiers YAML (dossier `data/`)
+## Les fichiers de données (dossier choisi)
 
-- `donnees-courantes.yaml` : situation, lignes mensuelles, annuelles et exceptionnelles. Il est régénéré à chaque import Excel : les modifications faites dans la page sur ces lignes sont alors perdues.
+- `donnees-courantes.yaml` : situation, lignes mensuelles, annuelles et exceptionnelles. Un nouvel import Excel (facultatif) le régénère : les modifications faites dans la page sur ces lignes sont alors perdues.
 - `evenements-futurs.yaml` : revenus et dépenses futurs ajoutés dans l'onglet dédié, et prêts de l'onglet Prêts (entrées `nature: pret`, `statut: simule` ou `en_cours`). Jamais écrasé par l'import Excel.
 - `historique-comptes.csv` : historique mois par mois : résumé (revenus, dépenses, solde, euros arrondis), puis le détail de chaque revenu et dépense du mois (origine, catégorie, libellé, montant, revalorisation comprise ; lignes masquées exclues), regénéré après chaque enregistrement, à donner tel quel à un LLM pour un avis financier.
 - Une ligne peut être masquée avec l'icône œil (`actif: false`) : elle est ignorée dans toute la projection. Un nouvel import Excel remet les lignes de `donnees-courantes.yaml` à l'état actif.
@@ -126,7 +138,7 @@ Les textes sont dans `js/visite-textes.js` (une liste d'étapes par onglet : `ci
 ## Limites
 
 - Chrome ou Edge uniquement (pas de Firefox ni Safari).
-- L'autorisation d'accès au dossier `data/` est à redonner à chaque session.
+- L'autorisation d'accès au dossier est à redonner à chaque session.
 - Un seul scénario.
 - Pas d'intérêts, pas d'impôts, pas d'inflation (hors revalorisation configurée).
 

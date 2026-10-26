@@ -12,8 +12,8 @@
     { cle: 'horizon', label: 'Horizon (années, de 10 à 15)', aide: 'Durée de la projection.', type: 'number', min: '10', max: '15', step: '1' },
     { cle: 'taux', label: 'Revalorisation : taux annuel (%)', aide: 'Appliqué aux lignes « revalorisé », par exemple 2 pour 2 %.', type: 'text', placeholder: '2' },
     { cle: 'mois', label: 'Revalorisation : mois (de 1 à 12)', aide: 'Mois de l’année où la revalorisation s’applique (1 = janvier).', type: 'number', min: '1', max: '12', step: '1' },
-    { cle: 'solde_compte_courant', label: 'Solde de départ : compte courant (€)', aide: 'Vide = valeur de l’Excel. Un nombre la remplace (négatif accepté), même après un nouvel import.', type: 'text', solde: 'compte_courant' },
-    { cle: 'solde_epargne', label: 'Solde de départ : épargne (€)', aide: 'Vide = valeur de l’Excel. Un nombre la remplace, même après un nouvel import.', type: 'text', solde: 'epargne' },
+    { cle: 'solde_compte_courant', label: 'Solde de départ : compte courant (€)', aide: 'Vide = montant de la situation enregistrée (0 pour un nouveau budget). Un nombre le remplace (négatif accepté).', type: 'text', solde: 'compte_courant' },
+    { cle: 'solde_epargne', label: 'Solde de départ : épargne (€)', aide: 'Vide = montant de la situation enregistrée (0 pour un nouveau budget). Un nombre le remplace.', type: 'text', solde: 'epargne' },
   ];
 
   const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 });
@@ -51,7 +51,7 @@
         c.solde_depart[k] = null;
       } else {
         const n = /^-?\d+([.,]\d+)?$/.test(t.replace(/[\s  ]/g, '')) ? Number(t.replace(/[\s  ]/g, '').replace(',', '.')) : NaN;
-        if (!Number.isFinite(n)) throw new Error('Le solde de départ doit être un nombre (par exemple 1250 ou -300,50), ou vide pour reprendre la valeur de l’Excel.');
+        if (!Number.isFinite(n)) throw new Error('Le solde de départ doit être un nombre (par exemple 1250 ou -300,50), ou vide pour reprendre la situation enregistrée.');
         c.solde_depart[k] = n;
       }
     } else if (cle === 'depart') {
@@ -193,7 +193,7 @@
         attrs.inputmode = 'decimal';
         const sit = state().donnees.situation;
         const x = sit ? sit[ch.solde] : null;
-        if (typeof x === 'number' && Number.isFinite(x)) attrs.placeholder = 'Excel : ' + eur.format(x);
+        if (typeof x === 'number' && Number.isFinite(x)) attrs.placeholder = 'Situation : ' + eur.format(x);
       }
       if (erreurs[ch.cle]) { attrs['aria-invalid'] = 'true'; attrs['aria-describedby'] = id + '-aide ' + id + '-err'; }
       const i = el('input', '', attrs);
