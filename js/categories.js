@@ -58,6 +58,15 @@
     return base.concat(en_plus);
   }
 
+  // Option à sélectionner dans la liste pour la catégorie d'une ligne : l'entrée correspondante (casse et espaces ignorés),
+  // sinon '' (« Sans catégorie ») : jamais une entrée au hasard.
+  function categorieSelectionnee(disponibles, courante) {
+    const k = cle(courante);
+    if (k === '') return '';
+    const trouvee = (disponibles || []).find(function (x) { return cle(x) === k; });
+    return trouvee === undefined ? '' : trouvee;
+  }
+
   function compterUsages(donnees, type, nom) {
     const k = cle(nom);
     return lignesDuType(donnees, type).filter(function (l) { return cle(l.categorie) === k; }).length;
@@ -146,7 +155,7 @@
 
   const api = {
     CATEGORIES_DEFAUT: CATEGORIES_DEFAUT, CATEGORIE_LONGUEUR_MAX: LONGUEUR_MAX, CATEGORIES_MAX: NOMBRE_MAX,
-    nomCategorieValide: nomCategorieValide, categoriesDisponibles: categoriesDisponibles, compterUsages: compterUsages,
+    nomCategorieValide: nomCategorieValide, categorieSelectionnee: categorieSelectionnee, categoriesDisponibles: categoriesDisponibles, compterUsages: compterUsages,
     ajouterCategorie: ajouterCategorie, renommerCategorie: renommerCategorie, supprimerCategorie: supprimerCategorie,
   };
   if (typeof module !== 'undefined') module.exports = api;

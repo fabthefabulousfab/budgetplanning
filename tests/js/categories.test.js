@@ -211,6 +211,15 @@ test('supprimerCategorie : catégorie utilisée mais hors liste, les lignes sont
   assert.deepStrictEqual(r.params.categories.depense, ['Transport']);
 });
 
+test('categorieSelectionnee : option correspondante (casse et espaces ignorés), sinon chaîne vide (« Sans catégorie »)', () => {
+  const dispo = ['Logement', 'Santé'];
+  assert.strictEqual(C.categorieSelectionnee(dispo, ' logement '), 'Logement');
+  assert.strictEqual(C.categorieSelectionnee(dispo, 'Sante'), '');
+  assert.strictEqual(C.categorieSelectionnee(dispo, '   '), '');
+  assert.strictEqual(C.categorieSelectionnee(dispo, null), '');
+  assert.strictEqual(C.categorieSelectionnee(dispo, undefined), '');
+});
+
 test('supprimerCategorie : sans clé categories, déplace les lignes, la clé reste absente', () => {
   const r = C.supprimerCategorie(donnees(), sansCategories(), 'depense', 'Cantine', 'Logement');
   assert.strictEqual(r.params.categories, undefined);

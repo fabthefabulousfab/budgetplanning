@@ -10,6 +10,26 @@ test('grouperParCategorie garde l ordre et les index', () => {
   assert.deepStrictEqual(g[0].items.map((i) => i.index), [0, 2]);
 });
 
+test('grouperParCategorie : regroupe sans tenir compte de la casse ni des espaces, orthographe du premier vu', () => {
+  const g = T.grouperParCategorie([
+    { categorie: 'Logement', libelle: 'a' }, { categorie: 'logement  ', libelle: 'b' }, { categorie: ' LOGEMENT', libelle: 'c' }, { categorie: 'Sante', libelle: 'd' }, { categorie: 'Santé', libelle: 'e' },
+  ]);
+  assert.deepStrictEqual(g.map((x) => x.categorie), ['Logement', 'Sante', 'Santé']);
+  assert.deepStrictEqual(g[0].items.map((i) => i.index), [0, 1, 2]);
+});
+
+test('grouperParCategorie : l orthographe configuree (2e argument) l emporte', () => {
+  const g = T.grouperParCategorie([{ categorie: 'logement ', libelle: 'a' }], ['Habitat', 'Logement']);
+  assert.deepStrictEqual(g.map((x) => x.categorie), ['Logement']);
+});
+
+test('grouperParCategorie : une categorie blanche tombe dans le groupe sans categorie', () => {
+  const g = T.grouperParCategorie([{ categorie: '   ', libelle: 'a' }, { categorie: '', libelle: 'b' }, { libelle: 'c' }]);
+  assert.strictEqual(g.length, 1);
+  assert.strictEqual(g[0].categorie, '');
+  assert.strictEqual(g[0].items.length, 3);
+});
+
 test('appliquerEdition ne modifie pas l original', () => {
   const l = { type: 'depense', categorie: 'A', libelle: 'x', montant: 10, fin: '2030-01' };
   const c = T.appliquerEdition(l, 'montant', '12,5', 'mensuel');

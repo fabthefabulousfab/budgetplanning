@@ -1,18 +1,23 @@
 (function (root) {
   'use strict';
 
+  const normeCat = function (t) { return String(t == null ? '' : t).replace(/\s+/g, ' ').trim(); };
+
   // Regroupe des lignes par catégorie (ordre de première apparition), en gardant l'index d'origine.
-  function grouperParCategorie(lignes) {
+  // Clé de groupe : casse et espaces ignorés ; titre : l'orthographe configurée (`preferes`, facultatif) sinon celle de la première ligne.
+  function grouperParCategorie(lignes, preferes) {
     const groupes = [];
-    const parNom = new Map();
+    const parCle = new Map();
+    const choisies = new Map();
+    (preferes || []).forEach(function (n) { const k = normeCat(n).toLowerCase(); if (!choisies.has(k)) choisies.set(k, normeCat(n)); });
     (lignes || []).forEach(function (ligne, index) {
-      const nom = ligne.categorie || '';
-      if (!parNom.has(nom)) {
-        const g = { categorie: nom, items: [] };
-        parNom.set(nom, g);
+      const k = normeCat(ligne.categorie).toLowerCase();
+      if (!parCle.has(k)) {
+        const g = { categorie: k === '' ? '' : (choisies.get(k) || normeCat(ligne.categorie)), items: [] };
+        parCle.set(k, g);
         groupes.push(g);
       }
-      parNom.get(nom).items.push({ index: index, ligne: ligne });
+      parCle.get(k).items.push({ index: index, ligne: ligne });
     });
     return groupes;
   }

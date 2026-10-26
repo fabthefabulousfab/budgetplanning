@@ -280,11 +280,14 @@
     function liste() {
       w.textContent = '';
       const s = el('select', '', { 'aria-label': cfg.label, 'data-cle': cfg.cle, class: 'cat-select' });
-      const courante = cfg.courante ? cleCat(cfg.courante) : null;
-      if (courante === null) s.appendChild(el('option', 'Choisir une catégorie', { value: '' }));
-      B.categoriesDisponibles(B.state.donnees, B.state.parametres, cfg.type).forEach(function (nom) {
+      const dispo = B.categoriesDisponibles(B.state.donnees, B.state.parametres, cfg.type);
+      const choisie = B.categorieSelectionnee(dispo, cfg.courante);
+      const vide = el('option', 'Sans catégorie', { value: '' }); // aucune catégorie : jamais une entrée de la liste choisie au hasard
+      if (choisie === '') vide.selected = true;
+      if (choisie === '') s.appendChild(vide);
+      dispo.forEach(function (nom) {
         const o = el('option', nom, { value: nom });
-        if (courante !== null && cleCat(nom) === courante) o.selected = true;
+        if (choisie !== '' && nom === choisie) o.selected = true;
         s.appendChild(o);
       });
       s.appendChild(el('option', '+ Nouvelle catégorie…', { value: NOUVELLE }));
@@ -478,7 +481,16 @@
     return tr;
   }
 
+  // Jusqu'à 960 px (la colonne Catégorie ne tient plus avec un libellé lisible), la catégorie passe sous le libellé ;
+  // le relevé se redessine au franchissement du seuil.
+  const mqEtroit = typeof root.matchMedia === 'function' ? root.matchMedia('(max-width: 960px)') : null;
+  const ecranEtroit = function () { return !!mqEtroit && mqEtroit.matches; };
+  if (mqEtroit && typeof mqEtroit.addEventListener === 'function') {
+    mqEtroit.addEventListener('change', function () { if (B.ongletActif && B.ongletActif() === 'mensuel') B.refresh(); });
+  }
+
   function renderMensuel(panneau) {
+    const etroit = ecranEtroit();
     const d = B.state.donnees;
     const lignes = d.mensuel || (d.mensuel = []);
 
@@ -492,19 +504,27 @@
     c.appendChild(chiffresMensuels(tot, restant, moyennePrets));
 
     const cols = [
-      { t: 'Libellé', classe: 'c-lib' }, { t: 'Catégorie', classe: 'c-cat' }, { t: 'Type', classe: 'c-type' }, { t: '€ / mois', num: true, classe: 'c-mont' },
+      { t: 'Libellé', classe: 'c-lib' }, { t: 'Catégorie', classe: 'c-cat', cache: etroit }, { t: 'Type', classe: 'c-type' }, { t: '€ / mois', num: true, classe: 'c-mont' },
       { t: 'Revalorisé', classe: 'c-reval' }, { t: 'Fin (AAAA-MM)', classe: 'c-fin' }, { t: 'Actions', classe: 'c-act', cache: true },
     ];
-    const t = el('table', '', { class: 'edition releve t-mensuel' });
+    const t = el('table', '', { class: 'edition releve t-mensuel' + (etroit ? ' t-mensuel-etroit' : '') });
     t.appendChild(entetes(cols));
     const tb = el('tbody');
-    B.grouperParCategorie(lignes).forEach(function (g) {
+    const orthographes = B.categoriesDisponibles(d, B.state.parametres, 'depense').concat(B.categoriesDisponibles(d, B.state.parametres, 'revenu'));
+    B.grouperParCategorie(lignes, orthographes).forEach(function (g) {
       tb.appendChild(titreCategorie(g, cols.length));
       g.items.forEach(function (it) {
         const l = it.ligne;
         const tr = el('tr', '', { class: classeLigne(l) });
-        tr.appendChild(td(champTexte('mensuel', it.index, l, 'libelle', 'Libellé', { title: l.libelle }), 'c-lib'));
-        tr.appendChild(td(champCategorie('mensuel', it.index, l), 'c-cat'));
+        const tdLib = td(champTexte('mensuel', it.index, l, 'libelle', 'Libellé', { title: l.libelle }), 'c-lib');
+        if (etroit) { // écran étroit : la catégorie se choisit sous le libellé, la colonne dédiée est refermée
+          tdLib.appendChild(champCategorie('mensuel', it.index, l));
+          tr.appendChild(tdLib);
+          tr.appendChild(td(null, 'c-cat'));
+        } else {
+          tr.appendChild(tdLib);
+          tr.appendChild(td(champCategorie('mensuel', it.index, l), 'c-cat'));
+        }
         tr.appendChild(td(champSelect('mensuel', it.index, l, 'type', 'Type', TYPES), 'c-type'));
         tr.appendChild(td(champTexte('mensuel', it.index, l, 'montant', 'Montant mensuel', { inputmode: 'decimal', class: 'num' }), 'num c-mont'));
         tr.appendChild(td(champCase('mensuel', it.index, l, true), 'c-reval'));

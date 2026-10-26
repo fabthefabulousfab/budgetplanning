@@ -246,8 +246,11 @@ table.releve.t-annuel { min-width: 73.5rem; }
 table.releve.t-annuel .c-type { width: 6rem; }
 table.releve.t-annuel .c-cat { width: 8rem; }
 /* Mensuel : la catégorie est une colonne (liste déroulante) en plus du titre de groupe */
-table.releve.t-mensuel { min-width: 52rem; }
-table.releve.t-mensuel .c-cat { width: 9rem; }
+/* Large : colonne dédiée (Libellé garde au moins 9 rem). Jusqu'à 960 px (js/ui-tables.js), la catégorie passe sous le libellé et la colonne est refermée. */
+table.releve.t-mensuel:not(.t-mensuel-etroit) { min-width: 55.25rem; }
+table.releve.t-mensuel-etroit .c-cat { width: 0; padding: 0; border-color: transparent; overflow: hidden; }
+table.releve.t-mensuel-etroit td.c-lib .cat-champ { margin-top: .1rem; }
+table.releve.t-mensuel-etroit td.c-lib .cat-champ select, table.releve.t-mensuel-etroit td.c-lib .cat-champ input { max-width: 100%; font-size: .85rem; color: var(--encre-2); }
 .cat-champ { display: block; min-width: 0; }
 table.releve .cat-champ select, table.releve .cat-champ input { max-width: 100%; text-overflow: ellipsis; }
 table.releve.t-annuel .c-ech { width: 9rem; }
@@ -299,7 +302,6 @@ table.releve tr.ligne:hover td, table.releve tr.ligne:focus-within td { backgrou
 /* Ecran etroit : colonnes resserrees, le tableau defile dans sa zone et le libelle reste visible a gauche */
 @media (max-width: 720px) {
   table.releve { min-width: 43.5rem; } /* Libellé 10,5 rem + Type + Montant + Actions tiennent dans la fenêtre : seuls Revalorisé et Fin défilent */
-  table.releve.t-mensuel { min-width: 51rem; } /* + la colonne Catégorie */
   table.releve .c-type { width: 6.25rem; }
   table.releve .c-mont { width: 5.75rem; }
   table.releve .c-reval { width: 5.75rem; }
