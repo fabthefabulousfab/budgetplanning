@@ -55,9 +55,12 @@ const PAIRES = [
   ['--positif', '--positif-fond'], ['--negatif', '--negatif-fond'],
   // Texte dans les champs et bandes de categorie (fond --papier-2)
   ['--encre-2', '--papier-2'], ['--negatif', '--papier-2'],
+  // Releve : « oui » vert sur la ligne survolee (lavis de --papier-2)
+  ['--positif', '--papier-2'],
 ];
-// Elements graphiques (WCAG 1.4.11, 3:1) : bord des champs sur leur fond, au repos et au survol.
-const PAIRES_GRAPHIQUES = [['--bord-champ', '--papier-2'], ['--bord-champ', '--carte']];
+// Elements graphiques (WCAG 1.4.11, 3:1) : bord des champs sur leur fond, au repos et au survol ;
+// icones discretes du releve (--bord-champ) sur le papier, au repos.
+const PAIRES_GRAPHIQUES = [['--bord-champ', '--papier-2'], ['--bord-champ', '--carte'], ['--bord-champ', '--fond']];
 
 // Melange de la couleur `hex` d'opacite `a` sur le fond `fond`.
 function melange(hex, a, fond) {

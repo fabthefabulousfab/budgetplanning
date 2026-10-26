@@ -154,12 +154,17 @@
     return s;
   }
 
-  function champCase(nature, index, ligne) {
+  // ouiNon : présentation de relevé (« ● oui » / « non ») ; la case reste une vraie case à cocher.
+  function champCase(nature, index, ligne, ouiNon) {
     const c = el('input', '', { type: 'checkbox', 'aria-label': 'Revalorisé — ' + ligne.libelle, 'data-cle': nature + ':' + index + ':revalorise' });
     c.checked = ligne.revalorise === true;
     c.addEventListener('change', function () { modifier(nature, ligne, 'revalorise', c.checked); });
-    const zone = el('label', '', { class: 'case-reval' }); // zone cliquable d'au moins 24 px autour de la case
+    const zone = el('label', '', { class: 'case-reval' + (ouiNon ? ' case-oui-non' : '') }); // zone cliquable d'au moins 24 px autour de la case
     zone.appendChild(c);
+    if (ouiNon) { // l'état est annoncé par la case elle-même : les mots sont décoratifs
+      zone.appendChild(el('span', 'oui', { class: 'reval-oui', 'aria-hidden': 'true' }));
+      zone.appendChild(el('span', 'non', { class: 'reval-non', 'aria-hidden': 'true' }));
+    }
     return zone;
   }
 
@@ -178,13 +183,11 @@
   }
 
   function classeLigne(ligne) {
-    return (erreurs.has(ligne) ? 'invalide ' : '') + (ligne.actif === false ? 'masque' : '');
+    return 'ligne' + (erreurs.has(ligne) ? ' invalide' : '') + (ligne.actif === false ? ' masque' : '');
   }
 
   function boutonSupprimer(nature, index, ligne) {
-    const b = el('button', 'Supprimer', { type: 'button', class: 'btn-lien', 'aria-label': 'Supprimer la ligne ' + ligne.libelle, 'data-cle': nature + ':' + index + ':suppr' });
-    b.addEventListener('click', function () { supprimer(nature, ligne); });
-    return b;
+    return B.boutonIcone('corbeille', 'Supprimer la ligne ' + ligne.libelle, 'Supprimer la ligne (après confirmation)', nature + ':' + index + ':suppr', function () { supprimer(nature, ligne); });
   }
 
   function td(contenu, classe) {
@@ -193,9 +196,26 @@
     return c;
   }
 
+  // Texte lu par les lecteurs d'écran mais invisible à l'écran.
+  function cache(texte) { return el('span', texte, { class: 'visuellement-cache' }); }
+
+  // Cellule vide d'un relevé : un tiret, et une explication pour les lecteurs d'écran.
+  function tiret(explication) {
+    const s = el('span', '', { class: 'tiret', title: explication });
+    s.appendChild(el('span', '—', { 'aria-hidden': 'true' }));
+    s.appendChild(cache(explication));
+    return s;
+  }
+
+  // cols : { t, num?, classe?, cache? } ; cache : en-tête lu par les lecteurs d'écran seulement.
   function entetes(cols) {
     const tr = el('tr');
-    cols.forEach(function (h) { tr.appendChild(el('th', h.t, h.num ? { class: 'num', scope: 'col' } : { scope: 'col' })); });
+    cols.forEach(function (h) {
+      const classe = [h.num ? 'num' : '', h.classe || ''].join(' ').trim();
+      const th = el('th', h.cache ? '' : h.t, classe ? { class: classe, scope: 'col' } : { scope: 'col' });
+      if (h.cache) th.appendChild(cache(h.t));
+      tr.appendChild(th);
+    });
     const th = el('thead');
     th.appendChild(tr);
     return th;
@@ -286,6 +306,52 @@
 
   // ---- Onglet Mensuel ---------------------------------------------------------------------
 
+  // En-tête du relevé : trois grands chiffres soulignés, puis les prêts sur une ligne plus petite.
+  function chiffresMensuels(tot, restant, moyennePrets) {
+    const w = el('div', '', { class: 'mensuel-totaux' });
+    w.setAttribute('data-aide', 'mensuel-totaux');
+    w.appendChild(el('p', 'Ce qui revient chaque mois', { class: 'surtitre' }));
+    const grands = el('div', '', { class: 'mensuel-chiffres' });
+    [
+      { t: 'Revenus', v: tot.revenus, filet: 'filet-positif' },
+      { t: 'Dépenses', v: -tot.depenses, filet: 'filet-negatif' },
+      { t: 'Reste chaque mois', v: restant, filet: 'filet-encre', signe: true },
+    ].forEach(function (it) {
+      const d = el('div', '', { class: 'mensuel-chiffre ' + it.filet });
+      d.appendChild(el('span', it.t, { class: 'mensuel-lib' }));
+      d.appendChild(el('strong', signe(it.v), { class: 'mensuel-val' + (it.signe && it.v < 0 ? ' neg' : '') }));
+      grands.appendChild(d);
+    });
+    w.appendChild(grands);
+    const petits = el('div', '', { class: 'mensuel-prets' });
+    [
+      { t: 'Mensualités de prêts (moyenne)', v: moyennePrets },
+      { t: 'Reste chaque mois après prêts', v: restant + moyennePrets, signe: true },
+    ].forEach(function (it) {
+      const d = el('div', '', { class: 'mensuel-pret' });
+      d.appendChild(el('span', it.t, { class: 'mensuel-lib' }));
+      d.appendChild(el('strong', signe(it.v), { class: it.signe && it.v < 0 ? 'neg' : '' }));
+      petits.appendChild(d);
+    });
+    w.appendChild(petits);
+    return w;
+  }
+
+  // Titre de catégorie : nom à empattement, total (montants de départ des lignes visibles, même calcul que les
+  // grands chiffres) dans la colonne des montants, aligné sur eux.
+  function titreCategorie(g, nbCols) {
+    const t = B.totauxMensuels({ mensuel: g.items.map(function (it) { return it.ligne; }) }, B.state.parametres);
+    const net = t.revenus - t.depenses;
+    const tr = el('tr', '', { class: 'groupe' });
+    tr.appendChild(el('th', g.categorie || 'Sans catégorie', { colspan: '2', scope: 'colgroup', class: 'groupe-nom' }));
+    const total = el('td', '', { class: 'num groupe-total ' + (net < 0 ? 'groupe-neg' : net > 0 ? 'groupe-pos' : 'groupe-nul') });
+    total.appendChild(cache('Total ' + (g.categorie || 'Sans catégorie') + ' : '));
+    total.appendChild(document.createTextNode(signe(net)));
+    tr.appendChild(total);
+    tr.appendChild(el('td', '', { colspan: String(nbCols - 3) }));
+    return tr;
+  }
+
   function renderMensuel(panneau) {
     const d = B.state.donnees;
     const lignes = d.mensuel || (d.mensuel = []);
@@ -297,41 +363,42 @@
     const moyennePrets = -prets.depenses / 12;
     const restant = B.restantMensuel(d, B.state.parametres);
     const c = carte('Mensuel', 'Montants de départ (hors revalorisation), par catégorie. Les prêts sont ceux de l’onglet Prêts (moyenne des mensualités des 12 premiers mois).');
-    const totauxMensuel = totaux([
-      { t: 'Total revenus', v: tot.revenus },
-      { t: 'Total dépenses', v: -tot.depenses },
-      { t: 'Restant mensuel (montants de départ)', v: restant },
-      { t: 'Mensualités de prêts (moyenne)', v: moyennePrets },
-      { t: 'Restant mensuel après prêts', v: restant + moyennePrets },
-    ]);
-    totauxMensuel.setAttribute('data-aide', 'mensuel-totaux');
-    c.appendChild(totauxMensuel);
+    c.appendChild(chiffresMensuels(tot, restant, moyennePrets));
 
-    const cols = [{ t: 'Libellé' }, { t: 'Type' }, { t: 'Montant (€/mois)', num: true }, { t: 'Revalorisé' }, { t: 'Fin (AAAA-MM)' }, { t: 'Actions' }];
-    const t = el('table', '', { class: 'edition' });
+    const cols = [
+      { t: 'Libellé', classe: 'c-lib' }, { t: 'Type', classe: 'c-type' }, { t: '€ / mois', num: true, classe: 'c-mont' },
+      { t: 'Revalorisé', classe: 'c-reval' }, { t: 'Fin (AAAA-MM)', classe: 'c-fin' }, { t: 'Actions', classe: 'c-act', cache: true },
+    ];
+    const t = el('table', '', { class: 'edition releve' });
     t.appendChild(entetes(cols));
     const tb = el('tbody');
     B.grouperParCategorie(lignes).forEach(function (g) {
-      const th = el('tr', '', { class: 'groupe' });
-      th.appendChild(el('th', g.categorie || 'Sans catégorie', { colspan: String(cols.length), scope: 'colgroup' }));
-      tb.appendChild(th);
+      tb.appendChild(titreCategorie(g, cols.length));
       g.items.forEach(function (it) {
         const l = it.ligne;
         const tr = el('tr', '', { class: classeLigne(l) });
-        tr.appendChild(td(champTexte('mensuel', it.index, l, 'libelle', 'Libellé')));
-        tr.appendChild(td(champSelect('mensuel', it.index, l, 'type', 'Type', TYPES)));
-        tr.appendChild(td(champTexte('mensuel', it.index, l, 'montant', 'Montant mensuel', { inputmode: 'decimal', class: 'num' }), 'num'));
-        tr.appendChild(td(champCase('mensuel', it.index, l)));
-        const creerFin = function () { return champTexte('mensuel', it.index, l, 'fin', 'Fin', { placeholder: 'AAAA-MM' }); };
+        tr.appendChild(td(champTexte('mensuel', it.index, l, 'libelle', 'Libellé', { title: l.libelle }), 'c-lib'));
+        tr.appendChild(td(champSelect('mensuel', it.index, l, 'type', 'Type', TYPES), 'c-type'));
+        tr.appendChild(td(champTexte('mensuel', it.index, l, 'montant', 'Montant mensuel', { inputmode: 'decimal', class: 'num' }), 'num c-mont'));
+        tr.appendChild(td(champCase('mensuel', it.index, l, true), 'c-reval'));
+        const creerFin = function () { return B.champMois(champTexte('mensuel', it.index, l, 'fin', 'Fin')); };
         // Avec des paliers, la fin se saisit sur le dernier palier.
-        tr.appendChild(td(B.proprietaireFin(l) === 'base' ? creerFin() : null));
-        tr.appendChild(td(actions('mensuel', it.index, l)));
+        tr.appendChild(td(B.proprietaireFin(l) === 'base' ? creerFin() : tiret('La fin se saisit sur le dernier palier'), 'c-fin'));
+        tr.appendChild(td(actions('mensuel', it.index, l), 'c-act'));
         tb.appendChild(tr);
         sousLignes('mensuel', it.index, l, cols.length, { depuis: 1, montant: 2, fin: 4, actions: 5 }, creerFin, { placeholder: 'Montant mensuel' }).forEach(function (s) { tb.appendChild(s); });
         const e = ligneErreur(l, cols.length);
         if (e) tb.appendChild(e);
       });
     });
+    if (!lignes.length) {
+      const tr = el('tr', '', { class: 'releve-vide' });
+      const cel = el('td', '', { colspan: String(cols.length) });
+      cel.appendChild(el('p', 'Aucune ligne mensuelle pour l’instant.', { class: 'releve-vide-titre' }));
+      cel.appendChild(el('p', 'Ajoutez un salaire, un loyer ou un abonnement avec le formulaire « Ajouter une ligne mensuelle », juste en dessous.'));
+      tr.appendChild(cel);
+      tb.appendChild(tr);
+    }
     t.appendChild(tb);
     const defil = el('div', '', { class: 'defil' });
     defil.appendChild(t);
@@ -379,11 +446,11 @@
     B.state.orphelins.forEach(function (o, i) {
       const g = o.ligne;
       const li = el('li');
-      li.appendChild(el('span', g.nature + ' · ' + g.type + ' · ' + g.categorie + ' · ' + g.libelle, { class: 'orphelin-titre' }));
-      li.appendChild(el('span', texteEtapes(o), { class: 'orphelin-etapes' }));
-      const b = el('button', 'Supprimer', { type: 'button', class: 'btn-lien', 'aria-label': 'Supprimer les paliers de ' + g.libelle, 'data-cle': 'orphelin:' + i });
-      b.addEventListener('click', function () { supprimerOrphelin(o); });
-      li.appendChild(b);
+      const texte = el('span', '', { class: 'orphelin-texte' });
+      texte.appendChild(el('span', g.nature + ' · ' + g.type + ' · ' + g.categorie + ' · ' + g.libelle, { class: 'orphelin-titre' }));
+      texte.appendChild(el('span', texteEtapes(o), { class: 'orphelin-etapes' }));
+      li.appendChild(texte);
+      li.appendChild(B.boutonIcone('corbeille', 'Supprimer les paliers de ' + g.libelle, 'Supprimer ces paliers (après confirmation)', 'orphelin:' + i, function () { supprimerOrphelin(o); }));
       ul.appendChild(li);
     });
     c.appendChild(ul);

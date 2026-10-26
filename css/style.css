@@ -106,7 +106,8 @@ table.edition input.num { text-align: right; }
 .total { display: flex; flex-direction: column; }
 .total-lib { color: var(--encre-2); font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; }
 .total strong { font-family: var(--police-titre); font-weight: 600; font-size: var(--taille-3); line-height: 1.2; font-variant-numeric: tabular-nums; }
-.defil { overflow-x: auto; }
+/* position relative : le texte pour lecteurs d'ecran (position absolue) reste dans la zone qui defile. */
+.defil { position: relative; overflow-x: auto; }
 table.bilan { font-size: .9rem; margin-bottom: var(--espace-3); white-space: nowrap; }
 table.bilan th[scope="row"] { color: var(--encre); text-transform: none; letter-spacing: 0; font-size: .9rem; }
 table.bilan tr.bilan-net th, table.bilan tr.bilan-net td { font-weight: 700; border-top: 1px solid var(--trait); }
@@ -118,23 +119,33 @@ table.edition tr.invalide input, table.edition tr.invalide select { border-color
 tr.ligne-erreur td, .erreur-ligne { color: var(--negatif); background: var(--negatif-fond); font-size: .85rem; }
 .erreur-ligne { flex-basis: 100%; margin: 0; padding: var(--espace-1) var(--espace-2); border-radius: var(--rayon); }
 .actions { display: inline-flex; align-items: center; gap: var(--espace-2); }
-.oeil { display: inline-flex; align-items: center; justify-content: center; min-width: 2rem; min-height: 2rem; color: var(--encre-2); background: none; border: 0; cursor: pointer; padding: var(--espace-1); border-radius: var(--rayon); }
-.oeil:hover { color: var(--encre); background: var(--papier-2); }
-.oeil-ferme { color: var(--negatif); }
+/* Petits boutons-icones (oeil, corbeille) : 32 px de cote, icone au trait de la couleur du texte. */
+.btn-icone { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 2rem; height: 2rem; padding: 0; color: var(--encre-2); background: none; border: 0; border-radius: var(--rayon); cursor: pointer; transition: color var(--duree-courte) var(--ease), background var(--duree-courte) var(--ease); }
+.btn-icone svg { display: block; }
+.btn-icone:hover { color: var(--encre); background: var(--papier-2); }
+.btn-corbeille:hover { color: var(--negatif); }
+.oeil-ferme, .oeil-ferme:hover { color: var(--negatif); }
 table.edition tr.masque td:not(:last-child), table.edition tr.masque input, table.edition tr.masque select { opacity: .5; }
 .btn-lien { font: inherit; font-size: .85rem; color: var(--negatif); background: none; border: 0; cursor: pointer; text-decoration: underline; min-height: 2rem; padding: var(--espace-1); }
 .case-palier { display: inline-flex; align-items: center; gap: var(--espace-1); font-size: .85rem; color: var(--encre-2); cursor: pointer; }
 table.edition tr.palier td { background: var(--positif-fond); border-bottom-color: var(--filet); }
-.palier-lib { color: var(--positif); font-weight: 600; font-size: .85rem; padding-left: .8rem; white-space: nowrap; }
+.palier-lib { display: inline-flex; align-items: center; gap: .35rem; color: var(--positif); font-weight: 600; font-size: .85rem; padding-left: .8rem; white-space: nowrap; }
+.palier-lib .icone { width: 1rem; height: 1rem; }
 .palier-etiq { display: block; color: var(--encre-2); font-size: .75rem; }
 .btn-palier { font: inherit; font-size: .85rem; color: var(--positif); background: none; border: 0; cursor: pointer; text-decoration: underline; min-height: 2rem; padding: var(--espace-1) .8rem; }
 .palier-aide { color: var(--encre-2); font-size: .8rem; margin-left: var(--espace-3); }
 table.edition tr.masque.palier-ajout button, table.edition tr.masque.palier-ajout .palier-aide { opacity: .5; }
-.btn-lien:focus-visible, .aide-btn:focus-visible, .oeil:focus-visible, .btn-palier:focus-visible, .case-palier input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.orphelins { list-style: none; margin: 0; padding: 0; }
-.orphelins li { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--espace-1) var(--espace-3); padding: var(--espace-2) 0; border-bottom: 1px solid var(--grille); }
-.orphelin-titre { font-weight: 600; }
-.orphelin-etapes { color: var(--encre-2); font-size: .85rem; flex: 1 1 14rem; }
+.btn-lien:focus-visible, .aide-btn:focus-visible, .btn-icone:focus-visible, .btn-palier:focus-visible, .case-palier input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Paliers sans ligne : petit releve (description a gauche, corbeille discrete a droite) */
+.orphelins { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--trait); }
+.orphelins li { display: flex; align-items: center; justify-content: space-between; gap: var(--espace-3); padding: var(--espace-2) var(--espace-1) var(--espace-2) var(--espace-2); border-bottom: 1px solid var(--grille); transition: background var(--duree-courte) var(--ease); }
+.orphelins li:hover, .orphelins li:focus-within { background: color-mix(in srgb, var(--papier-2) 60%, transparent); }
+.orphelin-texte { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.orphelin-titre { font-weight: 500; overflow-wrap: anywhere; }
+.orphelin-etapes { color: var(--encre-2); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.orphelins .btn-icone { color: var(--bord-champ); }
+.orphelins li:hover .btn-icone, .orphelins li:focus-within .btn-icone { color: var(--encre); }
+.orphelins li .btn-icone:hover { color: var(--negatif); }
 .ajout { display: flex; flex-wrap: wrap; gap: var(--espace-2); align-items: center; }
 .ajout input, .ajout select { width: auto; flex: 1 1 10rem; }
 /* Champs et bouton d'un formulaire d'ajout : meme hauteur. */
@@ -144,6 +155,123 @@ table.edition tr.masque.palier-ajout button, table.edition tr.masque.palier-ajou
 .case-reval { display: inline-flex; align-items: center; justify-content: center; min-width: 1.75rem; min-height: 1.75rem; vertical-align: middle; cursor: pointer; border-radius: var(--rayon); }
 .case-reval:hover { background: var(--papier-2); }
 .case-reval input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Texte pour lecteurs d'ecran seulement */
+.visuellement-cache { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---- Onglet Mensuel en releve ------------------------------------------------------------ */
+.surtitre { margin: var(--espace-3) 0 var(--espace-3); color: var(--encre-2); font-size: .74rem; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; }
+.mensuel-totaux { margin-bottom: var(--espace-4); }
+/* Trois grands chiffres, chacun souligne d'un filet a sa couleur */
+.mensuel-chiffres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--espace-3) var(--espace-5); }
+.mensuel-chiffre { display: flex; flex-direction: column; gap: var(--espace-1); min-width: 0; padding-bottom: var(--espace-2); border-bottom: 2px solid color-mix(in srgb, var(--filet-chiffre, var(--encre)) 70%, transparent); }
+.filet-positif { --filet-chiffre: var(--positif); }
+.filet-negatif { --filet-chiffre: var(--negatif); }
+.filet-encre { --filet-chiffre: var(--encre); }
+.mensuel-lib { color: var(--encre-2); font-size: .76rem; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
+.mensuel-val { font-family: var(--police-titre); font-weight: 600; font-size: var(--taille-4); line-height: 1.1; letter-spacing: -.01em; white-space: nowrap; font-variant-numeric: lining-nums proportional-nums; color: var(--encre); }
+.mensuel-val.neg { color: var(--negatif); }
+/* Les prets : une ligne plus petite sous les grands chiffres */
+.mensuel-prets { display: flex; flex-wrap: wrap; gap: var(--espace-2) var(--espace-5); margin-top: var(--espace-3); }
+.mensuel-pret { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--espace-1) var(--espace-2); }
+.mensuel-pret strong { font-family: var(--police-titre); font-weight: 600; font-size: 1.2rem; white-space: nowrap; font-variant-numeric: lining-nums tabular-nums; }
+@media (max-width: 720px) {
+  .mensuel-chiffres { gap: var(--espace-3) var(--espace-4); }
+  .mensuel-val { font-size: clamp(var(--taille-2), 4.6vw, var(--taille-3)); }
+}
+@media (max-width: 460px) { .mensuel-chiffres { grid-template-columns: 1fr; } }
+
+/* Le tableau : en-tetes discrets, filets fins, aucune case dessinee au repos */
+/* Mise en page fixe : un libelle tres long ne peut pas elargir sa colonne (le champ se coupe, l'info-bulle le donne en entier). */
+table.releve { margin-top: var(--espace-1); table-layout: fixed; min-width: 44rem; }
+table.releve thead th { padding: var(--espace-1) var(--espace-2) var(--espace-2); border-bottom: 1px solid var(--trait); font-size: .72rem; letter-spacing: .07em; white-space: nowrap; vertical-align: bottom; }
+table.releve td { padding: .2rem var(--espace-1); border-bottom: 1px solid var(--grille); vertical-align: middle; }
+table.releve thead th.num { padding-right: calc(var(--espace-1) + .45rem); }
+table.releve .c-type { width: 7.5rem; }
+table.releve .c-mont { width: 7.5rem; }
+table.releve .c-reval { width: 6.5rem; }
+table.releve .c-fin { width: 7.5rem; }
+table.releve .c-act { width: 9.75rem; white-space: nowrap; text-align: right; }
+/* Titre de categorie : nom a empattement, total aligne sur la colonne des montants */
+table.releve tr.groupe th, table.releve tr.groupe td { padding: var(--espace-4) var(--espace-2) var(--espace-1); border-bottom: 1px solid var(--trait); background: none; vertical-align: baseline; }
+table.releve tbody tr.groupe:first-child th, table.releve tbody tr.groupe:first-child td { padding-top: var(--espace-3); }
+table.releve tr.groupe th { color: var(--encre); font-family: var(--police-titre); font-weight: 700; font-size: 1.12rem; text-transform: none; letter-spacing: 0; overflow-wrap: anywhere; }
+table.releve tr.groupe td.groupe-total { padding-right: calc(var(--espace-1) + .45rem); font-family: var(--police-titre); font-weight: 600; font-size: 1.05rem; white-space: nowrap; font-variant-numeric: lining-nums tabular-nums; }
+.groupe-pos { color: var(--positif); }
+.groupe-neg { color: var(--negatif); }
+.groupe-nul { color: var(--encre-2); }
+/* Ligne survolee ou en cours de saisie : lavis chaud tres leger */
+table.releve tr.ligne td { transition: background var(--duree-courte) var(--ease); }
+table.releve tr.ligne:hover td, table.releve tr.ligne:focus-within td { background: color-mix(in srgb, var(--papier-2) 65%, var(--fond)); }
+/* Ecran etroit : colonnes resserrees, le tableau defile dans sa zone et le libelle reste visible a gauche */
+@media (max-width: 720px) {
+  table.releve { min-width: 47rem; }
+  table.releve .c-type { width: 6.25rem; }
+  table.releve .c-mont { width: 5.75rem; }
+  table.releve .c-reval { width: 5.25rem; }
+  table.releve .c-fin { width: 6rem; }
+  table.releve th.c-lib, table.releve td.c-lib, table.releve tr.groupe th { position: sticky; left: 0; z-index: 1; background: var(--fond); }
+  table.releve td.c-lib { box-shadow: 1px 0 0 var(--grille); }
+}
+/* Champs : du texte souligne d'un fin pointille ; la case se dessine au survol et au focus */
+table.edition.releve input[type="text"], table.edition.releve select { min-width: 0; min-height: 2rem; padding: .2rem .45rem; color: var(--encre); background-color: transparent; border: 1px solid transparent; border-bottom: 1px dotted var(--pointille); border-radius: 0; }
+table.edition.releve input[type="text"]:hover, table.edition.releve select:hover { background-color: var(--carte); border: 1px solid var(--bord-champ); border-radius: var(--rayon); }
+table.edition.releve input:focus-visible, table.edition.releve select:focus-visible { background-color: var(--carte); border: 1px solid var(--accent); border-radius: var(--rayon); outline: 2px solid var(--accent); outline-offset: 1px; }
+table.edition.releve input[type="text"]:not(:focus)::placeholder { color: var(--encre-2); }
+table.releve input.num { font-variant-numeric: tabular-nums; }
+/* Le champ prend la largeur de son texte : le pointille souligne la valeur, pas toute la colonne. */
+@supports (field-sizing: content) {
+  table.edition.releve input[type="text"], table.edition.releve select { field-sizing: content; width: auto; max-width: 100%; min-width: 3.5rem; }
+  table.edition.releve td.c-lib input[type="text"] { min-width: 6rem; }
+}
+/* Liste deroulante : un petit chevron dessine par degrades */
+table.edition.releve select { appearance: none; padding-right: 1.4rem; background-image: linear-gradient(45deg, transparent 50%, var(--encre-2) 50%), linear-gradient(135deg, var(--encre-2) 50%, transparent 50%); background-position: calc(100% - .75rem) 55%, calc(100% - .45rem) 55%; background-size: .3rem .3rem; background-repeat: no-repeat; cursor: pointer; }
+/* Revalorise : « ● oui » / « non » ; la vraie case est le point */
+table.releve .case-oui-non { justify-content: flex-start; gap: .4rem; min-height: 2rem; padding: 0 .45rem; font-size: .85rem; color: var(--encre-2); }
+table.releve .case-oui-non input[type="checkbox"] { appearance: none; flex: none; width: .62rem; height: .62rem; margin: 0; border: 1.5px solid var(--bord-champ); border-radius: 50%; background: transparent; cursor: pointer; }
+table.releve .case-oui-non input[type="checkbox"]:checked { background: var(--positif); border-color: var(--positif); }
+.case-oui-non input:checked ~ .reval-non, .case-oui-non input:not(:checked) ~ .reval-oui { display: none; }
+.case-oui-non .reval-oui { color: var(--positif); font-weight: 600; }
+table.releve .case-oui-non input:focus-visible { outline: none; }
+table.releve .case-oui-non:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
+table.releve .case-oui-non:hover { background: var(--carte); }
+.tiret { display: inline-block; padding: 0 .45rem; color: var(--encre-2); }
+/* Actions : case « Palier » avec son libelle, oeil et corbeille discrets, plus fonces sur la ligne active */
+table.releve .actions { gap: var(--espace-1); }
+table.releve .case-palier { min-height: 2rem; padding: 0 .4rem; border-radius: var(--rayon); font-size: .8rem; }
+table.releve .case-palier input[type="checkbox"] { width: 1rem; height: 1rem; margin: 0; }
+table.releve .case-palier:hover { color: var(--encre); background: var(--carte); }
+table.releve .btn-icone { color: var(--bord-champ); }
+table.releve tr:hover .btn-icone, table.releve tr:focus-within .btn-icone { color: var(--encre); }
+table.releve tr:hover .case-palier, table.releve tr:focus-within .case-palier { color: var(--encre); }
+table.releve .btn-icone:hover { background: var(--carte); }
+table.releve .btn-corbeille:hover { color: var(--negatif); }
+table.releve .oeil-ferme, table.releve tr:hover .oeil-ferme, table.releve tr:focus-within .oeil-ferme { color: var(--negatif); }
+/* Ligne masquee : en retrait, l'oeil reste net */
+table.releve tr.masque td:not(.c-act):not(.c-lib) { opacity: .55; }
+/* Libelle (colonne figee sur ecran etroit) : opaque, seul le champ s'estompe, sinon le defilement transparait. */
+table.releve tr.masque td.c-lib input { opacity: .55; }
+/* Ligne invalide : soulignement plein terre cuite, message juste dessous */
+table.edition.releve tr.invalide input[type="text"]:not(:hover):not(:focus-visible), table.edition.releve tr.invalide select:not(:hover):not(:focus-visible) { border-color: transparent; border-bottom: 1px solid var(--negatif); }
+table.releve tr.ligne-erreur td { padding: .35rem var(--espace-2); border-left: 2px solid var(--negatif); }
+/* Sous-lignes de paliers : un fil vertical les rattache a leur ligne, sans aplat */
+table.releve tr.palier td { background: none; padding-top: .15rem; padding-bottom: .15rem; border-bottom: 1px solid var(--grille); }
+table.releve tr.palier td:first-child, table.releve tr.palier-ajout td { background: linear-gradient(var(--filet), var(--filet)) no-repeat left 1.05rem top 0 / 1px 100%; }
+table.releve tr.palier td:first-child { padding-left: 1.6rem; }
+table.releve tr.palier-ajout td { padding: .1rem var(--espace-1) var(--espace-2) 1.6rem; background-size: 1px 50%; }
+table.releve .palier-lib { padding-left: 0; color: var(--encre-2); font-weight: 500; }
+table.releve .palier-lib .icone { color: var(--positif); }
+table.releve .palier-etiq { display: inline; margin-right: .35rem; }
+table.releve tr.palier td:nth-child(2) { white-space: nowrap; }
+table.releve tr.palier td:nth-child(2) input { width: 5.5rem; }
+table.releve .btn-palier { padding-left: 0; font-weight: 600; text-decoration: none; }
+table.releve .btn-palier:hover { text-decoration: underline; }
+table.releve tr.palier .btn-icone { color: var(--bord-champ); }
+table.releve tr.palier:hover .btn-icone, table.releve tr.palier:focus-within .btn-icone { color: var(--encre); }
+/* Aucune ligne : un message calme et une invitation */
+table.releve tr.releve-vide td { padding: var(--espace-4) var(--espace-2); text-align: center; color: var(--encre-2); border-bottom: 1px solid var(--grille); }
+table.releve tr.releve-vide p { margin: 0; }
+table.releve tr.releve-vide .releve-vide-titre { margin-bottom: var(--espace-1); color: var(--encre); font-family: var(--police-titre); font-size: 1.15rem; }
 
 /* Aide et info-bulles */
 .aide-ligne { display: flex; align-items: center; gap: var(--espace-2); color: var(--encre-2); font-size: .85rem; margin-bottom: var(--espace-2); }

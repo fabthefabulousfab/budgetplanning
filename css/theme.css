@@ -14,6 +14,7 @@
   --filet: #d9cfb8;
   --grille: #e6dcc6;
   --bord-champ: #8a7e66;
+  --pointille: #9d9177; /* soulignement pointille des champs du releve, au repos */
   --aire-force: .24; /* opacite du lavis des graphiques en aire, pres de la courbe */
   --accent: #2f5d50;
   --positif: #2f5d50;
@@ -57,6 +58,7 @@
     --filet: #4a4033;
     --grille: #382f25;
     --bord-champ: #857866;
+    --pointille: #6e6151;
     --aire-force: .26;
     --accent: #88bda9;
     --positif: #8fc4b0;

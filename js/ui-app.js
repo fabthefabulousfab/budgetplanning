@@ -270,27 +270,29 @@
 
   // Bouton « œil » : masque ou réaffiche une ligne (actif: false = ignorée par la projection).
   function boutonOeil(actifLigne, libelle, onClick, cle) {
-    const b = el('button', '', { type: 'button', class: 'oeil' + (actifLigne ? '' : ' oeil-ferme'), 'aria-pressed': String(!actifLigne), 'aria-label': (actifLigne ? 'Masquer la ligne ' : 'Afficher la ligne ') + libelle, title: actifLigne ? 'Masquer (ignorée dans la projection)' : 'Masquée : cliquer pour la reprendre en compte' });
+    const b = el('button', '', { type: 'button', class: 'btn-icone oeil' + (actifLigne ? '' : ' oeil-ferme'), 'aria-pressed': String(!actifLigne), 'aria-label': (actifLigne ? 'Masquer la ligne ' : 'Afficher la ligne ') + libelle, title: actifLigne ? 'Masquer (ignorée dans la projection)' : 'Masquée : cliquer pour la reprendre en compte' });
     if (cle) b.setAttribute('data-cle', cle);
-    const ns = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.setAttribute('width', '18');
-    svg.setAttribute('height', '18');
-    svg.setAttribute('aria-hidden', 'true');
-    ['M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z', 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z'].concat(actifLigne ? [] : ['M3 3l18 18']).forEach(function (d) {
-      const p = document.createElementNS(ns, 'path');
-      p.setAttribute('d', d);
-      p.setAttribute('fill', 'none');
-      p.setAttribute('stroke', 'currentColor');
-      p.setAttribute('stroke-width', '2');
-      p.setAttribute('stroke-linecap', 'round');
-      p.setAttribute('stroke-linejoin', 'round');
-      svg.appendChild(p);
-    });
-    b.appendChild(svg);
+    b.appendChild(B.creerIcone(actifLigne ? 'oeil' : 'oeil-barre'));
     b.addEventListener('click', onClick);
     return b;
+  }
+
+  // Petit bouton-icône (corbeille…) : nom accessible et info-bulle obligatoires, l'icône est décorative.
+  function boutonIcone(icone, label, titre, cle, onClick) {
+    const b = el('button', '', { type: 'button', class: 'btn-icone btn-' + icone, 'aria-label': label, title: titre });
+    if (cle) b.setAttribute('data-cle', cle);
+    b.appendChild(B.creerIcone(icone));
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  // Champ de mois : « — » quand il est vide ; le format attendu apparaît au focus et en info-bulle.
+  function champMois(input) {
+    input.setAttribute('placeholder', '—');
+    input.setAttribute('title', 'Mois au format AAAA-MM, par exemple 2028-06');
+    input.addEventListener('focus', function () { input.setAttribute('placeholder', 'AAAA-MM'); });
+    input.addEventListener('blur', function () { input.setAttribute('placeholder', '—'); });
+    return input;
   }
 
   async function start(dir) {
@@ -330,7 +332,7 @@
     boutonsOuverture().forEach(function (n) { a.appendChild(n); });
   }
 
-  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, tableauBilan: tableauBilan, registerTab: registerTab, ongletActif: function () { return actif; }, start: start, erreur: erreur, attendreEcritures: attendreEcritures, importerFichier: importerFichier });
+  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, boutonIcone: boutonIcone, champMois: champMois, tableauBilan: tableauBilan, registerTab: registerTab, ongletActif: function () { return actif; }, start: start, erreur: erreur, attendreEcritures: attendreEcritures, importerFichier: importerFichier });
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ecranAccueil);
     else ecranAccueil();
