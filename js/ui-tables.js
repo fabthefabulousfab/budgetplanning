@@ -36,17 +36,6 @@
 
   function signe(v) { return fmt(v); }
 
-  function totaux(items) {
-    const w = el('div', '', { class: 'totaux' });
-    items.forEach(function (it) {
-      const d = el('div', '', { class: 'total' });
-      d.appendChild(el('span', it.t, { class: 'total-lib' }));
-      d.appendChild(el('strong', signe(it.v), { class: it.v < 0 ? 'neg' : '' }));
-      w.appendChild(d);
-    });
-    return w;
-  }
-
   // ---- Modification, suppression, ajout --------------------------------------------------
 
   async function modifier(nature, ligne, champ, valeur) {
@@ -212,8 +201,13 @@
     const tr = el('tr');
     cols.forEach(function (h) {
       const classe = [h.num ? 'num' : '', h.classe || ''].join(' ').trim();
-      const th = el('th', h.cache ? '' : h.t, classe ? { class: classe, scope: 'col' } : { scope: 'col' });
+      const fmtMois = !h.cache && /^(.+ )\(AAAA-MM\)$/.exec(h.t); // le format ne se coupe pas en fin de ligne
+      const th = el('th', h.cache || fmtMois ? '' : h.t, classe ? { class: classe, scope: 'col' } : { scope: 'col' });
       if (h.cache) th.appendChild(cache(h.t));
+      if (fmtMois) {
+        th.appendChild(document.createTextNode(fmtMois[1]));
+        th.appendChild(el('span', '(AAAA-MM)', { class: 'format-mois' }));
+      }
       tr.appendChild(th);
     });
     const th = el('thead');
@@ -231,8 +225,8 @@
     });
   }
 
-  function ligneErreur(ligne, nbCols) {
-    const msg = erreurs.get(ligne);
+  // Ligne de message d'erreur sous une ligne de relevé (null s'il n'y a pas de message).
+  function ligneMessage(msg, nbCols) {
     if (!msg) return null;
     const tr = el('tr', '', { class: 'ligne-erreur' });
     const c = el('td', '', { colspan: String(nbCols), role: 'alert' });
@@ -241,10 +235,34 @@
     return tr;
   }
 
+  function ligneErreur(ligne, nbCols) { return ligneMessage(erreurs.get(ligne), nbCols); }
+
+  // Relevé vide : une phrase calme et une invitation (le texte reste visible quand le tableau défile).
+  function releveVide(titre, texte, nbCols) {
+    const tr = el('tr', '', { class: 'releve-vide' });
+    const cel = el('td', '', { colspan: String(nbCols) });
+    const w = el('div', '', { class: 'colle-gauche releve-vide-texte' });
+    w.appendChild(el('p', titre, { class: 'releve-vide-titre' }));
+    w.appendChild(el('p', texte));
+    cel.appendChild(w);
+    tr.appendChild(cel);
+    return tr;
+  }
+
   // ---- Formulaire d'ajout -----------------------------------------------------------------
 
+  // Champ de formulaire étiqueté : le libellé est visible, le nom accessible reste l'aria-label du champ.
+  function champEtiquete(texte, controle, classe, note) {
+    const l = el('label', '', { class: 'champ-ajout' + (classe ? ' ' + classe : '') });
+    const lib = el('span', texte, { class: 'champ-lib' });
+    if (note) lib.appendChild(el('em', note, { class: 'champ-note' }));
+    l.appendChild(lib);
+    l.appendChild(controle);
+    return l;
+  }
+
   function champAjout(brouillon, cle, label, attrs) {
-    const i = el('input', '', Object.assign({ type: 'text', 'aria-label': label, placeholder: label, 'data-cle': 'ajout:' + cle }, attrs || {}));
+    const i = el('input', '', Object.assign({ type: 'text', 'aria-label': label, 'data-cle': 'ajout:' + cle }, attrs || {}));
     i.value = brouillon[cle] || '';
     i.addEventListener('input', function () { brouillon[cle] = i.value; });
     return i;
@@ -266,7 +284,7 @@
         selNature.appendChild(o);
       });
       selNature.addEventListener('change', function () { brouillon.nature = selNature.value; });
-      f.appendChild(selNature);
+      f.appendChild(champEtiquete('Nature', selNature, 'champ-court'));
     }
     const selType = el('select', '', { 'aria-label': 'Type de la nouvelle ligne', 'data-cle': 'ajout:type' });
     TYPES.forEach(function (t) {
@@ -275,11 +293,13 @@
       selType.appendChild(o);
     });
     selType.addEventListener('change', function () { brouillon.type = selType.value; });
-    f.appendChild(selType);
-    f.appendChild(champAjout(brouillon, 'categorie', 'Catégorie', { list: dlId }));
-    f.appendChild(champAjout(brouillon, 'libelle', 'Libellé'));
+    f.appendChild(champEtiquete('Type', selType, 'champ-court'));
+    f.appendChild(champEtiquete('Catégorie', champAjout(brouillon, 'categorie', 'Catégorie', { list: dlId }), 'champ-moyen'));
+    f.appendChild(champEtiquete('Libellé', champAjout(brouillon, 'libelle', 'Libellé'), 'champ-large'));
     const champ = nature === 'mensuel' ? 'montant' : 'echeances';
-    f.appendChild(champAjout(brouillon, champ, nature === 'mensuel' ? 'Montant mensuel' : 'Échéances'));
+    const lib = nature === 'mensuel' ? 'Montant mensuel' : 'Échéances';
+    const attrs = nature === 'mensuel' ? { inputmode: 'decimal' } : { placeholder: '6-500, 10-500' };
+    f.appendChild(champEtiquete(lib, champAjout(brouillon, champ, lib, attrs), 'champ-moyen'));
     f.appendChild(el('button', 'Ajouter une ligne', { type: 'submit', class: 'btn' }));
     if (erreursAjout[nature]) f.appendChild(el('p', erreursAjout[nature], { class: 'erreur-ligne', role: 'alert' }));
 
@@ -309,33 +329,38 @@
   // ---- Onglet Mensuel ---------------------------------------------------------------------
 
   // En-tête du relevé : trois grands chiffres soulignés, puis les prêts sur une ligne plus petite.
-  function chiffresMensuels(tot, restant, moyennePrets) {
+  function chiffresReleve(surtitre, grands, petits) {
     const w = el('div', '', { class: 'mensuel-totaux' });
-    w.setAttribute('data-aide', 'mensuel-totaux');
-    w.appendChild(el('p', 'Ce qui revient chaque mois', { class: 'surtitre' }));
-    const grands = el('div', '', { class: 'mensuel-chiffres' });
-    [
-      { t: 'Revenus', v: tot.revenus, filet: 'filet-positif' },
-      { t: 'Dépenses', v: -tot.depenses, filet: 'filet-negatif' },
-      { t: 'Reste chaque mois', v: restant, filet: 'filet-encre', signe: true },
-    ].forEach(function (it) {
+    w.appendChild(el('p', surtitre, { class: 'surtitre' }));
+    const g = el('div', '', { class: 'mensuel-chiffres' });
+    grands.forEach(function (it) {
       const d = el('div', '', { class: 'mensuel-chiffre ' + it.filet });
       d.appendChild(el('span', it.t, { class: 'mensuel-lib' }));
       d.appendChild(el('strong', signe(it.v), { class: 'mensuel-val' + (it.signe && it.v < 0 ? ' neg' : '') }));
-      grands.appendChild(d);
+      g.appendChild(d);
     });
-    w.appendChild(grands);
-    const petits = el('div', '', { class: 'mensuel-prets' });
-    [
-      { t: 'Mensualités de prêts (moyenne)', v: moyennePrets },
-      { t: 'Reste chaque mois après prêts', v: restant + moyennePrets, signe: true },
-    ].forEach(function (it) {
+    w.appendChild(g);
+    const p = el('div', '', { class: 'mensuel-prets' });
+    petits.forEach(function (it) {
       const d = el('div', '', { class: 'mensuel-pret' });
       d.appendChild(el('span', it.t, { class: 'mensuel-lib' }));
       d.appendChild(el('strong', signe(it.v), { class: it.signe && it.v < 0 ? 'neg' : '' }));
-      petits.appendChild(d);
+      p.appendChild(d);
     });
-    w.appendChild(petits);
+    w.appendChild(p);
+    return w;
+  }
+
+  function chiffresMensuels(tot, restant, moyennePrets) {
+    const w = chiffresReleve('Ce qui revient chaque mois', [
+      { t: 'Revenus', v: tot.revenus, filet: 'filet-positif' },
+      { t: 'Dépenses', v: -tot.depenses, filet: 'filet-negatif' },
+      { t: 'Reste chaque mois', v: restant, filet: 'filet-encre', signe: true },
+    ], [
+      { t: 'Mensualités de prêts (moyenne)', v: moyennePrets },
+      { t: 'Reste chaque mois après prêts', v: restant + moyennePrets, signe: true },
+    ]);
+    w.setAttribute('data-aide', 'mensuel-totaux');
     return w;
   }
 
@@ -394,12 +419,7 @@
       });
     });
     if (!lignes.length) {
-      const tr = el('tr', '', { class: 'releve-vide' });
-      const cel = el('td', '', { colspan: String(cols.length) });
-      cel.appendChild(el('p', 'Aucune ligne mensuelle pour l’instant.', { class: 'releve-vide-titre' }));
-      cel.appendChild(el('p', 'Ajoutez un salaire, un loyer ou un abonnement avec le formulaire « Ajouter une ligne mensuelle », juste en dessous.'));
-      tr.appendChild(cel);
-      tb.appendChild(tr);
+      tb.appendChild(releveVide('Aucune ligne mensuelle pour l’instant.', 'Ajoutez un salaire, un loyer ou un abonnement avec le formulaire « Ajouter une ligne mensuelle », juste en dessous.', cols.length));
     }
     t.appendChild(tb);
     const defil = el('div', '', { class: 'defil' });
@@ -469,43 +489,49 @@
     return w;
   }
 
-  function tableAnnuel(panneauCarte, nature, lignes, impacts) {
-    const cols = [{ t: 'Libellé' }, { t: 'Catégorie' }, { t: 'Type' }, { t: 'Échéances' }, { t: 'Début' }, { t: 'Fin' }, { t: 'Revalorisé' }, { t: 'Impact mensuel', num: true }, { t: 'Actions' }];
-    const t = el('table', '', { class: 'edition' });
+  // Annuel et exceptionnel : même relevé que Mensuel (lignes à plat, la catégorie reste modifiable dans sa colonne).
+  function tableAnnuel(nature, lignes, impacts) {
+    const annuel = nature === 'annuel';
+    const cols = [
+      { t: 'Libellé', classe: 'c-lib' }, { t: 'Catégorie', classe: 'c-cat' }, { t: 'Type', classe: 'c-type' },
+      { t: 'Échéances', classe: 'c-ech' }, { t: 'Début (AAAA-MM)', classe: 'c-deb' }, { t: 'Fin (AAAA-MM)', classe: 'c-fin' },
+      { t: 'Revalorisé', classe: 'c-reval' }, { t: 'Impact mensuel', num: true, classe: 'c-mont' }, { t: 'Actions', classe: 'c-act', cache: true },
+    ];
+    const t = el('table', '', { class: 'edition releve t-annuel' });
     t.appendChild(entetes(cols));
     const tb = el('tbody');
     lignes.forEach(function (l, i) {
-      const creerFin = function () { return champTexte(nature, i, l, 'fin', 'Fin', { placeholder: 'AAAA-MM' }); };
+      const creerFin = function () { return B.champMois(champTexte(nature, i, l, 'fin', 'Fin')); };
       const tr = el('tr', '', { class: classeLigne(l) });
-      tr.appendChild(td(champTexte(nature, i, l, 'libelle', 'Libellé')));
-      tr.appendChild(td(champTexte(nature, i, l, 'categorie', 'Catégorie')));
-      tr.appendChild(td(champSelect(nature, i, l, 'type', 'Type', TYPES)));
-      tr.appendChild(td(champTexte(nature, i, l, 'echeances', 'Échéances', { placeholder: '6-500, 10-500' })));
+      tr.appendChild(td(champTexte(nature, i, l, 'libelle', 'Libellé', { title: l.libelle }), 'c-lib'));
+      tr.appendChild(td(champTexte(nature, i, l, 'categorie', 'Catégorie', { placeholder: '—' }), 'c-cat'));
+      tr.appendChild(td(champSelect(nature, i, l, 'type', 'Type', TYPES), 'c-type'));
+      tr.appendChild(td(champTexte(nature, i, l, 'echeances', 'Échéances', { placeholder: '6-500, 10-500' }), 'c-ech'));
       // Les lignes exceptionnelles sont datées par leurs échéances : pas de début/fin/revalorisé.
-      if (nature === 'annuel') {
-        tr.appendChild(td(champTexte(nature, i, l, 'debut', 'Début', { placeholder: 'AAAA-MM' })));
-        tr.appendChild(td(B.proprietaireFin(l) === 'base' ? creerFin() : null));
-        tr.appendChild(td(champCase(nature, i, l)));
+      if (annuel) {
+        tr.appendChild(td(B.champMois(champTexte(nature, i, l, 'debut', 'Début')), 'c-deb'));
+        tr.appendChild(td(B.proprietaireFin(l) === 'base' ? creerFin() : tiret('La fin se saisit sur le dernier palier'), 'c-fin'));
+        tr.appendChild(td(champCase(nature, i, l, true), 'c-reval'));
       } else {
-        for (let k = 0; k < 3; k++) tr.appendChild(td(el('span', '—', { class: 'vide', 'aria-label': 'Non applicable' })));
+        ['c-deb', 'c-fin', 'c-reval'].forEach(function (k) { tr.appendChild(td(tiret('Non applicable'), k)); });
       }
       const imp = impacts[i] ? impacts[i].impact_mensuel : 0;
-      tr.appendChild(td(el('span', signe(imp), { class: imp < 0 ? 'neg' : '' }), 'num'));
-      tr.appendChild(td(actions(nature, i, l)));
+      tr.appendChild(td(el('span', signe(imp), { class: imp < 0 ? 'neg' : '' }), 'num c-mont c-impact'));
+      tr.appendChild(td(actions(nature, i, l), 'c-act'));
       tb.appendChild(tr);
-      sousLignes(nature, i, l, cols.length, { depuis: 1, montant: 3, fin: nature === 'annuel' ? 5 : null, actions: 8 }, creerFin, { placeholder: '6-500, 10-500' }).forEach(function (s) { tb.appendChild(s); });
+      sousLignes(nature, i, l, cols.length, { depuis: 1, montant: 3, fin: annuel ? 5 : null, actions: 8 }, creerFin, { placeholder: '6-500, 10-500' }).forEach(function (s) { tb.appendChild(s); });
       const e = ligneErreur(l, cols.length);
       if (e) tb.appendChild(e);
     });
     if (!lignes.length) {
-      const tr = el('tr');
-      tr.appendChild(el('td', 'Aucune ligne.', { colspan: String(cols.length), class: 'vide' }));
-      tb.appendChild(tr);
+      tb.appendChild(annuel
+        ? releveVide('Aucune ligne annuelle pour l’instant.', 'Ajoutez une taxe, une assurance ou une cotisation avec le formulaire « Ajouter une ligne », plus bas.', cols.length)
+        : releveVide('Aucune ligne exceptionnelle pour l’instant.', 'Ajoutez une dépense ou un revenu daté (une prime, un voyage…) avec le formulaire « Ajouter une ligne », plus bas, en choisissant la nature « Exceptionnel ».', cols.length));
     }
     t.appendChild(tb);
     const defil = el('div', '', { class: 'defil' });
     defil.appendChild(t);
-    panneauCarte.appendChild(defil);
+    return defil;
   }
 
   function renderAnnuel(panneau) {
@@ -520,11 +546,14 @@
     const bilan = B.bilanLignes(annuel.concat(exc), params, 12);
 
     const resume = carte('Annuel & exceptionnel', 'Impact mensuel = total des douze premiers mois projetés ÷ 12, calculé sur les montants de départ (hors revalorisation).');
-    const tete = el('div', '', { class: 'aide-ligne' });
-    tete.setAttribute('data-aide', 'annuel-syntaxe');
-    tete.appendChild(el('span', 'Syntaxe des échéances'));
-    tete.appendChild(aide());
-    resume.appendChild(tete);
+    resume.appendChild(chiffresReleve('Sur les douze premiers mois projetés', [
+      { t: 'Revenus sur 12 mois', v: bilan.revenus, filet: 'filet-positif' },
+      { t: 'Dépenses sur 12 mois', v: -bilan.depenses, filet: 'filet-negatif' },
+      { t: 'Impact bilan sur 12 mois (revenus − dépenses)', v: bilan.net, filet: 'filet-encre', signe: true },
+    ], [
+      { t: 'Impact mensuel total', v: total, signe: true },
+      { t: 'Restant moyen mensuel (montants de départ)', v: B.restantMoyen(d, params), signe: true },
+    ]));
     // Les 12 premiers mois projetés, rangés de janvier à décembre (chaque mois civil apparaît une fois).
     const parMois = B.bilanParMois(annuel.concat(exc), params, 12).sort(function (a, b) { return Number(a.ym.slice(5)) - Number(b.ym.slice(5)); });
     resume.appendChild(el('p', 'Mois par mois, de janvier à décembre : chaque mois civil des 12 premiers mois projetés (à partir du mois de départ), montants de départ.', { class: 'note' }));
@@ -533,21 +562,19 @@
     }));
     bilanMois.setAttribute('data-aide', 'annuel-bilan');
     resume.appendChild(bilanMois);
-    resume.appendChild(totaux([
-      { t: 'Revenus sur 12 mois', v: bilan.revenus },
-      { t: 'Dépenses sur 12 mois', v: -bilan.depenses },
-      { t: 'Impact bilan sur 12 mois (revenus − dépenses)', v: bilan.net },
-      { t: 'Impact mensuel total', v: total },
-      { t: 'Restant moyen mensuel (montants de départ)', v: B.restantMoyen(d, params) },
-    ]));
     panneau.appendChild(resume);
 
     const ca = carte('Annuel');
     ca.setAttribute('data-aide', 'annuel-tableau');
-    tableAnnuel(ca, 'annuel', annuel, iA);
+    const tete = el('div', '', { class: 'aide-ligne' });
+    tete.setAttribute('data-aide', 'annuel-syntaxe');
+    tete.appendChild(el('span', 'Syntaxe des échéances'));
+    tete.appendChild(aide());
+    ca.appendChild(tete);
+    ca.appendChild(tableAnnuel('annuel', annuel, iA));
     panneau.appendChild(ca);
     const ce = carte('Exceptionnel');
-    tableAnnuel(ce, 'exceptionnel', exc, iE);
+    ce.appendChild(tableAnnuel('exceptionnel', exc, iE));
     panneau.appendChild(ce);
 
     const a = carte('Ajouter une ligne');
@@ -570,6 +597,9 @@
       }
     };
   }
+
+  // Pièces communes du relevé, réutilisées par les onglets Revenus et dépenses futurs et Prêts.
+  B.releve = { el: el, td: td, cache: cache, tiret: tiret, entetes: entetes, ligneMessage: ligneMessage, releveVide: releveVide, champEtiquete: champEtiquete };
 
   B.registerTab('mensuel', 'Mensuel', enveloppe(renderMensuel));
   B.registerTab('annuel', 'Annuel & exceptionnel', enveloppe(renderAnnuel));

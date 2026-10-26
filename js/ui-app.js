@@ -60,13 +60,13 @@
     if (!B.supported()) {
       accueil([
         el('h2', 'Navigateur non pris en charge', { 'data-aide': 'accueil-navigateur' }),
-        el('p', "Cette application a besoin de l'accès aux dossiers locaux (File System Access API). Ouvrez cette page dans Chrome ou Edge sur ordinateur."),
+        el('p', "Cette application a besoin de l'accès aux dossiers locaux (File System Access API). Ouvrez cette page dans Chrome ou Edge sur ordinateur.", { class: 'accueil-texte' }),
       ]);
       return;
     }
     accueil([
       el('h2', 'Bienvenue', { 'data-aide': 'accueil-intro' }),
-      el('p', 'Choisissez le dossier data/ du projet : les fichiers YAML y sont lus et enregistrés directement, rien ne quitte votre ordinateur. Vous pouvez aussi importer une sauvegarde exportée depuis un autre ordinateur.'),
+      el('p', 'Choisissez le dossier data/ du projet : les fichiers YAML y sont lus et enregistrés directement, rien ne quitte votre ordinateur. Vous pouvez aussi importer une sauvegarde exportée depuis un autre ordinateur.', { class: 'accueil-texte' }),
     ].concat(boutonsOuverture()));
   }
 
@@ -130,7 +130,7 @@
     const zone = el('div', '', { class: 'zone-import' });
     const ouvrir = el('button', 'Ouvrir le dossier data/', { type: 'button', class: 'btn', 'data-aide': 'accueil-ouvrir' });
     ouvrir.addEventListener('click', ouvrirDossier);
-    const importer = el('button', 'Importer une sauvegarde', { type: 'button', class: 'btn', 'aria-label': 'Importer une sauvegarde', 'data-aide': 'accueil-importer' });
+    const importer = el('button', 'Importer une sauvegarde', { type: 'button', class: 'btn btn-secondaire', 'aria-label': 'Importer une sauvegarde', 'data-aide': 'accueil-importer' });
     importer.addEventListener('click', function () { importerFichier(zone); });
     const ligne = el('div', '', { class: 'actions-accueil' });
     ligne.appendChild(ouvrir);
@@ -315,9 +315,12 @@
     avertir(state.avertissements);
     if (B.paliersUI) B.paliersUI.reset();
     if (r.donnees === null) {
+      const consigne = el('p', 'Lancez ', { class: 'accueil-texte' });
+      consigne.appendChild(el('code', './demarrer.sh'));
+      consigne.appendChild(document.createTextNode(' pour importer budget.xlsx, puis rouvrez le dossier data/.'));
       accueil([
         el('h2', 'Aucune donnée courante', { 'data-aide': 'accueil-intro' }),
-        el('p', 'Lancez ./demarrer.sh pour importer budget.xlsx, puis rouvrez le dossier data/.'),
+        consigne,
       ]);
       ecranAccueilBouton();
       return;

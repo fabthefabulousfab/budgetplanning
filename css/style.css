@@ -17,20 +17,30 @@ h1, h2, h3 { font-family: var(--police-titre); font-weight: 600; letter-spacing:
 .onglets button:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--rayon); }
 main { max-width: 1200px; margin: 0 auto; padding: var(--espace-4) var(--espace-4) var(--espace-5); }
 
-/* Bandeaux */
-.bandeau { padding: var(--espace-2) var(--espace-4); background: var(--negatif-fond); color: var(--encre); border-bottom: 2px solid var(--negatif); }
-.avertissements { padding: var(--espace-2) var(--espace-4); background: var(--positif-fond); color: var(--encre); border-bottom: 2px solid var(--accent); font-size: .9rem; }
-.avertissements ul { margin: 0 0 var(--espace-1); padding-left: 1.2rem; }
+/* Bandeaux : une bande sobre alignee sur la colonne de contenu, un filet colore a gauche */
+.bandeau, .avertissements { --retrait: max(var(--espace-4), calc((100% - 1200px) / 2 + var(--espace-4))); padding: var(--espace-3) var(--retrait); border-bottom: 1px solid var(--trait); border-left: 4px solid var(--negatif); line-height: 1.5; overflow-wrap: anywhere; }
+.bandeau { background: var(--negatif-fond); color: var(--encre); font-weight: 500; }
+.avertissements { background: var(--papier-2); color: var(--encre); border-left-color: var(--bord-champ); font-size: .9rem; }
+.avertissements ul { margin: 0 0 var(--espace-2); padding-left: 1.1rem; }
+.avertissements li + li { margin-top: var(--espace-1); }
+.avertissements .btn-lien { color: var(--encre); font-weight: 600; padding-left: 0; }
 
-/* Accueil */
-.accueil { max-width: 40rem; margin: var(--espace-5) auto; text-align: center; }
-.accueil p { color: var(--encre-2); font-size: 1.05rem; }
-.accueil code { background: var(--papier-2); border: 1px solid var(--filet); border-radius: 4px; padding: .1rem .35rem; }
+/* Accueil : une invitation posee, beaucoup d'air, un filet fin */
+.accueil { max-width: 38rem; margin: 0 auto; padding: clamp(var(--espace-5), 14vh, 9rem) var(--espace-3) var(--espace-5); text-align: center; }
+.accueil::before { content: ""; display: block; width: 3rem; height: 2px; margin: 0 auto var(--espace-4); background: var(--accent); }
+.accueil h2 { margin: 0 0 var(--espace-3); font-size: clamp(var(--taille-3), 6vw, var(--taille-4)); line-height: 1.15; text-wrap: balance; letter-spacing: -.015em; font-weight: 600; }
+.accueil-texte { max-width: 32rem; margin: 0 auto var(--espace-4); color: var(--encre-2); font-size: 1.05rem; line-height: 1.65; }
+.accueil code { color: var(--encre); background: var(--papier-2); border: 1px solid var(--filet); border-radius: 4px; padding: .1rem .35rem; font-size: .92em; }
+.accueil .actions-accueil { margin-top: var(--espace-4); padding-top: var(--espace-4); border-top: 1px solid var(--filet); }
+.accueil .zone-import { text-align: center; }
 
-/* Boutons */
-.btn { font: inherit; font-weight: 600; background: var(--accent); color: var(--carte); border: 1px solid var(--accent); border-radius: var(--rayon); min-height: 2.5rem; padding: var(--espace-2) var(--espace-3); cursor: pointer; transition: background var(--duree-courte) var(--ease), color var(--duree-courte) var(--ease); }
-.btn:hover { background: color-mix(in srgb, var(--accent) 85%, var(--encre)); }
-.btn:active { background: color-mix(in srgb, var(--accent) 70%, var(--encre)); }
+/* Boutons : aplat vert profond (variable dediee, plus calme en mode sombre) ; le secondaire est a filet */
+.btn { font: inherit; font-weight: 600; background: var(--accent-fond); color: var(--sur-accent); border: 1px solid var(--accent-fond); border-radius: var(--rayon); min-height: 2.5rem; padding: var(--espace-2) var(--espace-3); cursor: pointer; transition: background var(--duree-courte) var(--ease), color var(--duree-courte) var(--ease), border-color var(--duree-courte) var(--ease); }
+.btn:hover { background: color-mix(in srgb, var(--accent-fond) 82%, var(--encre)); border-color: color-mix(in srgb, var(--accent-fond) 82%, var(--encre)); }
+.btn:active { background: color-mix(in srgb, var(--accent-fond) 66%, var(--encre)); }
+.btn-secondaire { background: transparent; color: var(--encre); border-color: var(--bord-champ); }
+.btn-secondaire:hover { background: var(--papier-2); border-color: var(--encre-2); }
+.btn-secondaire:active { background: var(--grille); }
 
 /* Sections a filets : plus de cartes ombrees */
 .carte { background: none; border: 0; border-top: 1px solid var(--filet); border-radius: 0; padding: var(--espace-3) 0 0; margin: 0 0 var(--espace-4); }
@@ -49,12 +59,12 @@ td.num, th.num { text-align: right; }
 
 /* Choix de periode et champs */
 .choix-periode { display: flex; align-items: center; gap: var(--espace-2); margin-bottom: var(--espace-2); font-size: .9rem; color: var(--encre-2); }
-.choix-periode select, table.edition input[type="text"], table.edition select, .ajout input, .ajout select { font: inherit; color: var(--encre); background: var(--papier-2); border: 1px solid var(--bord-champ); border-radius: var(--rayon); min-height: 2.25rem; padding: var(--espace-1) var(--espace-2); transition: border-color var(--duree-courte) var(--ease), background var(--duree-courte) var(--ease); }
-table.edition input[type="text"], table.edition select, .ajout input, .ajout select { width: 100%; min-width: 5rem; }
-.choix-periode select:hover, table.edition input[type="text"]:hover, table.edition select:hover, .ajout input:hover, .ajout select:hover { border-color: var(--encre-2); background: var(--carte); }
+.choix-periode select, table.edition input[type="text"], table.edition select { font: inherit; color: var(--encre); background: var(--papier-2); border: 1px solid var(--bord-champ); border-radius: var(--rayon); min-height: 2.25rem; padding: var(--espace-1) var(--espace-2); transition: border-color var(--duree-courte) var(--ease), background var(--duree-courte) var(--ease); }
+table.edition input[type="text"], table.edition select { width: 100%; min-width: 5rem; }
+.choix-periode select:hover, table.edition input[type="text"]:hover, table.edition select:hover { border-color: var(--encre-2); background: var(--carte); }
 /* Texte d'exemple : --encre-2 a pleine opacite (4.5 minimum sur --papier-2, verifie par tests/js/contraste.test.js). */
 input::placeholder { color: var(--encre-2); opacity: 1; }
-.choix-periode select:focus-visible, table.edition input:focus-visible, table.edition select:focus-visible, .ajout input:focus-visible, .ajout select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); background: var(--carte); }
+.choix-periode select:focus-visible, table.edition input:focus-visible, table.edition select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); background: var(--carte); }
 table.edition input.num { text-align: right; }
 
 /* Tableau de bord : tete de section (titre et note a gauche, menu a droite) */
@@ -101,23 +111,25 @@ table.edition input.num { text-align: right; }
 .detail-pied .chiffre-val { font-size: var(--taille-3); padding-bottom: 0; }
 .detail-pied .chiffre-val::after { display: none; }
 
-/* Totaux : grands chiffres a empattement */
-.totaux { display: flex; flex-wrap: wrap; gap: var(--espace-2) var(--espace-5); margin: var(--espace-2) 0 var(--espace-3); }
-.total { display: flex; flex-direction: column; }
-.total-lib { color: var(--encre-2); font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; }
-.total strong { font-family: var(--police-titre); font-weight: 600; font-size: var(--taille-3); line-height: 1.2; font-variant-numeric: tabular-nums; }
 /* position relative : le texte pour lecteurs d'ecran (position absolue) reste dans la zone qui defile. */
 .defil { position: relative; overflow-x: auto; }
-table.bilan { font-size: .9rem; margin-bottom: var(--espace-3); white-space: nowrap; }
-table.bilan th[scope="row"] { color: var(--encre); text-transform: none; letter-spacing: 0; font-size: .9rem; }
-table.bilan tr.bilan-net th, table.bilan tr.bilan-net td { font-weight: 700; border-top: 1px solid var(--trait); }
-table.bilan th:last-child, table.bilan td:last-child { border-left: 1px solid var(--filet); }
+/* Bilan (mois ou annees en colonnes) : un releve horizontal, Revenus / Depenses, puis le bilan sous un trait */
+table.bilan { font-size: .9rem; margin: var(--espace-1) 0 var(--espace-3); white-space: nowrap; }
+table.bilan thead th { padding: var(--espace-1) var(--espace-2) var(--espace-2); border-bottom: 1px solid var(--trait); font-size: .72rem; letter-spacing: .07em; vertical-align: bottom; }
+table.bilan td, table.bilan th[scope="row"] { padding: .4rem var(--espace-2); border-bottom: 1px solid var(--grille); }
+table.bilan th[scope="row"] { color: var(--encre); text-transform: none; letter-spacing: 0; font-size: .9rem; font-weight: 500; }
+table.bilan td.neg { font-weight: 400; }
+table.bilan tr.bilan-net th, table.bilan tr.bilan-net td { padding-top: .55rem; font-weight: 600; border-top: 1px solid var(--trait); border-bottom: 2px solid var(--trait); }
+table.bilan tr.bilan-net td.neg { font-weight: 600; }
+table.bilan tr.bilan-net td { font-family: var(--police-titre); font-size: 1rem; }
+/* Colonne Total : separee par un filet, legerement teintee */
+table.bilan th:last-child, table.bilan td:last-child { border-left: 1px solid var(--filet); font-weight: 600; background: color-mix(in srgb, var(--papier-2) 55%, transparent); }
+table.bilan td:last-child.neg { font-weight: 600; }
+table.bilan thead th:last-child { background: none; }
 
-/* Tableaux d'edition */
-table.edition tr.groupe th { background: var(--papier-2); color: var(--encre); font-family: var(--police-titre); font-size: 1rem; text-transform: none; letter-spacing: 0; }
-table.edition tr.invalide input, table.edition tr.invalide select { border-color: var(--negatif); }
+/* Messages d'erreur et zones d'edition */
 tr.ligne-erreur td, .erreur-ligne { color: var(--negatif); background: var(--negatif-fond); font-size: .85rem; }
-.erreur-ligne { flex-basis: 100%; margin: 0; padding: var(--espace-1) var(--espace-2); border-radius: var(--rayon); }
+.erreur-ligne { flex-basis: 100%; margin: 0; padding: var(--espace-1) var(--espace-2); border-radius: var(--rayon); border-left: 2px solid var(--negatif); }
 .actions { display: inline-flex; align-items: center; gap: var(--espace-2); }
 /* Petits boutons-icones (oeil, corbeille) : 32 px de cote, icone au trait de la couleur du texte. */
 .btn-icone { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 2rem; height: 2rem; padding: 0; color: var(--encre-2); background: none; border: 0; border-radius: var(--rayon); cursor: pointer; transition: color var(--duree-courte) var(--ease), background var(--duree-courte) var(--ease); }
@@ -125,16 +137,13 @@ tr.ligne-erreur td, .erreur-ligne { color: var(--negatif); background: var(--neg
 .btn-icone:hover { color: var(--encre); background: var(--papier-2); }
 .btn-corbeille:hover { color: var(--negatif); }
 .oeil-ferme, .oeil-ferme:hover { color: var(--negatif); }
-table.edition:not(.releve) tr.masque td:not(:last-child), table.edition:not(.releve) tr.masque input, table.edition:not(.releve) tr.masque select { opacity: .7; }
 .btn-lien { font: inherit; font-size: .85rem; color: var(--negatif); background: none; border: 0; cursor: pointer; text-decoration: underline; min-height: 2rem; padding: var(--espace-1); }
 .case-palier { display: inline-flex; align-items: center; gap: var(--espace-1); font-size: .85rem; color: var(--encre-2); cursor: pointer; }
-table.edition tr.palier td { background: var(--positif-fond); border-bottom-color: var(--filet); }
 .palier-lib { display: inline-flex; align-items: center; gap: .35rem; color: var(--positif); font-weight: 600; font-size: .85rem; padding-left: .8rem; white-space: nowrap; }
 .palier-lib .icone { width: 1rem; height: 1rem; }
 .palier-etiq { display: block; color: var(--encre-2); font-size: .75rem; }
 .btn-palier { font: inherit; font-size: .85rem; color: var(--positif); background: none; border: 0; cursor: pointer; text-decoration: underline; min-height: 2rem; padding: var(--espace-1) .8rem; }
 .palier-aide { color: var(--encre-2); font-size: .8rem; margin-left: var(--espace-3); }
-table.edition:not(.releve) tr.masque.palier-ajout button, table.edition:not(.releve) tr.masque.palier-ajout .palier-aide { opacity: .7; }
 .btn-lien:focus-visible, .aide-btn:focus-visible, .btn-icone:focus-visible, .btn-palier:focus-visible, .case-palier input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* Paliers sans ligne : petit releve (description a gauche, corbeille discrete a droite) */
 .orphelins { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--trait); }
@@ -146,11 +155,22 @@ table.edition:not(.releve) tr.masque.palier-ajout button, table.edition:not(.rel
 .orphelins .btn-icone { color: var(--bord-champ); }
 .orphelins li:hover .btn-icone, .orphelins li:focus-within .btn-icone { color: var(--encre); }
 .orphelins li .btn-icone:hover { color: var(--negatif); }
-.ajout { display: flex; flex-wrap: wrap; gap: var(--espace-2); align-items: center; }
-.ajout input, .ajout select { width: auto; flex: 1 1 10rem; }
-/* Champs et bouton d'un formulaire d'ajout : meme hauteur. */
-.ajout input:not([type="checkbox"]), .ajout select, .ajout .btn { min-height: 2.5rem; }
-.ajout .btn { padding-block: 0; }
+/* Formulaires d'ajout : des champs etiquetes comme sur une fiche papier (ligne continue, boite au survol et au focus) */
+.ajout { display: flex; flex-wrap: wrap; gap: var(--espace-3) var(--espace-4); align-items: flex-end; padding: var(--espace-3) 0 0; }
+.champ-ajout { display: flex; flex-direction: column; gap: .15rem; min-width: 0; flex: 1 1 10rem; }
+.champ-ajout.champ-court { flex: 0 1 8rem; }
+.champ-ajout.champ-moyen { flex: 1 1 9rem; }
+.champ-ajout.champ-large { flex: 2 1 12rem; }
+.champ-lib { color: var(--encre-2); font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; }
+.champ-note { margin-left: .4rem; font-style: normal; font-weight: 400; text-transform: none; letter-spacing: 0; font-size: .75rem; }
+.champ-ajout input, .champ-ajout select, .champ-param input { font: inherit; width: 100%; min-width: 0; min-height: 2.5rem; padding: .3rem .45rem; color: var(--encre); background-color: transparent; border: 1px solid transparent; border-bottom: 1px solid var(--bord-champ); border-radius: 0; transition: border-color var(--duree-courte) var(--ease), background-color var(--duree-courte) var(--ease); }
+.champ-ajout input:hover, .champ-ajout select:hover, .champ-param input:hover { background-color: var(--carte); border: 1px solid var(--bord-champ); border-radius: var(--rayon); }
+.champ-ajout input:focus-visible, .champ-ajout select:focus-visible, .champ-param input:focus-visible { background-color: var(--carte); border: 1px solid var(--accent); border-radius: var(--rayon); outline: 2px solid var(--accent); outline-offset: 1px; }
+.champ-ajout select { appearance: none; padding-right: 1.6rem; cursor: pointer; background-image: linear-gradient(45deg, transparent 50%, var(--encre-2) 50%), linear-gradient(135deg, var(--encre-2) 50%, transparent 50%); background-position: calc(100% - .85rem) 55%, calc(100% - .55rem) 55%; background-size: .3rem .3rem; background-repeat: no-repeat; }
+.ajout .btn { flex: none; min-height: 2.5rem; padding-block: 0; }
+.ajout .erreur-ligne { flex-basis: 100%; }
+.ajout + .defil { margin-top: var(--espace-4); }
+@media (max-width: 560px) { .ajout { gap: var(--espace-3); } .champ-ajout.champ-court { flex: 1 1 40%; } .champ-ajout.champ-moyen, .champ-ajout.champ-large { flex: 1 1 100%; } .ajout .btn { width: 100%; } }
 /* Revalorise : la case garde sa taille, son libelle invisible agrandit la zone cliquable (24 px minimum). */
 .case-reval { display: inline-flex; align-items: center; justify-content: center; min-width: 1.75rem; min-height: 1.75rem; vertical-align: middle; cursor: pointer; border-radius: var(--rayon); }
 .case-reval:hover { background: var(--papier-2); }
@@ -168,7 +188,7 @@ table.edition:not(.releve) tr.masque.palier-ajout button, table.edition:not(.rel
 .filet-positif { --filet-chiffre: var(--positif); }
 .filet-negatif { --filet-chiffre: var(--negatif); }
 .filet-encre { --filet-chiffre: var(--encre); }
-.mensuel-lib { color: var(--encre-2); font-size: .76rem; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
+.mensuel-lib { flex-grow: 1; color: var(--encre-2); font-size: .76rem; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
 .mensuel-val { font-family: var(--police-titre); font-weight: 600; font-size: var(--taille-4); line-height: 1.1; letter-spacing: -.01em; white-space: nowrap; font-variant-numeric: lining-nums proportional-nums; color: var(--encre); }
 .mensuel-val.neg { color: var(--negatif); }
 /* Les prets : une ligne plus petite sous les grands chiffres */
@@ -192,6 +212,45 @@ table.releve .c-mont { width: 7.5rem; }
 table.releve .c-reval { width: 6.5rem; }
 table.releve .c-fin { width: 7.5rem; }
 table.releve .c-act { width: 9.75rem; white-space: nowrap; text-align: right; }
+/* Colonnes des autres releves (Annuel, Futurs, Prets) : memes briques, largeurs propres a chaque tableau */
+.format-mois { white-space: nowrap; }
+table.releve .c-cat { width: 8rem; }
+table.releve .c-ech { width: 8.5rem; }
+table.releve .c-deb { width: 6.75rem; }
+table.releve .c-int { width: 4.75rem; }
+table.releve .c-calc { width: 6.75rem; }
+table.releve .c-rbt { width: 10rem; white-space: nowrap; }
+table.releve td.c-impact, table.releve td.c-calc { padding-right: calc(var(--espace-1) + .45rem + 1px); white-space: nowrap; }
+table.releve td.c-rbt { padding-left: calc(var(--espace-1) + .45rem + 1px); }
+table.releve th.c-calc { padding-right: calc(var(--espace-1) + .45rem + 1px); }
+table.releve.t-annuel { min-width: 70.5rem; }
+table.releve.t-annuel .c-type, table.releve.t-annuel .c-fin { width: 6.75rem; }
+table.releve.t-annuel .c-reval { width: 5.5rem; }
+table.releve.t-annuel .c-mont { width: 7rem; }
+table.releve.t-annuel .c-act { width: 9.25rem; }
+table.releve.t-futurs { min-width: 58rem; }
+table.releve.t-futurs .c-ech { width: 10rem; }
+table.releve.t-encours { min-width: 35rem; }
+table.releve.t-simules { min-width: 69rem; }
+table.releve.t-encours .c-mont, table.releve.t-encours .c-fin { width: 9.5rem; }
+table.releve.t-simules .c-mont { width: 6.5rem; }
+table.releve.t-simules .c-fin { width: 7rem; }
+table.releve.t-encours .c-act, table.releve.t-simules .c-act { width: 5.75rem; }
+/* En-tetes longs (AAAA-MM) : ils passent a la ligne */
+table.releve.t-annuel thead th, table.releve.t-futurs thead th, table.releve.t-encours thead th, table.releve.t-simules thead th { white-space: normal; }
+/* Synthese par type et categorie : un releve a largeur libre, une colonne par annee */
+table.releve.synthese { table-layout: auto; min-width: 0; }
+table.releve.synthese th.c-lib { min-width: 10rem; }
+table.synthese tbody th[scope="row"] { padding: .4rem var(--espace-2); color: var(--encre); font-size: .95rem; font-weight: 400; text-transform: none; letter-spacing: 0; border-bottom: 1px solid var(--grille); white-space: normal; overflow-wrap: anywhere; }
+table.synthese td.num { padding-right: var(--espace-2); white-space: nowrap; }
+table.synthese td.neg { font-weight: 400; }
+table.synthese td.c-total.neg { font-weight: 600; }
+table.synthese td.nul { color: var(--encre-2); }
+table.synthese .c-total { font-weight: 600; border-left: 1px solid var(--filet); }
+table.synthese td.c-total { background: color-mix(in srgb, var(--papier-2) 55%, transparent); }
+table.synthese tr.groupe th { white-space: nowrap; }
+table.releve tr.groupe th.groupe-pos { color: var(--positif); }
+table.releve tr.groupe th.groupe-neg { color: var(--negatif); }
 /* Titre de categorie : nom a empattement, total aligne sur la colonne des montants */
 table.releve tr.groupe th, table.releve tr.groupe td { padding: var(--espace-4) var(--espace-2) var(--espace-1); border-bottom: 1px solid var(--trait); background: none; vertical-align: baseline; }
 table.releve tbody tr.groupe:first-child th, table.releve tbody tr.groupe:first-child td { padding-top: var(--espace-3); }
@@ -311,16 +370,31 @@ table.releve tr.releve-vide .releve-vide-titre { margin-bottom: var(--espace-1);
 .bulle { display: none; position: absolute; z-index: 5; left: 2rem; top: -.25rem; width: 22rem; max-width: 80vw; white-space: pre-line; background: var(--carte); color: var(--encre); border: 1px solid var(--trait); border-radius: var(--rayon); padding: .6rem .8rem; box-shadow: 0 4px 14px var(--ombre); font-size: .85rem; }
 .aide:hover .bulle, .aide:focus-within .bulle { display: block; }
 
-/* Parametres */
-.champ-param { display: flex; flex-direction: column; gap: var(--espace-1); flex: 1 1 14rem; }
-.groupe-param { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--espace-2); flex: 2 1 28rem; }
-/* Parametres : les blocs (libelle, champ, aide) s'alignent en haut. */
-.ajout:has(> .champ-param) { align-items: flex-start; }
-.champ-param label { font-weight: 600; font-size: .9rem; }
-.ajout .champ-param input, .champ-param input { width: 100%; flex: none; }
-.actions-accueil { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
+/* Parametres : des sections a filet (titre a gauche, champs alignes a droite), un grand chiffre pour le solde */
+.param-section { display: grid; grid-template-columns: minmax(9rem, 13rem) minmax(0, 1fr); gap: var(--espace-2) var(--espace-5); padding: var(--espace-4) 0; border-top: 1px solid var(--filet); }
+.param-section:first-child { border-top: 1px solid var(--trait); }
+.param-titre { margin: 0; font-size: 1.15rem; line-height: 1.3; }
+.param-corps { min-width: 0; }
+.groupe-param { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0 var(--espace-4); align-items: start; }
+.champ-param { display: grid; grid-template-rows: subgrid; grid-row: span 3; gap: .15rem; min-width: 0; padding-bottom: var(--espace-2); }
+.champ-param label { color: var(--encre-2); font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; align-self: end; }
+.champ-aide { display: flex; flex-direction: column; gap: var(--espace-1); }
+.champ-aide small { margin: 0; color: var(--encre-2); font-size: .8rem; line-height: 1.4; }
+.champ-param input[aria-invalid="true"] { border-bottom: 2px solid var(--negatif); }
+.solde-total { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--espace-1) var(--espace-3); margin: var(--espace-2) 0 0; padding-top: var(--espace-3); border-top: 1px solid var(--grille); }
+.solde-lib { color: var(--encre-2); font-size: .76rem; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
+.solde-val { font-family: var(--police-titre); font-weight: 600; font-size: var(--taille-4); line-height: 1.1; letter-spacing: -.01em; white-space: nowrap; font-variant-numeric: lining-nums proportional-nums; color: var(--encre); }
+.solde-val.neg { color: var(--negatif); }
+@media (max-width: 720px) {
+  .param-section { grid-template-columns: 1fr; gap: var(--espace-2); padding: var(--espace-3) 0; }
+  .solde-val { font-size: clamp(var(--taille-3), 9vw, var(--taille-4)); }
+}
+.actions-accueil { display: flex; gap: var(--espace-3); justify-content: center; flex-wrap: wrap; }
+.carte .actions-accueil { justify-content: flex-start; }
 .zone-import { margin-top: var(--espace-3); }
+.zone-import:empty { margin-top: 0; }
 .zone-import .btn-lien { margin-left: .75rem; }
+.carte .note-export { margin: var(--espace-3) 0 0; color: var(--positif); font-weight: 500; }
 
 /* Aide : bouton « ? » de l'en-tete et visite guidee (js/visite.js) */
 .bouton-aide { margin-left: auto; font: inherit; font-weight: 700; width: 2.25rem; height: 2.25rem; padding: 0; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); background: none; cursor: pointer; transition: background var(--duree-courte) var(--ease); }

@@ -52,7 +52,11 @@ const PAIRES = [
   ['--positif', '--fond'], ['--positif', '--carte'],
   ['--negatif', '--fond'], ['--negatif', '--carte'],
   ['--carte', '--accent'],
+  // Boutons pleins : texte sur l'aplat plus profond
+  ['--sur-accent', '--accent-fond'],
   ['--positif', '--positif-fond'], ['--negatif', '--negatif-fond'],
+  // Bandeau d'erreur (texte courant) et d'avertissement (fond --papier-2)
+  ['--encre', '--negatif-fond'], ['--encre', '--papier-2'],
   // Texte dans les champs et bandes de categorie (fond --papier-2)
   ['--encre-2', '--papier-2'], ['--negatif', '--papier-2'],
   // Releve : « oui » vert sur la ligne survolee (lavis de --papier-2)
@@ -101,7 +105,7 @@ for (const nom of ['clair', 'sombre']) {
 
 test('variables du theme presentes et pas de couleur en dur dans style.css', () => {
   const colorees = ['--fond', '--carte', '--encre', '--encre-2', '--trait', '--grille', '--accent',
-    '--positif', '--negatif', '--positif-fond', '--negatif-fond', '--filet', '--papier-2', '--bord-champ'];
+    '--positif', '--negatif', '--positif-fond', '--negatif-fond', '--filet', '--papier-2', '--bord-champ', '--accent-fond', '--sur-accent'];
   for (const nom of colorees) {
     assert.ok(jeux.clair[nom], nom + ' absent du jeu clair');
     assert.ok(jeux.sombre[nom], nom + ' absent du jeu sombre');
