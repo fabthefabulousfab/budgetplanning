@@ -157,6 +157,14 @@
     return zone;
   }
 
+  // Revenu : taux de revalorisation propre à la ligne (en %, vide = aucune) ; dépense : case « Revalorisé » (suit l'inflation des Paramètres).
+  function cellReval(nature, index, ligne) {
+    if (ligne.type !== 'revenu') return champCase(nature, index, ligne, true);
+    const w = el('span', '', { class: 'champ-taux' });
+    w.appendChild(champTexte(nature, index, ligne, 'taux_revalorisation', 'Revalorisation (%)', { inputmode: 'decimal', placeholder: '0', class: 'num' }));
+    return w;
+  }
+
   function boutonOeil(nature, index, ligne) {
     return B.boutonOeil(ligne.actif !== false, ligne.libelle, function () { modifier(nature, ligne, 'actif', ligne.actif === false); }, nature + ':' + index + ':actif');
   }
@@ -415,9 +423,9 @@
       const base = { type: brouillon.type || 'depense', categorie: (brouillon.categorie || '').trim(), libelle: (brouillon.libelle || '').trim() };
       let ligne;
       if (nat === 'mensuel') {
-        ligne = Object.assign(base, { montant: B.appliquerEdition({}, 'montant', brouillon.montant, 'mensuel').montant, revalorise: false, fin: null });
+        ligne = Object.assign(base, { montant: B.appliquerEdition({}, 'montant', brouillon.montant, 'mensuel').montant, fin: null }, base.type === 'revenu' ? {} : { revalorise: false });
       } else if (nat === 'annuel') {
-        ligne = Object.assign(base, { echeances: (brouillon.echeances || '').trim(), revalorise: false, debut: null, fin: null });
+        ligne = Object.assign(base, { echeances: (brouillon.echeances || '').trim(), debut: null, fin: null }, base.type === 'revenu' ? {} : { revalorise: false });
       } else {
         ligne = Object.assign(base, { echeances: (brouillon.echeances || '').trim() });
       }
@@ -505,7 +513,7 @@
 
     const cols = [
       { t: 'Libellé', classe: 'c-lib' }, { t: 'Catégorie', classe: 'c-cat', cache: etroit }, { t: 'Type', classe: 'c-type' }, { t: '€ / mois', num: true, classe: 'c-mont' },
-      { t: 'Revalorisé', classe: 'c-reval' }, { t: 'Fin (AAAA-MM)', classe: 'c-fin' }, { t: 'Actions', classe: 'c-act', cache: true },
+      { t: 'Reval. (%)', classe: 'c-reval' }, { t: 'Fin (AAAA-MM)', classe: 'c-fin' }, { t: 'Actions', classe: 'c-act', cache: true },
     ];
     const t = el('table', '', { class: 'edition releve t-mensuel' + (etroit ? ' t-mensuel-etroit' : '') });
     t.appendChild(entetes(cols));
@@ -527,7 +535,7 @@
         }
         tr.appendChild(td(champSelect('mensuel', it.index, l, 'type', 'Type', TYPES), 'c-type'));
         tr.appendChild(td(champTexte('mensuel', it.index, l, 'montant', 'Montant mensuel', { inputmode: 'decimal', class: 'num' }), 'num c-mont'));
-        tr.appendChild(td(champCase('mensuel', it.index, l, true), 'c-reval'));
+        tr.appendChild(td(cellReval('mensuel', it.index, l), 'c-reval'));
         const creerFin = function () { return B.champMois(champTexte('mensuel', it.index, l, 'fin', 'Fin')); };
         // Avec des paliers, la fin se saisit sur le dernier palier.
         tr.appendChild(td(B.proprietaireFin(l) === 'base' ? creerFin() : tiret('La fin se saisit sur le dernier palier'), 'c-fin'));
@@ -615,7 +623,7 @@
     const cols = [
       { t: 'Libellé', classe: 'c-lib' }, { t: 'Catégorie', classe: 'c-cat' }, { t: 'Type', classe: 'c-type' },
       { t: 'Échéances', classe: 'c-ech' }, { t: 'Début (AAAA-MM)', classe: 'c-deb' }, { t: 'Fin (AAAA-MM)', classe: 'c-fin' },
-      { t: 'Revalorisé', classe: 'c-reval' }, { t: 'Impact mensuel', num: true, classe: 'c-mont' }, { t: 'Actions', classe: 'c-act', cache: true },
+      { t: 'Reval. (%)', classe: 'c-reval' }, { t: 'Impact mensuel', num: true, classe: 'c-mont' }, { t: 'Actions', classe: 'c-act', cache: true },
     ];
     const t = el('table', '', { class: 'edition releve t-annuel' });
     t.appendChild(entetes(cols));
@@ -631,7 +639,7 @@
       if (annuel) {
         tr.appendChild(td(B.champMois(champTexte(nature, i, l, 'debut', 'Début')), 'c-deb'));
         tr.appendChild(td(B.proprietaireFin(l) === 'base' ? creerFin() : tiret('La fin se saisit sur le dernier palier'), 'c-fin'));
-        tr.appendChild(td(champCase(nature, i, l, true), 'c-reval'));
+        tr.appendChild(td(cellReval(nature, i, l), 'c-reval'));
       } else {
         ['c-deb', 'c-fin', 'c-reval'].forEach(function (k) { tr.appendChild(td(tiret('Non applicable'), k)); });
       }

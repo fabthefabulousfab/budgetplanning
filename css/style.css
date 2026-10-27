@@ -345,6 +345,10 @@ table.releve .case-oui-non input[type="checkbox"] { appearance: none; flex: none
 table.releve .case-oui-non input[type="checkbox"]:checked { background: var(--positif); border-color: var(--positif); }
 .case-oui-non input:checked ~ .reval-non, .case-oui-non input:not(:checked) ~ .reval-oui { display: none; }
 .case-oui-non .reval-oui { color: var(--positif); font-weight: 600; }
+/* Revalorisation d'un revenu : taux en %, le signe est dessiné après le champ (et après son jumeau à l'impression) */
+table.releve .champ-taux { display: inline-flex; align-items: center; max-width: 100%; color: var(--encre-2); font-size: .85rem; }
+table.releve .champ-taux::after { content: "%"; flex: none; padding-right: .2rem; }
+table.releve .champ-taux input[type="text"] { min-width: 0; max-width: 100%; color: var(--encre); font-size: inherit; }
 table.releve .case-oui-non input:focus-visible { outline: none; }
 table.releve .case-oui-non:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
 table.releve .case-oui-non:hover { background: var(--carte); }

@@ -45,6 +45,8 @@ Quatre feuilles, en-têtes en ligne 1 :
 
 Type : `revenu` ou `depense`. Revalorisé : `oui` ou `non`. Début et Fin : `AAAA-MM`.
 
+Revalorisé `oui` sur une dépense : elle suit l'inflation réglée dans Paramètres. Sur un revenu, la colonne est convertie à l'ouverture en taux de revalorisation propre à la ligne, égal à l'inflation en vigueur à ce moment ; ce taux se règle ensuite ligne par ligne dans l'application.
+
 ### Syntaxe des échéances
 
 | Saisie | Signification |
@@ -98,7 +100,9 @@ Ces fichiers sont ignorés par git.
 Si vous modifiez ces fichiers à la main :
 
 - Dans `evenements-futurs.yaml`, chaque événement décrit ses montants avec la clé `echeances` (même syntaxe que ci-dessus).
-- `revalorise` doit valoir `true` ou `false` (pas `oui`/`non`).
+- `revalorise` doit valoir `true` ou `false` (pas `oui`/`non`). Il ne s'applique qu'aux dépenses : une dépense cochée suit l'inflation, `revalorisation.taux` de `parametres.yaml` (en fraction, `0.02` pour 2 %), au mois `revalorisation.mois`.
+- `taux_revalorisation` est le taux annuel d'une ligne de revenu, en pourcentage avec un point décimal (`1.5` pour 1,5 %, négatif accepté, absent, vide ou `0` : pas de revalorisation). Il est refusé sur une dépense, et le texte (`abc`, `1,5`) est refusé avec un message qui nomme le fichier. Il s'applique chaque année au même mois que l'inflation (`revalorisation.mois`) et se combine avec les paliers de la ligne.
+- Anciens fichiers : à l'ouverture, un revenu `revalorise: true` sans `taux_revalorisation` reçoit le taux d'inflation courant (`revalorisation.taux` × 100) et sa clé `revalorise` disparaît ; les projections sont inchangées. Le fichier n'est réécrit qu'au prochain enregistrement (le changement de l'inflation enregistre d'abord les revenus convertis), puis un changement d'inflation ne modifie plus les revenus. Les anciennes sauvegardes s'importent telles quelles.
 - `parametres.yaml` n'accepte que les clés `depart`, `horizon_annees`, `revalorisation` (`taux`, `mois`), `solde_depart` (`compte_courant`, `epargne`) et `categories` (`depense`, `revenu`, listes de noms).
 - `solde_depart` fixe ce qu'il reste sur les comptes au premier mois de la projection, à la place des montants de l'Excel (section `situation` de `donnees-courantes.yaml`). Chaque champ est indépendant : `null` (ou absent) reprend la valeur de l'Excel, un nombre la remplace (les négatifs sont acceptés). Cette valeur est conservée lors d'un nouvel import Excel. Pour revenir aux valeurs de l'Excel, videz le champ dans l'onglet Paramètres, ou mettez `null` dans le fichier.
 - En cas de YAML invalide, le message d'erreur nomme le fichier concerné et rien n'est écrasé : corrigez le fichier puis rouvrez le dossier.
@@ -145,7 +149,7 @@ Les textes sont dans `js/visite-textes.js` (une liste d'étapes par onglet : `ci
 - Chrome ou Edge uniquement (pas de Firefox ni Safari).
 - L'autorisation d'accès au dossier est à redonner à chaque session.
 - Un seul scénario.
-- Pas d'intérêts, pas d'impôts, pas d'inflation (hors revalorisation configurée).
+- Pas d'intérêts, pas d'impôts, pas d'inflation générale (seulement le taux d'inflation des dépenses cochées « Revalorisé » et le taux propre à chaque revenu).
 
 ## Tests
 

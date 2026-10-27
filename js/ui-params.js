@@ -10,8 +10,8 @@
   const CHAMPS = [
     { cle: 'depart', label: 'Départ (AAAA-MM)', aide: 'Premier mois de la projection.', placeholder: 'AAAA-MM' },
     { cle: 'horizon', label: 'Horizon (années, de 10 à 15)', aide: 'Durée de la projection.', type: 'number', min: '10', max: '15', step: '1' },
-    { cle: 'taux', label: 'Revalorisation : taux annuel (%)', aide: 'Appliqué aux lignes « revalorisé », par exemple 2 pour 2 %.', type: 'text', placeholder: '2' },
-    { cle: 'mois', label: 'Revalorisation : mois (de 1 à 12)', aide: 'Mois de l’année où la revalorisation s’applique (1 = janvier).', type: 'number', min: '1', max: '12', step: '1' },
+    { cle: 'taux', label: 'Inflation (dépenses) : taux annuel (%)', aide: 'Appliqué aux dépenses cochées « Revalorisé ». Les revenus ont chacun leur taux dans leur ligne.', type: 'text', placeholder: '2' },
+    { cle: 'mois', label: 'Revalorisation : mois (de 1 à 12)', aide: 'Mois de l’année où les revalorisations (inflation des dépenses, taux des revenus) s’appliquent (1 = janvier).', type: 'number', min: '1', max: '12', step: '1' },
     { cle: 'solde_compte_courant', label: 'Solde de départ : compte courant (€)', aide: 'Vide = montant de la situation enregistrée (0 pour un nouveau budget). Un nombre le remplace (négatif accepté).', type: 'text', solde: 'compte_courant' },
     { cle: 'solde_epargne', label: 'Solde de départ : épargne (€)', aide: 'Vide = montant de la situation enregistrée (0 pour un nouveau budget). Un nombre le remplace.', type: 'text', solde: 'epargne' },
   ];
