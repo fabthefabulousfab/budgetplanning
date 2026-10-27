@@ -70,6 +70,12 @@
     if (l.revalorise != null && typeof l.revalorise !== 'boolean') {
       throw new Error('« revalorise » doit valoir true ou false (écrire true ou false, pas « ' + l.revalorise + ' »).');
     }
+    if (l.taux_revalorisation != null) {
+      const t = l.taux_revalorisation;
+      if (l.type !== 'revenu') throw new Error('« taux_revalorisation » n’existe que pour les revenus (une dépense se coche « revalorise » et suit l’inflation de parametres.yaml).');
+      if (typeof t !== 'number' || !Number.isFinite(t)) throw new Error('« taux_revalorisation » doit être un nombre en % avec un point décimal (par exemple 1.5), pas « ' + t + ' ».');
+      if (t <= -100) throw new Error('« taux_revalorisation » doit être supérieur à -100 (%).');
+    }
     if (l.actif != null && typeof l.actif !== 'boolean') throw new Error('« actif » doit valoir true ou false.');
     validerMois(l.debut, 'Début');
     validerMois(l.fin, 'Fin');
@@ -344,13 +350,35 @@
     return out.concat(orphelins || []);
   }
 
+  // Pour un revenu, la case « revalorise » n'a plus d'effet (le taux de la ligne la remplace) : elle n'est plus écrite.
+  function sansCaseRevenu(l) {
+    if (l.type !== 'revenu' || !('revalorise' in l)) return l;
+    const c = Object.assign({}, l);
+    delete c.revalorise;
+    return c;
+  }
+
   function sansPaliers(donnees) {
     const copie = Object.assign({}, donnees);
     NATURES_IMPORT.forEach(function (nature) {
       if (!Array.isArray(donnees[nature])) return;
-      copie[nature] = donnees[nature].map(function (l) { const c = Object.assign({}, l); delete c.paliers; return c; });
+      copie[nature] = donnees[nature].map(function (l) { const c = Object.assign({}, sansCaseRevenu(l)); delete c.paliers; return c; });
     });
     return copie;
+  }
+
+  // Ancien format : un revenu « revalorise: true » sans taux propre reçoit le taux global courant (en %), la case disparaît.
+  // Modifie les lignes en place ; renvoie vrai si au moins une ligne a changé (le fichier n'est pas réécrit à l'ouverture).
+  function migrerRevalorisation(lignes, parametres) {
+    let change = false;
+    const taux = Math.round(parametres.revalorisation.taux * 100000) / 1000;
+    (lignes || []).forEach(function (l) {
+      if (!l || l.type !== 'revenu' || !('revalorise' in l)) return;
+      if (l.revalorise === true && l.taux_revalorisation == null && taux !== 0) l.taux_revalorisation = taux;
+      delete l.revalorise;
+      change = true;
+    });
+    return change;
   }
 
   async function loadAll(dir) {
@@ -381,7 +409,11 @@
     const parametres = fusionnerParametres(brut);
     enFichier(FICHIERS.parametres, function () { validerParametres(parametres); });
 
-    return { donnees: donnees, evenements: evenements, prets: prets, parametres: parametres, orphelins: orphelins, avertissements: avertissements };
+    const migres = { donnees: false, evenements: false };
+    if (donnees !== null) NATURES_IMPORT.forEach(function (nature) { if (migrerRevalorisation(donnees[nature], parametres)) migres.donnees = true; });
+    migres.evenements = migrerRevalorisation(evenements, parametres);
+
+    return { donnees: donnees, evenements: evenements, prets: prets, parametres: parametres, orphelins: orphelins, avertissements: avertissements, migres: migres };
   }
 
   // donnees-courantes.yaml est écrit sans `paliers` ; paliers.yaml est regénéré (lignes + orphelins), tout est validé avant la première écriture.
@@ -413,7 +445,7 @@
   async function saveEvenements(dir, evenements, prets) {
     const lesPrets = (prets || []).map(function (p) { return Object.assign({}, p, { nature: 'pret' }); });
     enFichier(FICHIERS.evenements, function () { validerEvenements(evenements); validerPrets(lesPrets); });
-    await ecrire(dir, FICHIERS.evenements, evenements.concat(lesPrets));
+    await ecrire(dir, FICHIERS.evenements, evenements.map(sansCaseRevenu).concat(lesPrets));
   }
 
   // Historique synthétique des comptes, regénéré après chaque enregistrement (jamais à l'ouverture).

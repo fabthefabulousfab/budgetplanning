@@ -28,9 +28,26 @@
   }
 
   // Applique une saisie de cellule à une COPIE de la ligne (l'originale n'est jamais modifiée).
-  function appliquerEdition(ligne, champ, valeur, nature) {
+  // `inflation` (fraction, facultatif) : taux de parametres.yaml, repris par un revenu issu d'une dépense « revalorisée ».
+  function appliquerEdition(ligne, champ, valeur, nature, inflation) {
     const copie = Object.assign({}, ligne);
-    if (champ === 'montant' && nature === 'mensuel') {
+    if (champ === 'type') {
+      if (valeur === ligne.type) return copie;
+      copie.type = valeur;
+      // Aucune information perdue en silence : la case des dépenses et le taux des revenus se convertissent l'un en l'autre.
+      if (valeur === 'depense') {
+        const t = ligne.taux_revalorisation;
+        copie.revalorise = typeof t === 'number' && t !== 0;
+        delete copie.taux_revalorisation;
+      } else if (valeur === 'revenu') {
+        if (ligne.revalorise === true && typeof inflation === 'number') copie.taux_revalorisation = Math.round(inflation * 100000) / 1000;
+        delete copie.revalorise;
+      }
+    } else if (champ === 'taux_revalorisation') {
+      const t = String(valeur == null ? '' : valeur).trim();
+      if (t === '') delete copie.taux_revalorisation;
+      else copie.taux_revalorisation = /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : t; // texte conservé tel quel : la validation le refuse avec un message
+    } else if (champ === 'montant' && nature === 'mensuel') {
       copie.montant = nombre(valeur);
     } else if (champ === 'debut' || champ === 'fin') {
       const t = String(valeur == null ? '' : valeur).trim();

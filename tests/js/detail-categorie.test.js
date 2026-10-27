@@ -8,7 +8,7 @@ const P = { depart: '2026-10', horizon_annees: 2, revalorisation: { taux: 0.1, m
 const D = {
   situation: { compte_courant: 100, epargne: 50 },
   mensuel: [
-    { type: 'revenu', categorie: 'Salaire', libelle: 'paie', montant: 3000, revalorise: true },
+    { type: 'revenu', categorie: 'Salaire', libelle: 'paie', montant: 3000, taux_revalorisation: 10 },
     { type: 'revenu', categorie: 'Salaire', libelle: 'prime mensuelle', montant: 100 },
     { type: 'depense', categorie: 'Vie', libelle: 'courses', montant: 2000, revalorise: true },
     { type: 'depense', categorie: 'Vie', libelle: 'transports', montant: 150 },

@@ -66,7 +66,7 @@ test('expandPaliers : echeances annuelles remplacees, date unique', () => {
 
 // ---- project ----
 test('project : paliers et revalorisation apres la frontiere', () => {
-  const D = { mensuel: [{ type: 'revenu', categorie: 'c', libelle: 'l', montant: 100, revalorise: true, paliers: [{ depuis: '2027-03', montant: 200 }] }] };
+  const D = { mensuel: [{ type: 'revenu', categorie: 'c', libelle: 'l', montant: 100, taux_revalorisation: 10, paliers: [{ depuis: '2027-03', montant: 200 }] }] };
   const r = project(D, [], P);
   const m = (k) => r.find((x) => x.ym === k).revenus;
   assert.strictEqual(m('2026-10'), 100);
@@ -85,7 +85,7 @@ test('project : ligne masquee avec paliers ignoree', () => {
 const D = {
   situation: { compte_courant: 100, epargne: 50 },
   mensuel: [
-    { type: 'revenu', categorie: 'salaire', libelle: 'paie', montant: 3000, revalorise: true, paliers: [{ depuis: '2027-04', montant: 3500 }, { depuis: '2028-09', montant: 3800 }] },
+    { type: 'revenu', categorie: 'salaire', libelle: 'paie', montant: 3000, taux_revalorisation: 10, paliers: [{ depuis: '2027-04', montant: 3500 }, { depuis: '2028-09', montant: 3800 }] },
     { type: 'depense', categorie: 'vie', libelle: 'loyer', montant: 900, fin: '2029-12', paliers: [{ depuis: '2026-10', montant: 950 }] },
   ],
   annuel: [{ type: 'depense', categorie: 'imp', libelle: 'taxe', echeances: '3-600', revalorise: true, paliers: [{ depuis: '2028-01', echeances: '3-700, 9-100' }] }],

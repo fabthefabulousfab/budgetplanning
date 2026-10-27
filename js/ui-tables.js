@@ -39,7 +39,7 @@
   // ---- Modification, suppression, ajout --------------------------------------------------
 
   async function modifier(nature, ligne, champ, valeur) {
-    return commit(nature, ligne, B.appliquerEdition(ligne, champ, valeur, nature));
+    return commit(nature, ligne, B.appliquerEdition(ligne, champ, valeur, nature, B.state.parametres.revalorisation.taux));
   }
 
   // Enregistre `copie` à la place de `ligne` (repérée par identité) : validation, mise à jour, écriture, retour arrière si échec.

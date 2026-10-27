@@ -158,13 +158,12 @@
     const idx = S.monthIndex(ym);
     const out = { ym: ym, mensuel: { revenus: 0, depenses: 0 }, annuel: [], exceptionnel: [], futurs: [], prets: [], net: 0 };
     if (idx < debutIdx || idx >= debutIdx + p.horizon_annees * 12) return out;
-    const facteur = Pj.facteurReval(p, idx);
     const win = { debut: ym, fin: ym };
     function lignes(liste, mensuelNumerique, groupe) {
       (liste || []).filter(Pj.estActif).forEach(function (ligne) {
         Pj.normaliserTout(ligne, mensuelNumerique).forEach(function (l) {
           S.occurrences(l.schedule, l.bornes, win).forEach(function (o) {
-            const montant = l.revalorise ? o.montant * facteur : o.montant;
+            const montant = o.montant * Pj.facteurLigne(p, l, idx);
             if (groupe === null) out.mensuel[l.type === 'revenu' ? 'revenus' : 'depenses'] += montant;
             else (ligne.pret ? out.prets : groupe).push({ libelle: ligne.libelle, type: l.type, montant: (l.type === 'revenu' ? 1 : -1) * montant });
           });
@@ -219,7 +218,7 @@
       (g[1] || []).filter(Pj.estActif).forEach(function (ligne) {
         Pj.normaliserTout(ligne, g[2]).forEach(function (l) {
           S.occurrences(l.schedule, l.bornes, win).forEach(function (o) {
-            const m = l.revalorise ? o.montant * Pj.facteurReval(p, S.monthIndex(o.ym)) : o.montant;
+            const m = o.montant * Pj.facteurLigne(p, l, S.monthIndex(o.ym));
             rows.push({ ym: o.ym, type: l.type, origine: ligne.pret ? 'pret' : g[0], categorie: ligne.categorie || '', libelle: String(ligne.libelle), montant: (l.type === 'revenu' ? 1 : -1) * m });
           });
         });

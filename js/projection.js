@@ -64,11 +64,15 @@
     } else {
       schedule = S.parseEcheances(ligne.echeances != null ? ligne.echeances : ligne.montant);
     }
+    const revenu = ligne.type === 'revenu';
+    const taux = ligne.taux_revalorisation;
     return {
       type: ligne.type,
       schedule: schedule,
       bornes: { debut: ligne.debut || null, fin: ligne.fin || null },
-      revalorise: !!ligne.revalorise,
+      // Revenu : taux propre à la ligne (en %, fraction ici). Dépense : case « revalorisé », suit l'inflation des paramètres.
+      tauxReval: revenu && typeof taux === 'number' && Number.isFinite(taux) ? taux / 100 : 0,
+      revalorise: !revenu && !!ligne.revalorise,
     };
   }
 
@@ -84,6 +88,17 @@
     const p = Object.assign({}, PARAMETRES_DEFAUT, params);
     const reval = Object.assign({}, PARAMETRES_DEFAUT.revalorisation, p.revalorisation);
     return Math.pow(1 + reval.taux, passages(S.monthIndex(p.depart), idx, reval.mois));
+  }
+
+  // Facteur appliqué à une ligne normalisée au mois d'indice `idx` : le taux de la ligne (revenu) ou l'inflation (dépense cochée), 1 sinon.
+  function facteurLigne(params, ligne, idx) {
+    if (ligne.type === 'revenu') {
+      if (!ligne.tauxReval) return 1;
+      const p = Object.assign({}, PARAMETRES_DEFAUT, params);
+      const reval = Object.assign({}, PARAMETRES_DEFAUT.revalorisation, p.revalorisation);
+      return Math.pow(1 + ligne.tauxReval, passages(S.monthIndex(p.depart), idx, reval.mois));
+    }
+    return ligne.revalorise ? facteurReval(params, idx) : 1;
   }
 
   function project(donnees, evenements, params) {
@@ -105,8 +120,7 @@
         const idx = S.monthIndex(o.ym);
         const pos = idx - debutIdx;
         if (pos < 0 || pos >= n) return;
-        let montant = o.montant;
-        if (l.revalorise) montant *= facteurReval(p, idx);
+        const montant = o.montant * facteurLigne(p, l, idx);
         if (l.type === 'revenu') revenus[pos] += montant;
         else depenses[pos] += montant;
       });
@@ -123,7 +137,7 @@
     return out;
   }
 
-  const api = { project: project, PARAMETRES_DEFAUT: PARAMETRES_DEFAUT, normaliser: normaliser, normaliserTout: normaliserTout, expandPaliers: expandPaliers, estActif: estActif, facteurReval: facteurReval, soldeDepart: soldeDepart };
+  const api = { project: project, PARAMETRES_DEFAUT: PARAMETRES_DEFAUT, normaliser: normaliser, normaliserTout: normaliserTout, expandPaliers: expandPaliers, estActif: estActif, facteurReval: facteurReval, facteurLigne: facteurLigne, soldeDepart: soldeDepart };
   if (typeof module !== 'undefined') module.exports = api;
   else root.Budget = Object.assign(root.Budget || {}, api);
 })(this);

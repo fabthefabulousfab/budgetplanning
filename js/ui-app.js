@@ -2,7 +2,7 @@
   'use strict';
 
   const B = root.Budget;
-  const state = { dir: null, donnees: null, evenements: [], prets: [], parametres: null, mois: [], orphelins: [], avertissements: [] };
+  const state = { dir: null, donnees: null, evenements: [], prets: [], parametres: null, mois: [], orphelins: [], avertissements: [], migres: { donnees: false, evenements: false } };
   const FICHIER_HISTORIQUE = 'historique-comptes.csv';
   const tabs = [];
   let actif = null;
@@ -253,10 +253,16 @@
 
   async function persistNow(kind) {
     const fn = {
-      donnees: function () { return B.saveDonnees(state.dir, state.donnees, state.orphelins); },
-      evenements: function () { return B.saveEvenements(state.dir, state.evenements, state.prets); },
-      prets: function () { return B.saveEvenements(state.dir, state.evenements, state.prets); },
-      parametres: function () { return B.saveParametres(state.dir, state.parametres); },
+      donnees: async function () { await B.saveDonnees(state.dir, state.donnees, state.orphelins); state.migres.donnees = false; },
+      evenements: async function () { await B.saveEvenements(state.dir, state.evenements, state.prets); state.migres.evenements = false; },
+      prets: async function () { await B.saveEvenements(state.dir, state.evenements, state.prets); state.migres.evenements = false; },
+      parametres: async function () {
+        // Les revenus d'un ancien fichier ont reçu l'inflation d'alors à l'ouverture : on les écrit avant d'enregistrer un autre taux,
+        // sinon la prochaine ouverture leur appliquerait la nouvelle inflation.
+        if (state.migres.donnees) { await B.saveDonnees(state.dir, state.donnees, state.orphelins); state.migres.donnees = false; }
+        if (state.migres.evenements) { await B.saveEvenements(state.dir, state.evenements, state.prets); state.migres.evenements = false; }
+        await B.saveParametres(state.dir, state.parametres);
+      },
     }[kind];
     if (!fn) throw new Error('Type de fichier inconnu : ' + kind);
     try {
@@ -429,6 +435,7 @@
     state.prets = r.prets;
     state.parametres = r.parametres;
     state.orphelins = r.orphelins || [];
+    state.migres = r.migres || { donnees: false, evenements: false };
     state.avertissements = r.avertissements || [];
     avertir(state.avertissements);
     if (B.paliersUI) B.paliersUI.reset();

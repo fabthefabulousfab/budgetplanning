@@ -53,7 +53,7 @@ test('(b) fin 2026-12', () => {
 });
 
 test('(c) revalorisation', () => {
-  const r = project(donnees({ mensuel: [{ type: 'revenu', categorie: 'c', libelle: 'l', montant: 1000, revalorise: true }] }), [], P);
+  const r = project(donnees({ mensuel: [{ type: 'revenu', categorie: 'c', libelle: 'l', montant: 1000, taux_revalorisation: 2 }] }), [], P);
   assert.equal(mois(r, '2026-10').revenus, 1000);
   assert.equal(mois(r, '2026-12').revenus, 1000);
   assert.ok(Math.abs(mois(r, '2027-01').revenus - 1020) < 1e-9);
@@ -105,4 +105,60 @@ test('(k) hors fenetre ignore', () => {
   const r = project(d, [], P);
   assert.equal(r.length, 12);
   r.forEach((m) => assert.equal(m.depenses, 0));
+});
+
+// ---- taux de revalorisation par ligne (revenus) et inflation (dépenses) ----
+const Pj = require('../../js/projection.js');
+
+test('facteurLigne: revenu suit son propre taux, pas l inflation', () => {
+  const l = Pj.normaliser({ type: 'revenu', montant: 100, taux_revalorisation: 5 }, true);
+  const idxJan27 = 2027 * 12;
+  assert.equal(Pj.facteurLigne(P, l, idxJan27 - 1), 1);
+  assert.ok(Math.abs(Pj.facteurLigne(P, l, idxJan27) - 1.05) < 1e-12);
+  assert.ok(Math.abs(Pj.facteurLigne(P, l, idxJan27 + 12) - 1.05 * 1.05) < 1e-12);
+});
+
+test('facteurLigne: revenu a taux negatif, nul, absent ou revalorise herite ignore', () => {
+  const idx = 2028 * 12;
+  const f = (x) => Pj.facteurLigne(P, Pj.normaliser(Object.assign({ type: 'revenu', montant: 1 }, x), true), idx);
+  assert.ok(Math.abs(f({ taux_revalorisation: -10 }) - 0.81) < 1e-12);
+  assert.equal(f({ taux_revalorisation: 0 }), 1);
+  assert.equal(f({ taux_revalorisation: null }), 1);
+  assert.equal(f({}), 1);
+  assert.equal(f({ revalorise: true }), 1, 'revalorise est sans effet pour un revenu');
+});
+
+test('facteurLigne: depense cochee suit l inflation, non cochee 1, taux de ligne ignore', () => {
+  const idx = 2028 * 12;
+  const f = (x) => Pj.facteurLigne(P, Pj.normaliser(Object.assign({ type: 'depense', montant: 1 }, x), true), idx);
+  assert.ok(Math.abs(f({ revalorise: true }) - 1.02 * 1.02) < 1e-12);
+  assert.equal(f({}), 1);
+  assert.equal(f({ taux_revalorisation: 9 }), 1);
+});
+
+test('normaliser expose tauxReval (fraction) et revalorise (depense seulement)', () => {
+  const r = Pj.normaliser({ type: 'revenu', montant: 1, taux_revalorisation: 1.5, revalorise: true }, true);
+  assert.ok(Math.abs(r.tauxReval - 0.015) < 1e-12);
+  assert.equal(r.revalorise, false);
+  const d = Pj.normaliser({ type: 'depense', montant: 1, revalorise: true }, true);
+  assert.equal(d.tauxReval, 0);
+  assert.equal(d.revalorise, true);
+});
+
+test('project: revenu a 1.5 % independant d une inflation a 2 %, depense a 2 %', () => {
+  const r = project(donnees({ mensuel: [
+    { type: 'revenu', categorie: 'c', libelle: 'a', montant: 1000, taux_revalorisation: 1.5 },
+    { type: 'depense', categorie: 'c', libelle: 'b', montant: 500, revalorise: true },
+  ] }), [], P);
+  assert.ok(Math.abs(mois(r, '2027-01').revenus - 1015) < 1e-9);
+  assert.ok(Math.abs(mois(r, '2027-01').depenses - 510) < 1e-9);
+});
+
+test('project: le taux de ligne se combine avec les paliers', () => {
+  const r = project(donnees({ mensuel: [
+    { type: 'revenu', categorie: 'c', libelle: 'a', montant: 1000, taux_revalorisation: 3, paliers: [{ depuis: '2026-12', montant: 2000 }] },
+  ] }), [], P);
+  assert.equal(mois(r, '2026-11').revenus, 1000);
+  assert.equal(mois(r, '2026-12').revenus, 2000);
+  assert.ok(Math.abs(mois(r, '2027-01').revenus - 2060) < 1e-9);
 });
