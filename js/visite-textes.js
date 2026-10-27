@@ -10,13 +10,14 @@
   // Pendant la visite la page est bloquée : les textes décrivent donc ce que l’on pourra faire APRÈS la visite.
   const textesVisite = {
     navigateur: [
-      { cible: 'accueil-navigateur', titre: 'Navigateur non pris en charge', texte: 'Cette application a besoin d’accéder aux dossiers de votre ordinateur, ce que seuls Google Chrome et Microsoft Edge permettent. Ouvrez cette page dans l’un de ces deux navigateurs, sur ordinateur.' },
+      { cible: 'accueil-navigateur', titre: 'Navigateur non pris en charge', texte: 'Cette application a besoin d’accéder aux dossiers de votre ordinateur, ce que seuls Google Chrome et Microsoft Edge permettent. Ouvrez cette page dans l’un de ces deux navigateurs, sur ordinateur. Le bouton en dessous permet tout de même de parcourir un exemple fictif, sans rien enregistrer.' },
     ],
 
     accueil: [
       { cible: 'accueil-intro', titre: 'Bienvenue', texte: 'Cette application projette votre compte mois par mois sur 10 à 15 ans, à partir de vos revenus et de vos dépenses. Tout se passe sur votre ordinateur : rien n’est envoyé sur Internet.' },
       { cible: 'accueil-ouvrir', titre: 'Choisir le dossier de données', texte: 'Pour commencer un nouveau budget, choisissez un dossier vide : les fichiers y sont créés pour vous (un dossier qui contient d’autres éléments demande d’abord votre accord). Vous pouvez aussi choisir un dossier de données existant. Les fichiers sont ensuite enregistrés à chaque modification ; l’autorisation d’accès n’est pas conservée : il faudra rouvrir le dossier à chaque visite de la page.' },
       { cible: 'accueil-importer', titre: 'Importer une sauvegarde', texte: 'Pour reprendre des données exportées depuis un autre ordinateur, choisissez le fichier de sauvegarde, puis le dossier de destination. Le fichier est vérifié avant toute écriture, et aucun fichier existant n’est remplacé sans votre accord.' },
+      { cible: 'accueil-demo', titre: 'Découvrir avec un exemple', texte: 'Ce bouton ouvre l’application remplie des données fictives d’une famille, pour tout parcourir et tout essayer. Rien n’est enregistré sur votre ordinateur : tout disparaît quand vous quittez la démo ou rechargez la page. Un bandeau « Mode démo » reste affiché, avec le bouton « Quitter la démo ».' },
       { cible: 'bouton-aide', titre: 'Le bouton d’aide', texte: 'Ce bouton « ? » est toujours là, sur chaque écran : il lance la visite de l’onglet affiché. La visite ne démarre jamais seule et ne modifie aucune donnée. Échap la ferme, les flèches du clavier changent d’étape.' },
     ],
 

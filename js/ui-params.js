@@ -148,6 +148,12 @@
     ligne.appendChild(exp);
     ligne.appendChild(imp);
     c.appendChild(ligne);
+    if (state().demo) {
+      // Démo en mémoire : aucune sauvegarde à exporter, aucun dossier réel où importer.
+      exp.disabled = true;
+      imp.disabled = true;
+      c.appendChild(el('p', 'Désactivé en mode démo : ces données fictives ne sont enregistrées nulle part. Quittez la démo pour ouvrir un vrai dossier, puis exporter ou importer une sauvegarde.', { class: 'note', 'data-note-demo': '1' }));
+    }
     if (noteExport) c.appendChild(el('p', noteExport, { class: 'note note-export', role: 'status', 'data-note-export': '1' }));
     c.appendChild(zone);
     return c;

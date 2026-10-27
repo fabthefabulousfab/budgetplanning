@@ -39,6 +39,17 @@ main { max-width: 1200px; margin: 0 auto; padding: var(--espace-4) var(--espace-
 .avertissements li + li { margin-top: var(--espace-1); }
 .avertissements .btn-lien { color: var(--encre); font-weight: 600; padding-left: 0; }
 
+/* Mode demo : bande sobre dans l'en-tete (donc toujours visible), filet vert, bouton pour quitter */
+.bandeau-demo { order: 4; flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--espace-1) var(--espace-3); padding: var(--espace-1) var(--espace-3); margin-bottom: var(--espace-2); background: var(--positif-fond); color: var(--encre); border: 1px solid var(--filet); border-left: 4px solid var(--accent); border-radius: var(--rayon); font-size: .9rem; }
+.bandeau-demo p { margin: 0; font-weight: 600; }
+.bandeau-demo .btn { min-height: 2rem; padding-block: var(--espace-1); }
+@media (max-width: 480px) {
+  .bandeau-demo { flex-wrap: nowrap; gap: var(--espace-2); padding: var(--espace-1) var(--espace-2); margin-bottom: var(--espace-1); font-size: .8rem; line-height: 1.3; }
+  .bandeau-demo p { flex: 1 1 auto; min-width: 0; }
+  .bandeau-demo .btn { flex: none; font-size: .8rem; padding-inline: var(--espace-2); }
+}
+.carte .note[data-note-demo] { margin: var(--espace-3) 0 0; }
+
 /* Accueil : une invitation posee, beaucoup d'air, un filet fin */
 .accueil { max-width: 38rem; margin: 0 auto; padding: clamp(var(--espace-5), 14vh, 9rem) var(--espace-3) var(--espace-5); text-align: center; }
 .accueil::before { content: ""; display: block; width: 3rem; height: 2px; margin: 0 auto var(--espace-4); background: var(--accent); }
@@ -49,6 +60,8 @@ main { max-width: 1200px; margin: 0 auto; padding: var(--espace-4) var(--espace-
 .accueil .accueil-liste { list-style: none; margin: 0 auto var(--espace-4); padding: 0; display: grid; gap: var(--espace-2); justify-items: center; }
 .accueil .accueil-liste li { overflow-wrap: anywhere; }
 .accueil .zone-import { text-align: center; }
+.accueil .demo-accueil { margin-top: var(--espace-4); padding-top: var(--espace-4); border-top: 1px solid var(--filet); }
+.accueil .demo-accueil .note { margin: 0 auto var(--espace-3); max-width: 32rem; color: var(--encre-2); }
 
 /* Boutons : aplat vert profond (variable dediee, plus calme en mode sombre) ; le secondaire est a filet */
 .btn { font: inherit; font-weight: 600; background: var(--accent-fond); color: var(--sur-accent); border: 1px solid var(--accent-fond); border-radius: var(--rayon); min-height: 2.5rem; padding: var(--espace-2) var(--espace-3); cursor: pointer; }

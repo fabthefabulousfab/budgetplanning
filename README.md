@@ -18,6 +18,15 @@ Aucun fichier Excel n'est nécessaire. Ouvrez `index.html` (ou la page publiée)
 - Si la création échoue en cours de route, le message nomme le fichier en cause et indique ceux qui ont déjà été créés.
 - Aux visites suivantes, rouvrez le même dossier : il contient un budget, il s'ouvre tel quel (l'autorisation d'accès est à redonner à chaque session).
 
+## Démo
+
+Sur l'écran d'accueil, « Découvrir avec un exemple » ouvre l'application remplie des données fictives d'une famille type (salaires, charges, crédit immobilier, prêt, événements futurs, paliers), calées sur le mois courant. Elle est aussi proposée dans les navigateurs sans accès aux dossiers (Safari, Firefox), sur l'écran « Navigateur non pris en charge ».
+
+- Tout reste en mémoire : rien n'est lu ni écrit sur l'ordinateur et le sélecteur de dossier n'est jamais appelé. On peut tout modifier pour essayer ; tout est perdu en quittant la démo ou en rechargeant la page.
+- Un bandeau « Mode démo : données fictives, rien n'est enregistré » reste affiché (masqué à l'impression), avec « Quitter la démo » : retour à l'accueil, état remis à zéro.
+- Dans Paramètres, l'export et l'import de sauvegarde sont désactivés pendant la démo. La visite guidée fonctionne comme d'habitude.
+- Les données sont dans `js/demo.js` (`fichiersDemo`, `dossierDemo`) ; un test vérifie qu'elles passent la même validation stricte que de vrais fichiers.
+
 ## Importer un Excel existant (facultatif, avancé)
 
 Si vous avez déjà un `budget.xlsx`, le script `demarrer.sh` peut le convertir en fichiers YAML dans `data/`. C'est une façon avancée et facultative d'initialiser un budget : l'Excel n'est nécessaire à rien d'autre.
@@ -146,7 +155,7 @@ Les textes sont dans `js/visite-textes.js` (une liste d'étapes par onglet : `ci
 
 ## Limites
 
-- Chrome ou Edge uniquement (pas de Firefox ni Safari).
+- Chrome ou Edge uniquement pour ouvrir ses propres dossiers (Firefox et Safari : seule la démo en mémoire est disponible).
 - L'autorisation d'accès au dossier est à redonner à chaque session.
 - Un seul scénario.
 - Pas d'intérêts, pas d'impôts, pas d'inflation générale (seulement le taux d'inflation des dépenses cochées « Revalorisé » et le taux propre à chaque revenu).

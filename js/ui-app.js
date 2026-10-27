@@ -2,7 +2,7 @@
   'use strict';
 
   const B = root.Budget;
-  const state = { dir: null, donnees: null, evenements: [], prets: [], parametres: null, mois: [], orphelins: [], avertissements: [], migres: { donnees: false, evenements: false } };
+  const state = { demo: false, dir: null, donnees: null, evenements: [], prets: [], parametres: null, mois: [], orphelins: [], avertissements: [], migres: { donnees: false, evenements: false } };
   const FICHIER_HISTORIQUE = 'historique-comptes.csv';
   const tabs = [];
   let actif = null;
@@ -57,18 +57,71 @@
     }
   }
 
+  // Démo : budget fictif tenu en mémoire ; le sélecteur de dossier n'est jamais appelé et rien n'est écrit sur l'ordinateur.
+  async function ouvrirDemo() {
+    await start(B.dossierDemo(new Date()), { demo: true });
+    if (state.demo && actif && $('tab-' + actif)) $('tab-' + actif).focus();
+  }
+
+  function boutonDemo() {
+    const bloc = el('div', '', { class: 'demo-accueil', 'data-aide': 'accueil-demo' });
+    bloc.appendChild(el('p', 'Pas encore de données ? Parcourez un budget d’exemple : les chiffres sont fictifs et rien n’est enregistré.', { class: 'note' }));
+    const b = el('button', 'Découvrir avec un exemple', { type: 'button', class: 'btn btn-secondaire', 'aria-label': 'Découvrir avec un exemple : budget fictif, rien n’est enregistré' });
+    b.addEventListener('click', ouvrirDemo);
+    bloc.appendChild(b);
+    return bloc;
+  }
+
+  function bandeauDemo(visible) {
+    const b = $('bandeau-demo');
+    b.textContent = '';
+    b.hidden = !visible;
+    if (!visible) return;
+    b.appendChild(el('p', 'Mode démo : données fictives, rien n’est enregistré'));
+    const q = el('button', 'Quitter la démo', { type: 'button', class: 'btn btn-secondaire btn-petit', 'aria-label': 'Quitter la démo et revenir à l’accueil' });
+    q.addEventListener('click', quitterDemo);
+    b.appendChild(q);
+  }
+
+  // Retour à l'accueil, état remis à zéro : plus aucune trace de la démo (données, bandeau, onglets).
+  async function quitterDemo() {
+    await attendreEcritures();
+    state.dir = null;
+    state.donnees = null;
+    state.evenements = [];
+    state.prets = [];
+    state.parametres = null;
+    state.mois = [];
+    state.orphelins = [];
+    state.avertissements = [];
+    state.migres = { donnees: false, evenements: false };
+    state.demo = false;
+    actif = null;
+    Object.keys(files).forEach(function (k) { delete files[k]; });
+    if (B.paliersUI) B.paliersUI.reset();
+    bandeauDemo(false);
+    erreur('');
+    avertir([]);
+    $('panneaux').textContent = '';
+    $('onglets').textContent = '';
+    ecranAccueil();
+    const b = document.querySelector('#accueil .demo-accueil button');
+    if (b) b.focus();
+  }
+
   function ecranAccueil() {
     if (!B.supported()) {
       accueil([
         el('h2', 'Navigateur non pris en charge', { 'data-aide': 'accueil-navigateur' }),
         el('p', "Cette application a besoin de l'accès aux dossiers locaux (File System Access API). Ouvrez cette page dans Chrome ou Edge sur ordinateur.", { class: 'accueil-texte' }),
+        boutonDemo(),
       ]);
       return;
     }
     accueil([
       el('h2', 'Bienvenue', { 'data-aide': 'accueil-intro' }),
       el('p', 'Pour commencer un nouveau budget, choisissez un dossier vide : les fichiers y seront créés pour vous. Vous pouvez aussi choisir un dossier de données existant. Les fichiers sont lus et enregistrés directement, rien ne quitte votre ordinateur. Une sauvegarde exportée depuis un autre ordinateur peut aussi être importée.', { class: 'accueil-texte' }),
-    ].concat(boutonsOuverture()));
+    ].concat(boutonsOuverture()).concat([boutonDemo()]));
   }
 
   // Sélecteur de fichier hors DOM ; résout null si l'utilisateur annule.
@@ -392,7 +445,7 @@
   }
 
   // Point d'entrée après le choix d'un dossier : ouvrir, créer (dossier vide) ou demander confirmation.
-  async function start(dir) {
+  async function start(dir, options) {
     erreur('');
     avertir([]);
     let etat;
@@ -410,10 +463,10 @@
       ecranCreation(dir, etat, decision);
       return;
     }
-    await ouvrirBudget(dir);
+    await ouvrirBudget(dir, options);
   }
 
-  async function ouvrirBudget(dir) {
+  async function ouvrirBudget(dir, options) {
     erreur('');
     avertir([]);
     let r;
@@ -429,6 +482,8 @@
       ecranAccueil();
       return;
     }
+    state.demo = !!(options && options.demo);
+    bandeauDemo(state.demo);
     state.dir = dir;
     state.donnees = r.donnees;
     state.evenements = r.evenements;
