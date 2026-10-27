@@ -120,3 +120,12 @@ test('aucune donnee personnelle : libelles fictifs, pas de fichier lu sur le dis
   const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '../../js/demo.js'), 'utf8');
   assert.ok(!/require\(['"]fs['"]\)|showDirectoryPicker|localStorage/.test(src));
 });
+
+test('ouverte n importe quel mois : chargement strict et projection finie', async () => {
+  for (let m = 1; m <= 12; m++) {
+    const { r } = await charger(maintenant(2027, m, m === 2 ? 28 : 31 - (m % 2)));
+    assert.deepStrictEqual(r.avertissements, [], 'mois ' + m);
+    const mois = P.project(r.donnees, Pr.lignesFutures(r.evenements, r.prets), r.parametres);
+    assert.ok(mois.every((x) => Number.isFinite(x.solde)), 'mois ' + m);
+  }
+});

@@ -27,6 +27,11 @@
   const erreurs = new Map(); // prêt (objet) -> message
   const brouillons = { en_cours: {}, simule: {} };
   const erreursAjout = { en_cours: '', simule: '' };
+  if (B.surReinitialisation) B.surReinitialisation(function () {
+    erreurs.clear();
+    brouillons.en_cours = {}; brouillons.simule = {};
+    erreursAjout.en_cours = ''; erreursAjout.simule = '';
+  });
 
   function el(tag, texte, attrs) {
     const e = document.createElement(tag);

@@ -20,6 +20,7 @@
   const erreurs = new Map(); // événement (objet) -> message
   let brouillon = { type: 'depense' };
   let erreurAjout = '';
+  if (B.surReinitialisation) B.surReinitialisation(function () { erreurs.clear(); brouillon = { type: 'depense' }; erreurAjout = ''; });
 
   function el(tag, texte, attrs) {
     const e = document.createElement(tag);

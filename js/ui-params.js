@@ -168,6 +168,12 @@
   const memeLigneCat = function (e, type, nom) { return !!e && e.type === type && e.nom === nom; };
 
   function reinitialiserCat() { cat.renomme = null; cat.supprime = null; cat.vers = ''; cat.brouillon = ''; }
+  if (B.surReinitialisation) B.surReinitialisation(function () {
+    [brouillons, erreurs, cat.erreurs, cat.ajout, cat.erreursAjout].forEach(function (o) { Object.keys(o).forEach(function (k) { delete o[k]; }); });
+    reinitialiserCat();
+    cat.focus = null;
+    noteExport = '';
+  });
 
   // Les lignes remplacées par une copie gardent leur état d'interface (case « Palier » ouverte).
   function suivreLignes(avant, apres) {

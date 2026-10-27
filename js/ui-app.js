@@ -99,6 +99,7 @@
     actif = null;
     Object.keys(files).forEach(function (k) { delete files[k]; });
     if (B.paliersUI) B.paliersUI.reset();
+    reinitialisations.forEach(function (fn) { fn(); }); // saisies en cours des onglets : rien de la démo ne doit réapparaître dans un vrai dossier
     bandeauDemo(false);
     erreur('');
     avertir([]);
@@ -499,7 +500,11 @@
     construireOnglets();
   }
 
-  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, boutonIcone: boutonIcone, champMois: champMois, tableauBilan: tableauBilan, registerTab: registerTab, ongletActif: function () { return actif; }, start: start, erreur: erreur, attendreEcritures: attendreEcritures, importerFichier: importerFichier });
+  // Chaque onglet déclare comment oublier ses saisies en cours (brouillons, erreurs) quand on quitte la démo.
+  const reinitialisations = [];
+  function surReinitialisation(fn) { reinitialisations.push(fn); }
+
+  Object.assign(B, { surReinitialisation: surReinitialisation, state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, boutonIcone: boutonIcone, champMois: champMois, tableauBilan: tableauBilan, registerTab: registerTab, ongletActif: function () { return actif; }, start: start, erreur: erreur, attendreEcritures: attendreEcritures, importerFichier: importerFichier });
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ecranAccueil);
     else ecranAccueil();

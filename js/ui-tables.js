@@ -19,6 +19,11 @@
   const erreurs = new Map(); // ligne (objet) -> message
   const brouillons = { mensuel: {}, annuel: {} };
   const erreursAjout = {};
+  if (B.surReinitialisation) B.surReinitialisation(function () {
+    erreurs.clear();
+    Object.keys(brouillons).forEach(function (k) { brouillons[k] = {}; });
+    Object.keys(erreursAjout).forEach(function (k) { delete erreursAjout[k]; });
+  });
 
   function el(tag, texte, attrs) {
     const e = document.createElement(tag);
