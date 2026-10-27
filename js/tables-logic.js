@@ -1,18 +1,23 @@
 (function (root) {
   'use strict';
 
+  const normeCat = function (t) { return String(t == null ? '' : t).replace(/\s+/g, ' ').trim(); };
+
   // Regroupe des lignes par catégorie (ordre de première apparition), en gardant l'index d'origine.
-  function grouperParCategorie(lignes) {
+  // Clé de groupe : casse et espaces ignorés ; titre : l'orthographe configurée (`preferes`, facultatif) sinon celle de la première ligne.
+  function grouperParCategorie(lignes, preferes) {
     const groupes = [];
-    const parNom = new Map();
+    const parCle = new Map();
+    const choisies = new Map();
+    (preferes || []).forEach(function (n) { const k = normeCat(n).toLowerCase(); if (!choisies.has(k)) choisies.set(k, normeCat(n)); });
     (lignes || []).forEach(function (ligne, index) {
-      const nom = ligne.categorie || '';
-      if (!parNom.has(nom)) {
-        const g = { categorie: nom, items: [] };
-        parNom.set(nom, g);
+      const k = normeCat(ligne.categorie).toLowerCase();
+      if (!parCle.has(k)) {
+        const g = { categorie: k === '' ? '' : (choisies.get(k) || normeCat(ligne.categorie)), items: [] };
+        parCle.set(k, g);
         groupes.push(g);
       }
-      parNom.get(nom).items.push({ index: index, ligne: ligne });
+      parCle.get(k).items.push({ index: index, ligne: ligne });
     });
     return groupes;
   }
@@ -23,9 +28,26 @@
   }
 
   // Applique une saisie de cellule à une COPIE de la ligne (l'originale n'est jamais modifiée).
-  function appliquerEdition(ligne, champ, valeur, nature) {
+  // `inflation` (fraction, facultatif) : taux de parametres.yaml, repris par un revenu issu d'une dépense « revalorisée ».
+  function appliquerEdition(ligne, champ, valeur, nature, inflation) {
     const copie = Object.assign({}, ligne);
-    if (champ === 'montant' && nature === 'mensuel') {
+    if (champ === 'type') {
+      if (valeur === ligne.type) return copie;
+      copie.type = valeur;
+      // Aucune information perdue en silence : la case des dépenses et le taux des revenus se convertissent l'un en l'autre.
+      if (valeur === 'depense') {
+        const t = ligne.taux_revalorisation;
+        copie.revalorise = typeof t === 'number' && t !== 0;
+        delete copie.taux_revalorisation;
+      } else if (valeur === 'revenu') {
+        if (ligne.revalorise === true && typeof inflation === 'number') copie.taux_revalorisation = Number((inflation * 100).toPrecision(12));
+        delete copie.revalorise;
+      }
+    } else if (champ === 'taux_revalorisation') {
+      const t = String(valeur == null ? '' : valeur).trim();
+      if (t === '') delete copie.taux_revalorisation;
+      else copie.taux_revalorisation = /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : t; // texte conservé tel quel : la validation le refuse avec un message
+    } else if (champ === 'montant' && nature === 'mensuel') {
       copie.montant = nombre(valeur);
     } else if (champ === 'debut' || champ === 'fin') {
       const t = String(valeur == null ? '' : valeur).trim();

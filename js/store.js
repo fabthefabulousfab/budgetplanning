@@ -6,6 +6,7 @@
   const P = isNode ? require('./projection.js') : root.Budget;
   const Su = isNode ? require('./summary.js') : root.Budget;
   const Pr = isNode ? require('./prets.js') : root.Budget;
+  const Ca = isNode ? require('./categories.js') : root.Budget;
   const yaml = isNode ? require('../vendor/js-yaml.min.js') : root.jsyaml;
   const PARAMETRES_DEFAUT = P.PARAMETRES_DEFAUT;
 
@@ -68,6 +69,13 @@
     }
     if (l.revalorise != null && typeof l.revalorise !== 'boolean') {
       throw new Error('« revalorise » doit valoir true ou false (écrire true ou false, pas « ' + l.revalorise + ' »).');
+    }
+    if (l.taux_revalorisation != null) {
+      const t = l.taux_revalorisation;
+      if (l.type !== 'revenu') throw new Error('« taux_revalorisation » n’existe que pour les revenus (une dépense se coche « revalorise » et suit l’inflation de parametres.yaml).');
+      if (typeof t !== 'number' || !Number.isFinite(t)) throw new Error('« taux_revalorisation » doit être un nombre en % avec un point décimal (par exemple 1.5), pas « ' + t + ' ».');
+      if (t <= -100) throw new Error('« taux_revalorisation » doit être supérieur à -100 (%).');
+      if (t > 1000) throw new Error('« taux_revalorisation » doit être au plus 1000 (%), pas « ' + t + ' ».');
     }
     if (l.actif != null && typeof l.actif !== 'boolean') throw new Error('« actif » doit valoir true ou false.');
     validerMois(l.debut, 'Début');
@@ -155,7 +163,36 @@
     if (!num(r.mois) || !Number.isInteger(r.mois) || r.mois < 1 || r.mois > 12) throw new Error('revalorisation.mois doit être un entier entre 1 et 12.');
     CLES_SOLDE.forEach(function (k) {
       const v = p.solde_depart ? p.solde_depart[k] : null;
-      if (v != null && !num(v)) throw new Error('solde_depart.' + k + ' doit être un nombre (ou vide pour reprendre la valeur Excel).');
+      if (v != null && !num(v)) throw new Error('solde_depart.' + k + ' doit être un nombre (ou vide pour reprendre la valeur importée).');
+    });
+    validerCategories(p.categories);
+  }
+
+  const TYPES_CATEGORIE = ['depense', 'revenu'];
+
+  // categories : { depense: [noms], revenu: [noms] }, clé facultative ; noms non vides, ≤ 60 caractères, uniques (casse ignorée), 100 au plus par type.
+  function validerCategories(c) {
+    if (c === null || c === undefined) return;
+    if (!estObjet(c)) throw new Error('categories doit être un objet (' + TYPES_CATEGORIE.join(', ') + ').');
+    Object.keys(c).forEach(function (k) {
+      if (TYPES_CATEGORIE.indexOf(k) < 0) throw new Error('clé inconnue « categories.' + k + ' » (attendues : ' + TYPES_CATEGORIE.join(', ') + ').');
+    });
+    TYPES_CATEGORIE.forEach(function (type) {
+      const liste = c[type];
+      if (liste === null || liste === undefined) return;
+      const nom = 'categories.' + type;
+      if (!Array.isArray(liste)) throw new Error(nom + ' doit être une liste de noms (texte).');
+      if (liste.length > Ca.CATEGORIES_MAX) throw new Error(nom + ' : ' + Ca.CATEGORIES_MAX + ' catégories au maximum.');
+      const vues = new Set();
+      liste.forEach(function (x, i) {
+        if (typeof x !== 'string') throw new Error(nom + ' #' + (i + 1) + ' : le nom doit être du texte.');
+        const n = Ca.nomCategorieValide(x);
+        if (n === '') throw new Error(nom + ' #' + (i + 1) + ' : le nom ne peut pas être vide.');
+        if (n.length > Ca.CATEGORIE_LONGUEUR_MAX) throw new Error(nom + ' #' + (i + 1) + ' : « ' + n.slice(0, 20) + '… » dépasse ' + Ca.CATEGORIE_LONGUEUR_MAX + ' caractères.');
+        const k = n.toLowerCase();
+        if (vues.has(k)) throw new Error(nom + ' : « ' + n + ' » est en double (majuscules et minuscules ne les distinguent pas).');
+        vues.add(k);
+      });
     });
   }
 
@@ -174,10 +211,17 @@
     if (s && typeof s === 'object') {
       CLES_SOLDE.forEach(function (k) { if (s[k] != null) out.solde_depart[k] = s[k]; });
     }
+    // Les catégories (facultatives) ne sont reprises que si le fichier les contient ; les noms sont nettoyés.
+    if (estObjet(c.categories)) {
+      out.categories = {};
+      TYPES_CATEGORIE.forEach(function (type) {
+        if (Array.isArray(c.categories[type])) out.categories[type] = c.categories[type].map(Ca.nomCategorieValide);
+      });
+    }
     return out;
   }
 
-  const CLES_PARAMETRES = ['depart', 'horizon_annees', 'revalorisation', 'solde_depart'];
+  const CLES_PARAMETRES = ['depart', 'horizon_annees', 'revalorisation', 'solde_depart', 'categories'];
   const CLES_OBSOLETES = ['prets_etudiants'];
 
   function estObjet(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
@@ -200,6 +244,7 @@
         if (CLES_SOLDE.indexOf(k) < 0) throw new Error('clé inconnue « solde_depart.' + k + ' » (attendues : ' + CLES_SOLDE.join(', ') + ').');
       });
     }
+    validerCategories(c.categories);
   }
 
   async function lire(dir, nom) {
@@ -306,13 +351,35 @@
     return out.concat(orphelins || []);
   }
 
+  // Pour un revenu, la case « revalorise » n'a plus d'effet (le taux de la ligne la remplace) : elle n'est plus écrite.
+  function sansCaseRevenu(l) {
+    if (l.type !== 'revenu' || !('revalorise' in l)) return l;
+    const c = Object.assign({}, l);
+    delete c.revalorise;
+    return c;
+  }
+
   function sansPaliers(donnees) {
     const copie = Object.assign({}, donnees);
     NATURES_IMPORT.forEach(function (nature) {
       if (!Array.isArray(donnees[nature])) return;
-      copie[nature] = donnees[nature].map(function (l) { const c = Object.assign({}, l); delete c.paliers; return c; });
+      copie[nature] = donnees[nature].map(function (l) { const c = Object.assign({}, sansCaseRevenu(l)); delete c.paliers; return c; });
     });
     return copie;
+  }
+
+  // Ancien format : un revenu « revalorise: true » sans taux propre reçoit le taux global courant (en %), la case disparaît.
+  // Modifie les lignes en place ; renvoie vrai si au moins une ligne a changé (le fichier n'est pas réécrit à l'ouverture).
+  function migrerRevalorisation(lignes, parametres) {
+    let change = false;
+    const taux = Number((parametres.revalorisation.taux * 100).toPrecision(12)); // fraction en %, sans arrondi visible (seul le bruit flottant disparaît)
+    (lignes || []).forEach(function (l) {
+      if (!l || l.type !== 'revenu' || !('revalorise' in l)) return;
+      if (l.revalorise === true && l.taux_revalorisation == null && taux !== 0) l.taux_revalorisation = taux;
+      delete l.revalorise;
+      change = true;
+    });
+    return change;
   }
 
   async function loadAll(dir) {
@@ -343,7 +410,11 @@
     const parametres = fusionnerParametres(brut);
     enFichier(FICHIERS.parametres, function () { validerParametres(parametres); });
 
-    return { donnees: donnees, evenements: evenements, prets: prets, parametres: parametres, orphelins: orphelins, avertissements: avertissements };
+    const migres = { donnees: false, evenements: false };
+    if (donnees !== null) NATURES_IMPORT.forEach(function (nature) { if (migrerRevalorisation(donnees[nature], parametres)) migres.donnees = true; });
+    migres.evenements = migrerRevalorisation(evenements, parametres);
+
+    return { donnees: donnees, evenements: evenements, prets: prets, parametres: parametres, orphelins: orphelins, avertissements: avertissements, migres: migres };
   }
 
   // donnees-courantes.yaml est écrit sans `paliers` ; paliers.yaml est regénéré (lignes + orphelins), tout est validé avant la première écriture.
@@ -366,10 +437,16 @@
     }
   }
 
+  // Création de donnees-courantes.yaml seul : paliers.yaml (même s'il existe) n'est ni lu ni réécrit.
+  async function saveDonneesSeules(dir, donnees) {
+    enFichier(FICHIERS.donnees, function () { validerDonnees(donnees); });
+    await ecrire(dir, FICHIERS.donnees, sansPaliers(donnees));
+  }
+
   async function saveEvenements(dir, evenements, prets) {
     const lesPrets = (prets || []).map(function (p) { return Object.assign({}, p, { nature: 'pret' }); });
     enFichier(FICHIERS.evenements, function () { validerEvenements(evenements); validerPrets(lesPrets); });
-    await ecrire(dir, FICHIERS.evenements, evenements.concat(lesPrets));
+    await ecrire(dir, FICHIERS.evenements, evenements.map(sansCaseRevenu).concat(lesPrets));
   }
 
   // Historique synthétique des comptes, regénéré après chaque enregistrement (jamais à l'ouverture).
@@ -381,6 +458,7 @@
   }
 
   async function saveParametres(dir, params) {
+    enFichier(FICHIERS.parametres, function () { validerCategories(params && params.categories); }); // avant la fusion : rien n'est corrigé en silence
     const p = fusionnerParametres(params);
     enFichier(FICHIERS.parametres, function () { validerParametres(p); });
     await ecrire(dir, FICHIERS.parametres, p);
@@ -392,7 +470,7 @@
 
   const api = {
     FICHIERS: FICHIERS, CATEGORIES_EVENEMENT: CATEGORIES_EVENEMENT, validerLigne: validerLigne,
-    loadAll: loadAll, saveDonnees: saveDonnees, saveEvenements: saveEvenements, ecrireHistorique: ecrireHistorique, saveParametres: saveParametres, supported: supported,
+    loadAll: loadAll, saveDonnees: saveDonnees, saveDonneesSeules: saveDonneesSeules, saveEvenements: saveEvenements, ecrireHistorique: ecrireHistorique, saveParametres: saveParametres, supported: supported,
   };
   if (typeof module !== 'undefined') module.exports = api;
   else root.Budget = Object.assign(root.Budget || {}, api);

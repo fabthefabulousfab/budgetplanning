@@ -19,6 +19,11 @@
   const erreurs = new Map(); // ligne (objet) -> message
   const brouillons = { mensuel: {}, annuel: {} };
   const erreursAjout = {};
+  if (B.surReinitialisation) B.surReinitialisation(function () {
+    erreurs.clear();
+    Object.keys(brouillons).forEach(function (k) { brouillons[k] = {}; });
+    Object.keys(erreursAjout).forEach(function (k) { delete erreursAjout[k]; });
+  });
 
   function el(tag, texte, attrs) {
     const e = document.createElement(tag);
@@ -39,7 +44,7 @@
   // ---- Modification, suppression, ajout --------------------------------------------------
 
   async function modifier(nature, ligne, champ, valeur) {
-    return commit(nature, ligne, B.appliquerEdition(ligne, champ, valeur, nature));
+    return commit(nature, ligne, B.appliquerEdition(ligne, champ, valeur, nature, B.state.parametres.revalorisation.taux));
   }
 
   // Enregistre `copie` à la place de `ligne` (repérée par identité) : validation, mise à jour, écriture, retour arrière si échec.
@@ -157,6 +162,14 @@
     return zone;
   }
 
+  // Revenu : taux de revalorisation propre à la ligne (en %, vide = aucune) ; dépense : case « Revalorisé » (suit l'inflation des Paramètres).
+  function cellReval(nature, index, ligne) {
+    if (ligne.type !== 'revenu') return champCase(nature, index, ligne, true);
+    const w = el('span', '', { class: 'champ-taux' });
+    w.appendChild(champTexte(nature, index, ligne, 'taux_revalorisation', 'Revalorisation (%)', { inputmode: 'decimal', placeholder: '0', 'data-vide-impression': '—', class: 'num' }));
+    return w;
+  }
+
   function boutonOeil(nature, index, ligne) {
     return B.boutonOeil(ligne.actif !== false, ligne.libelle, function () { modifier(nature, ligne, 'actif', ligne.actif === false); }, nature + ':' + index + ':actif');
   }
@@ -268,12 +281,104 @@
     return i;
   }
 
-  function formulaireAjout(nature, brouillon, categories, natures) {
+  // ---- Choix de la catégorie ----------------------------------------------------------------
+
+  const NOUVELLE = '__nouvelle__';
+  const cleCat = function (t) { return B.nomCategorieValide(t).toLowerCase(); };
+
+  // Liste déroulante des catégories du type, plus « + Nouvelle catégorie… » qui la remplace par un champ de saisie
+  // (Entrée ou perte du focus valide, Échap annule et rend la liste). cfg : { type, courante, label, cle, onChoisir(nom), onNouvelle(texte) }.
+  function selecteurCategorie(cfg) {
+    const w = el('span', '', { class: 'cat-champ' });
+    function liste() {
+      w.textContent = '';
+      const s = el('select', '', { 'aria-label': cfg.label, 'data-cle': cfg.cle, class: 'cat-select' });
+      const dispo = B.categoriesDisponibles(B.state.donnees, B.state.parametres, cfg.type);
+      const choisie = B.categorieSelectionnee(dispo, cfg.courante);
+      const vide = el('option', 'Sans catégorie', { value: '' }); // aucune catégorie : jamais une entrée de la liste choisie au hasard
+      if (choisie === '') vide.selected = true;
+      if (choisie === '') s.appendChild(vide);
+      dispo.forEach(function (nom) {
+        const o = el('option', nom, { value: nom });
+        if (choisie !== '' && nom === choisie) o.selected = true;
+        s.appendChild(o);
+      });
+      s.appendChild(el('option', '+ Nouvelle catégorie…', { value: NOUVELLE }));
+      s.addEventListener('change', function () {
+        if (s.value === NOUVELLE) saisie(); else cfg.onChoisir(s.value);
+      });
+      w.appendChild(s);
+      return s;
+    }
+    function saisie() {
+      w.textContent = '';
+      const i = el('input', '', { type: 'text', class: 'cat-nouvelle', 'aria-label': cfg.label.replace(/^Catégorie/, 'Nouvelle catégorie'), 'data-cle': cfg.cle, placeholder: 'Nouvelle catégorie', maxlength: '200' });
+      let clos = false;
+      i.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          if (clos) return;
+          clos = true;
+          if (B.nomCategorieValide(i.value) === '') liste().focus(); else cfg.onNouvelle(i.value);
+        } else if (ev.key === 'Escape') {
+          ev.preventDefault();
+          clos = true;
+          liste().focus();
+        }
+      });
+      i.addEventListener('blur', function () {
+        if (clos) return;
+        clos = true;
+        if (B.nomCategorieValide(i.value) === '') liste(); else cfg.onNouvelle(i.value);
+      });
+      w.appendChild(i);
+      i.focus();
+    }
+    liste();
+    return w;
+  }
+
+  // Ajoute `texte` à la liste du type (parametres.yaml) puis rend le nom à `suite`. Une catégorie qui existe déjà est simplement réutilisée.
+  // En cas d'erreur, `echec(message)` ; si l'écriture échoue, la liste revient en arrière.
+  async function creerEtChoisir(type, texte, suite, echec) {
+    const nom = B.nomCategorieValide(texte);
+    const dispo = B.categoriesDisponibles(B.state.donnees, B.state.parametres, type);
+    const existante = dispo.find(function (x) { return cleCat(x) === cleCat(nom); });
+    if (existante) { await suite(existante); return; }
+    const avant = B.state.parametres;
+    let p;
+    try {
+      p = B.ajouterCategorie(avant, type, nom, B.state.donnees);
+    } catch (e) {
+      echec(e.message);
+      return;
+    }
+    B.state.parametres = p;
+    try {
+      await B.persist('parametres');
+    } catch (e) {
+      if (B.state.parametres === p) B.state.parametres = avant;
+      echec(e.message);
+      return;
+    }
+    await suite(nom);
+  }
+
+  function champCategorie(nature, index, ligne) {
+    return selecteurCategorie({
+      type: ligne.type, courante: ligne.categorie, label: 'Catégorie — ' + ligne.libelle, cle: nature + ':' + index + ':categorie',
+      onChoisir: function (nom) { modifier(nature, ligne, 'categorie', nom); },
+      onNouvelle: function (texte) {
+        creerEtChoisir(ligne.type, texte, function (nom) { return modifier(nature, ligne, 'categorie', nom); }, function (message) {
+          erreurs.set(ligne, message);
+          B.refresh();
+        });
+      },
+    });
+  }
+
+  function formulaireAjout(nature, brouillon, natures) {
     const f = el('form', '', { class: 'ajout', 'aria-label': 'Ajouter une ligne' });
-    const dlId = 'categories-' + nature;
-    const dl = el('datalist', '', { id: dlId });
-    categories.forEach(function (c) { dl.appendChild(el('option', '', { value: c })); });
-    f.appendChild(dl);
 
     let selNature = null;
     if (natures) {
@@ -292,9 +397,23 @@
       if ((brouillon.type || 'depense') === t[0]) o.selected = true;
       selType.appendChild(o);
     });
-    selType.addEventListener('change', function () { brouillon.type = selType.value; });
+    selType.addEventListener('change', function () {
+      brouillon.type = selType.value;
+      if (brouillon.categorie && !B.categoriesDisponibles(B.state.donnees, B.state.parametres, brouillon.type).some(function (x) { return cleCat(x) === cleCat(brouillon.categorie); })) brouillon.categorie = '';
+      B.refresh(); // les catégories proposées dépendent du type
+    });
     f.appendChild(champEtiquete('Type', selType, 'champ-court'));
-    f.appendChild(champEtiquete('Catégorie', champAjout(brouillon, 'categorie', 'Catégorie', { list: dlId }), 'champ-moyen'));
+    const selCat = selecteurCategorie({
+      type: brouillon.type || 'depense', courante: brouillon.categorie || '', label: 'Catégorie', cle: 'ajout:categorie',
+      onChoisir: function (nom) { brouillon.categorie = nom; },
+      onNouvelle: function (texte) {
+        creerEtChoisir(brouillon.type || 'depense', texte, function (nom) { brouillon.categorie = nom; delete erreursAjout[nature]; B.refresh(); }, function (message) {
+          erreursAjout[nature] = message;
+          B.refresh();
+        });
+      },
+    });
+    f.appendChild(champEtiquete('Catégorie', selCat, 'champ-moyen'));
     f.appendChild(champEtiquete('Libellé', champAjout(brouillon, 'libelle', 'Libellé'), 'champ-large'));
     const champ = nature === 'mensuel' ? 'montant' : 'echeances';
     const lib = nature === 'mensuel' ? 'Montant mensuel' : 'Échéances';
@@ -309,21 +428,15 @@
       const base = { type: brouillon.type || 'depense', categorie: (brouillon.categorie || '').trim(), libelle: (brouillon.libelle || '').trim() };
       let ligne;
       if (nat === 'mensuel') {
-        ligne = Object.assign(base, { montant: B.appliquerEdition({}, 'montant', brouillon.montant, 'mensuel').montant, revalorise: false, fin: null });
+        ligne = Object.assign(base, { montant: B.appliquerEdition({}, 'montant', brouillon.montant, 'mensuel').montant, fin: null }, base.type === 'revenu' ? {} : { revalorise: false });
       } else if (nat === 'annuel') {
-        ligne = Object.assign(base, { echeances: (brouillon.echeances || '').trim(), revalorise: false, debut: null, fin: null });
+        ligne = Object.assign(base, { echeances: (brouillon.echeances || '').trim(), debut: null, fin: null }, base.type === 'revenu' ? {} : { revalorise: false });
       } else {
         ligne = Object.assign(base, { echeances: (brouillon.echeances || '').trim() });
       }
       ajouter(nat, ligne);
     });
     return f;
-  }
-
-  function categoriesDe(listes) {
-    const s = new Set();
-    listes.forEach(function (l) { (l || []).forEach(function (x) { if (x.categorie) s.add(x.categorie); }); });
-    return Array.from(s);
   }
 
   // ---- Onglet Mensuel ---------------------------------------------------------------------
@@ -372,16 +485,25 @@
     const t = B.totauxMensuels({ mensuel: g.items.map(function (it) { return it.ligne; }) }, B.state.parametres);
     const net = t.revenus - t.depenses;
     const tr = el('tr', '', { class: 'groupe' });
-    tr.appendChild(el('th', g.categorie || 'Sans catégorie', { colspan: '2', scope: 'colgroup', class: 'groupe-nom' }));
+    tr.appendChild(el('th', g.categorie || 'Sans catégorie', { colspan: '3', scope: 'colgroup', class: 'groupe-nom' }));
     const total = el('td', '', { class: 'num groupe-total ' + (net < 0 ? 'groupe-neg' : net > 0 ? 'groupe-pos' : 'groupe-nul') });
     total.appendChild(cache('Total ' + (g.categorie || 'Sans catégorie') + ' : '));
     total.appendChild(document.createTextNode(signe(net)));
     tr.appendChild(total);
-    tr.appendChild(el('td', '', { colspan: String(nbCols - 3) }));
+    tr.appendChild(el('td', '', { colspan: String(nbCols - 4) }));
     return tr;
   }
 
+  // Jusqu'à 960 px (la colonne Catégorie ne tient plus avec un libellé lisible), la catégorie passe sous le libellé ;
+  // le relevé se redessine au franchissement du seuil.
+  const mqEtroit = typeof root.matchMedia === 'function' ? root.matchMedia('(max-width: 960px)') : null;
+  const ecranEtroit = function () { return !!mqEtroit && mqEtroit.matches; };
+  if (mqEtroit && typeof mqEtroit.addEventListener === 'function') {
+    mqEtroit.addEventListener('change', function () { if (B.ongletActif && B.ongletActif() === 'mensuel') B.refresh(); });
+  }
+
   function renderMensuel(panneau) {
+    const etroit = ecranEtroit();
     const d = B.state.donnees;
     const lignes = d.mensuel || (d.mensuel = []);
 
@@ -395,27 +517,36 @@
     c.appendChild(chiffresMensuels(tot, restant, moyennePrets));
 
     const cols = [
-      { t: 'Libellé', classe: 'c-lib' }, { t: 'Type', classe: 'c-type' }, { t: '€ / mois', num: true, classe: 'c-mont' },
-      { t: 'Revalorisé', classe: 'c-reval' }, { t: 'Fin (AAAA-MM)', classe: 'c-fin' }, { t: 'Actions', classe: 'c-act', cache: true },
+      { t: 'Libellé', classe: 'c-lib' }, { t: 'Catégorie', classe: 'c-cat', cache: etroit }, { t: 'Type', classe: 'c-type' }, { t: '€ / mois', num: true, classe: 'c-mont' },
+      { t: 'Reval. (%)', classe: 'c-reval' }, { t: 'Fin (AAAA-MM)', classe: 'c-fin' }, { t: 'Actions', classe: 'c-act', cache: true },
     ];
-    const t = el('table', '', { class: 'edition releve' });
+    const t = el('table', '', { class: 'edition releve t-mensuel' + (etroit ? ' t-mensuel-etroit' : '') });
     t.appendChild(entetes(cols));
     const tb = el('tbody');
-    B.grouperParCategorie(lignes).forEach(function (g) {
+    const orthographes = B.categoriesDisponibles(d, B.state.parametres, 'depense').concat(B.categoriesDisponibles(d, B.state.parametres, 'revenu'));
+    B.grouperParCategorie(lignes, orthographes).forEach(function (g) {
       tb.appendChild(titreCategorie(g, cols.length));
       g.items.forEach(function (it) {
         const l = it.ligne;
         const tr = el('tr', '', { class: classeLigne(l) });
-        tr.appendChild(td(champTexte('mensuel', it.index, l, 'libelle', 'Libellé', { title: l.libelle }), 'c-lib'));
+        const tdLib = td(champTexte('mensuel', it.index, l, 'libelle', 'Libellé', { title: l.libelle }), 'c-lib');
+        if (etroit) { // écran étroit : la catégorie se choisit sous le libellé, la colonne dédiée est refermée
+          tdLib.appendChild(champCategorie('mensuel', it.index, l));
+          tr.appendChild(tdLib);
+          tr.appendChild(td(null, 'c-cat'));
+        } else {
+          tr.appendChild(tdLib);
+          tr.appendChild(td(champCategorie('mensuel', it.index, l), 'c-cat'));
+        }
         tr.appendChild(td(champSelect('mensuel', it.index, l, 'type', 'Type', TYPES), 'c-type'));
         tr.appendChild(td(champTexte('mensuel', it.index, l, 'montant', 'Montant mensuel', { inputmode: 'decimal', class: 'num' }), 'num c-mont'));
-        tr.appendChild(td(champCase('mensuel', it.index, l, true), 'c-reval'));
+        tr.appendChild(td(cellReval('mensuel', it.index, l), 'c-reval'));
         const creerFin = function () { return B.champMois(champTexte('mensuel', it.index, l, 'fin', 'Fin')); };
         // Avec des paliers, la fin se saisit sur le dernier palier.
         tr.appendChild(td(B.proprietaireFin(l) === 'base' ? creerFin() : tiret('La fin se saisit sur le dernier palier'), 'c-fin'));
         tr.appendChild(td(actions('mensuel', it.index, l), 'c-act'));
         tb.appendChild(tr);
-        sousLignes('mensuel', it.index, l, cols.length, { depuis: 1, montant: 2, fin: 4, actions: 5 }, creerFin, { placeholder: 'Montant mensuel' }).forEach(function (s) { tb.appendChild(s); });
+        sousLignes('mensuel', it.index, l, cols.length, { depuis: 1, montant: 3, fin: 5, actions: 6 }, creerFin, { placeholder: 'Montant mensuel' }).forEach(function (s) { tb.appendChild(s); });
         const e = ligneErreur(l, cols.length);
         if (e) tb.appendChild(e);
       });
@@ -432,7 +563,7 @@
 
     const a = carte('Ajouter une ligne mensuelle');
     a.setAttribute('data-aide', 'mensuel-ajout');
-    a.appendChild(formulaireAjout('mensuel', brouillons.mensuel, categoriesDe([lignes])));
+    a.appendChild(formulaireAjout('mensuel', brouillons.mensuel));
     panneau.appendChild(a);
 
     if (B.state.orphelins.length) panneau.appendChild(carteOrphelins());
@@ -497,7 +628,7 @@
     const cols = [
       { t: 'Libellé', classe: 'c-lib' }, { t: 'Catégorie', classe: 'c-cat' }, { t: 'Type', classe: 'c-type' },
       { t: 'Échéances', classe: 'c-ech' }, { t: 'Début (AAAA-MM)', classe: 'c-deb' }, { t: 'Fin (AAAA-MM)', classe: 'c-fin' },
-      { t: 'Revalorisé', classe: 'c-reval' }, { t: 'Impact mensuel', num: true, classe: 'c-mont' }, { t: 'Actions', classe: 'c-act', cache: true },
+      { t: 'Reval. (%)', classe: 'c-reval' }, { t: 'Impact mensuel', num: true, classe: 'c-mont' }, { t: 'Actions', classe: 'c-act', cache: true },
     ];
     const t = el('table', '', { class: 'edition releve t-annuel' });
     t.appendChild(entetes(cols));
@@ -506,14 +637,14 @@
       const creerFin = function () { return B.champMois(champTexte(nature, i, l, 'fin', 'Fin')); };
       const tr = el('tr', '', { class: classeLigne(l) });
       tr.appendChild(td(champTexte(nature, i, l, 'libelle', 'Libellé', { title: l.libelle }), 'c-lib'));
-      tr.appendChild(td(champTexte(nature, i, l, 'categorie', 'Catégorie', { placeholder: '—' }), 'c-cat'));
+      tr.appendChild(td(champCategorie(nature, i, l), 'c-cat'));
       tr.appendChild(td(champSelect(nature, i, l, 'type', 'Type', TYPES), 'c-type'));
       tr.appendChild(td(champTexte(nature, i, l, 'echeances', 'Échéances', { placeholder: '6-500, 10-500', title: B.valeurCellule(l, 'echeances') }), 'c-ech'));
       // Les lignes exceptionnelles sont datées par leurs échéances : pas de début/fin/revalorisé.
       if (annuel) {
         tr.appendChild(td(B.champMois(champTexte(nature, i, l, 'debut', 'Début')), 'c-deb'));
         tr.appendChild(td(B.proprietaireFin(l) === 'base' ? creerFin() : tiret('La fin se saisit sur le dernier palier'), 'c-fin'));
-        tr.appendChild(td(champCase(nature, i, l, true), 'c-reval'));
+        tr.appendChild(td(cellReval(nature, i, l), 'c-reval'));
       } else {
         ['c-deb', 'c-fin', 'c-reval'].forEach(function (k) { tr.appendChild(td(tiret('Non applicable'), k)); });
       }
@@ -581,7 +712,7 @@
 
     const a = carte('Ajouter une ligne');
     a.setAttribute('data-aide', 'annuel-ajout');
-    a.appendChild(formulaireAjout('annuel', brouillons.annuel, categoriesDe([annuel, exc, d.mensuel]), [['annuel', 'Annuel'], ['exceptionnel', 'Exceptionnel']]));
+    a.appendChild(formulaireAjout('annuel', brouillons.annuel, [['annuel', 'Annuel'], ['exceptionnel', 'Exceptionnel']]));
     panneau.appendChild(a);
   }
 

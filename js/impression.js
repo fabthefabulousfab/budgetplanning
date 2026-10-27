@@ -16,7 +16,9 @@
       return o ? String(o.textContent) : '';
     }
     if (tag === 'INPUT' && (!noeud.type || noeud.type === 'text')) {
-      return noeud.value !== '' && noeud.value != null ? String(noeud.value) : String(noeud.getAttribute ? noeud.getAttribute('placeholder') || '' : '');
+      if (noeud.value !== '' && noeud.value != null) return String(noeud.value);
+      const vide = noeud.getAttribute ? noeud.getAttribute('data-vide-impression') : null; // exemple (« 0 ») à ne pas imprimer comme une valeur
+      return vide != null ? String(vide) : String(noeud.getAttribute ? noeud.getAttribute('placeholder') || '' : '');
     }
     return null;
   }

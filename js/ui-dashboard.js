@@ -430,6 +430,11 @@
     const s = B.state;
     if (!s.donnees) return;
     Chart.defaults.font.family = css('--police-texte');
+    const vide = ['mensuel', 'annuel', 'exceptionnel'].every(function (n) { return !(s.donnees[n] || []).length; }) && !s.evenements.length && !s.prets.length;
+    if (vide) {
+      const note = el('p', 'Ce budget est encore vide : les montants et les courbes restent à zéro. Ajoutez vos premières lignes dans l’onglet Mensuel et le tableau de bord se remplira aussitôt.', { class: 'vide note-budget-vide', role: 'note' });
+      panneau.appendChild(note);
+    }
     bandeau(panneau, s.mois);
     graphes(panneau, s.mois);
     detailParMois(panneau, s.mois);

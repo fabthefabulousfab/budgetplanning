@@ -2,7 +2,7 @@
   'use strict';
 
   const B = root.Budget;
-  const state = { dir: null, donnees: null, evenements: [], prets: [], parametres: null, mois: [], orphelins: [], avertissements: [] };
+  const state = { demo: false, dir: null, donnees: null, evenements: [], prets: [], parametres: null, mois: [], orphelins: [], avertissements: [], migres: { donnees: false, evenements: false } };
   const FICHIER_HISTORIQUE = 'historique-comptes.csv';
   const tabs = [];
   let actif = null;
@@ -57,18 +57,72 @@
     }
   }
 
+  // Démo : budget fictif tenu en mémoire ; le sélecteur de dossier n'est jamais appelé et rien n'est écrit sur l'ordinateur.
+  async function ouvrirDemo() {
+    await start(B.dossierDemo(new Date()), { demo: true });
+    if (state.demo && actif && $('tab-' + actif)) $('tab-' + actif).focus();
+  }
+
+  function boutonDemo() {
+    const bloc = el('div', '', { class: 'demo-accueil', 'data-aide': 'accueil-demo' });
+    bloc.appendChild(el('p', 'Pas encore de données ? Parcourez un budget d’exemple : les chiffres sont fictifs et rien n’est enregistré.', { class: 'note' }));
+    const b = el('button', 'Découvrir avec un exemple', { type: 'button', class: 'btn btn-secondaire', 'aria-label': 'Découvrir avec un exemple : budget fictif, rien n’est enregistré' });
+    b.addEventListener('click', ouvrirDemo);
+    bloc.appendChild(b);
+    return bloc;
+  }
+
+  function bandeauDemo(visible) {
+    const b = $('bandeau-demo');
+    b.textContent = '';
+    b.hidden = !visible;
+    if (!visible) return;
+    b.appendChild(el('p', 'Mode démo : données fictives, rien n’est enregistré'));
+    const q = el('button', 'Quitter la démo', { type: 'button', class: 'btn btn-secondaire btn-petit', 'aria-label': 'Quitter la démo et revenir à l’accueil' });
+    q.addEventListener('click', quitterDemo);
+    b.appendChild(q);
+  }
+
+  // Retour à l'accueil, état remis à zéro : plus aucune trace de la démo (données, bandeau, onglets).
+  async function quitterDemo() {
+    await attendreEcritures();
+    state.dir = null;
+    state.donnees = null;
+    state.evenements = [];
+    state.prets = [];
+    state.parametres = null;
+    state.mois = [];
+    state.orphelins = [];
+    state.avertissements = [];
+    state.migres = { donnees: false, evenements: false };
+    state.demo = false;
+    actif = null;
+    Object.keys(files).forEach(function (k) { delete files[k]; });
+    if (B.paliersUI) B.paliersUI.reset();
+    reinitialisations.forEach(function (fn) { fn(); }); // saisies en cours des onglets : rien de la démo ne doit réapparaître dans un vrai dossier
+    bandeauDemo(false);
+    erreur('');
+    avertir([]);
+    $('panneaux').textContent = '';
+    $('onglets').textContent = '';
+    ecranAccueil();
+    const b = document.querySelector('#accueil .demo-accueil button');
+    if (b) b.focus();
+  }
+
   function ecranAccueil() {
     if (!B.supported()) {
       accueil([
         el('h2', 'Navigateur non pris en charge', { 'data-aide': 'accueil-navigateur' }),
         el('p', "Cette application a besoin de l'accès aux dossiers locaux (File System Access API). Ouvrez cette page dans Chrome ou Edge sur ordinateur.", { class: 'accueil-texte' }),
+        boutonDemo(),
       ]);
       return;
     }
     accueil([
       el('h2', 'Bienvenue', { 'data-aide': 'accueil-intro' }),
-      el('p', 'Choisissez le dossier data/ du projet : les fichiers YAML y sont lus et enregistrés directement, rien ne quitte votre ordinateur. Vous pouvez aussi importer une sauvegarde exportée depuis un autre ordinateur.', { class: 'accueil-texte' }),
-    ].concat(boutonsOuverture()));
+      el('p', 'Pour commencer un nouveau budget, choisissez un dossier vide : les fichiers y seront créés pour vous. Vous pouvez aussi choisir un dossier de données existant. Les fichiers sont lus et enregistrés directement, rien ne quitte votre ordinateur. Une sauvegarde exportée depuis un autre ordinateur peut aussi être importée.', { class: 'accueil-texte' }),
+    ].concat(boutonsOuverture()).concat([boutonDemo()]));
   }
 
   // Sélecteur de fichier hors DOM ; résout null si l'utilisateur annule.
@@ -129,7 +183,7 @@
 
   function boutonsOuverture() {
     const zone = el('div', '', { class: 'zone-import' });
-    const ouvrir = el('button', 'Ouvrir le dossier data/', { type: 'button', class: 'btn', 'data-aide': 'accueil-ouvrir' });
+    const ouvrir = el('button', 'Choisir un dossier', { type: 'button', class: 'btn', 'aria-label': 'Choisir un dossier : vide pour un nouveau budget, ou un dossier de données existant', 'data-aide': 'accueil-ouvrir' });
     ouvrir.addEventListener('click', ouvrirDossier);
     const importer = el('button', 'Importer une sauvegarde', { type: 'button', class: 'btn btn-secondaire', 'aria-label': 'Importer une sauvegarde', 'data-aide': 'accueil-importer' });
     importer.addEventListener('click', function () { importerFichier(zone); });
@@ -253,10 +307,16 @@
 
   async function persistNow(kind) {
     const fn = {
-      donnees: function () { return B.saveDonnees(state.dir, state.donnees, state.orphelins); },
-      evenements: function () { return B.saveEvenements(state.dir, state.evenements, state.prets); },
-      prets: function () { return B.saveEvenements(state.dir, state.evenements, state.prets); },
-      parametres: function () { return B.saveParametres(state.dir, state.parametres); },
+      donnees: async function () { await B.saveDonnees(state.dir, state.donnees, state.orphelins); state.migres.donnees = false; },
+      evenements: async function () { await B.saveEvenements(state.dir, state.evenements, state.prets); state.migres.evenements = false; },
+      prets: async function () { await B.saveEvenements(state.dir, state.evenements, state.prets); state.migres.evenements = false; },
+      parametres: async function () {
+        // Les revenus d'un ancien fichier ont reçu l'inflation d'alors à l'ouverture : on les écrit avant d'enregistrer un autre taux,
+        // sinon la prochaine ouverture leur appliquerait la nouvelle inflation.
+        if (state.migres.donnees) { await B.saveDonnees(state.dir, state.donnees, state.orphelins); state.migres.donnees = false; }
+        if (state.migres.evenements) { await B.saveEvenements(state.dir, state.evenements, state.prets); state.migres.evenements = false; }
+        await B.saveParametres(state.dir, state.parametres);
+      },
     }[kind];
     if (!fn) throw new Error('Type de fichier inconnu : ' + kind);
     try {
@@ -332,7 +392,82 @@
     return input;
   }
 
-  async function start(dir) {
+  // Crée les fichiers manquants ; en cas d'échec, le bandeau d'erreur nomme le fichier et dit ce qui existe déjà.
+  async function creerFichiers(dir, options) {
+    try {
+      await B.creerBudgetVide(dir, options);
+      erreur('');
+      return true;
+    } catch (e) {
+      erreur(e && e.message ? e.message : String(e));
+      return false;
+    }
+  }
+
+  // Dossier sans budget mais non vide (ou illisible), ou budget incomplet : rien n'est écrit sans accord.
+  function ecranCreation(dir, etat, decision) {
+    const completer = decision === 'completer';
+    const noms = completer ? [B.FICHIERS.donnees] : B.FICHIERS_A_CREER;
+    const liste = el('ul', '', { class: 'accueil-liste' });
+    noms.forEach(function (n) { liste.appendChild(el('li')).appendChild(el('code', n)); });
+    let intro;
+    let note;
+    if (completer) {
+      intro = 'Ce dossier contient déjà des fichiers de budget (' + etat.fichiersBudget.join(', ') + '), mais pas ' + B.FICHIERS.donnees + ', qui porte la situation et les lignes du budget. Seul ce fichier peut être créé, vide :';
+      note = 'Les fichiers existants ne seront pas modifiés.';
+    } else {
+      intro = 'Ce dossier ne contient pas encore de budget. Ces fichiers vont y être créés, vides :';
+      note = etat.autres === null
+        ? 'Le contenu de ce dossier n’a pas pu être listé : aucun fichier existant ne sera remplacé.'
+        : (etat.autres.length > 1 ? 'Les ' + etat.autres.length + ' autres éléments de ce dossier ne seront pas touchés.' : 'L’autre élément de ce dossier ne sera pas touché.');
+    }
+    const creer = el('button', 'Créer le budget ici', { type: 'button', class: 'btn', 'aria-label': completer ? 'Créer ici le fichier manquant ' + B.FICHIERS.donnees : 'Créer un nouveau budget dans ce dossier' });
+    const autre = el('button', 'Choisir un autre dossier', { type: 'button', class: 'btn btn-secondaire' });
+    const ligne = el('div', '', { class: 'actions-accueil' });
+    ligne.appendChild(creer);
+    ligne.appendChild(autre);
+    creer.addEventListener('click', async function () {
+      creer.disabled = true;
+      autre.disabled = true;
+      const ok = await creerFichiers(dir, completer ? { seulement: [B.FICHIERS.donnees] } : undefined);
+      if (ok) { await ouvrirBudget(dir); return; }
+      creer.disabled = false;
+      autre.disabled = false;
+    });
+    autre.addEventListener('click', function () { erreur(''); ecranAccueil(); });
+    accueil([
+      el('h2', completer ? 'Il manque ' + B.FICHIERS.donnees : 'Créer un nouveau budget dans ce dossier ?', { 'data-aide': 'accueil-intro' }),
+      el('p', intro, { class: 'accueil-texte' }),
+      liste,
+      el('p', note, { class: 'accueil-texte' }),
+      ligne,
+    ]);
+    creer.focus();
+  }
+
+  // Point d'entrée après le choix d'un dossier : ouvrir, créer (dossier vide) ou demander confirmation.
+  async function start(dir, options) {
+    erreur('');
+    avertir([]);
+    let etat;
+    let decision;
+    try {
+      etat = await B.etatDossier(dir);
+      decision = B.decisionOuverture(etat);
+    } catch (e) {
+      erreur(e && e.message ? e.message : String(e));
+      return;
+    }
+    if (decision === 'creer') {
+      if (!(await creerFichiers(dir))) return;
+    } else if (decision !== 'ouvrir') {
+      ecranCreation(dir, etat, decision);
+      return;
+    }
+    await ouvrirBudget(dir, options);
+  }
+
+  async function ouvrirBudget(dir, options) {
     erreur('');
     avertir([]);
     let r;
@@ -342,37 +477,34 @@
       erreur(e.message);
       return; // jamais d'écriture en cas d'erreur
     }
+    if (r.donnees === null) {
+      // Le fichier existe mais est vide : on ne l'écrase jamais.
+      erreur(B.FICHIERS.donnees + ' est vide : ajoutez-y la situation et les lignes du budget, ou choisissez un autre dossier.');
+      ecranAccueil();
+      return;
+    }
+    state.demo = !!(options && options.demo);
+    bandeauDemo(state.demo);
     state.dir = dir;
     state.donnees = r.donnees;
     state.evenements = r.evenements;
     state.prets = r.prets;
     state.parametres = r.parametres;
     state.orphelins = r.orphelins || [];
+    state.migres = r.migres || { donnees: false, evenements: false };
     state.avertissements = r.avertissements || [];
     avertir(state.avertissements);
     if (B.paliersUI) B.paliersUI.reset();
-    if (r.donnees === null) {
-      const consigne = el('p', 'Lancez ', { class: 'accueil-texte' });
-      consigne.appendChild(el('code', './demarrer.sh'));
-      consigne.appendChild(document.createTextNode(' pour importer budget.xlsx, puis rouvrez le dossier data/.'));
-      accueil([
-        el('h2', 'Aucune donnée courante', { 'data-aide': 'accueil-intro' }),
-        consigne,
-      ]);
-      ecranAccueilBouton();
-      return;
-    }
     $('accueil').hidden = true;
     state.mois = B.project(state.donnees, B.lignesFutures(state.evenements, state.prets), state.parametres);
     construireOnglets();
   }
 
-  function ecranAccueilBouton() {
-    const a = $('accueil');
-    boutonsOuverture().forEach(function (n) { a.appendChild(n); });
-  }
+  // Chaque onglet déclare comment oublier ses saisies en cours (brouillons, erreurs) quand on quitte la démo.
+  const reinitialisations = [];
+  function surReinitialisation(fn) { reinitialisations.push(fn); }
 
-  Object.assign(B, { state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, boutonIcone: boutonIcone, champMois: champMois, tableauBilan: tableauBilan, registerTab: registerTab, ongletActif: function () { return actif; }, start: start, erreur: erreur, attendreEcritures: attendreEcritures, importerFichier: importerFichier });
+  Object.assign(B, { surReinitialisation: surReinitialisation, state: state, refresh: refresh, persist: persist, boutonOeil: boutonOeil, boutonIcone: boutonIcone, champMois: champMois, tableauBilan: tableauBilan, registerTab: registerTab, ongletActif: function () { return actif; }, start: start, erreur: erreur, attendreEcritures: attendreEcritures, importerFichier: importerFichier });
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ecranAccueil);
     else ecranAccueil();

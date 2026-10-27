@@ -9,9 +9,9 @@ body { font-size: 10.5pt; line-height: 1.4; }
 main { max-width: none; padding: 0; }
 
 /* Retire : tout ce qui sert a agir, plus les bandeaux d'ecran */
-.onglets, .bouton-aide, .visite, .bandeau, .avertissements, .ajout, .export-import, .zone-import,
+.onglets, .bouton-aide, .visite, .bandeau, .bandeau-demo, .avertissements, .ajout, .export-import, .zone-import,
 .bulle-graphe, .aide, .aide-ligne, .palier-aide, .btn, .btn-lien, .btn-icone, .btn-palier, .case-palier,
-table.releve tr.palier-ajout, table.releve .c-act > *, .orphelins .btn-icone { display: none !important; }
+table.releve tr.palier-ajout, table.releve .c-act > *, .orphelins .btn-icone, .categorie-ajout, .categorie-deplacer { display: none !important; }
 /* La colonne des actions se referme sans disparaitre (les titres de categorie couvrent un nombre fixe de colonnes) */
 table.releve th.c-act, table.releve td.c-act { width: 0 !important; padding: 0 !important; border: 0 !important; overflow: hidden; }
 .carte:has(> .ajout):not(:has(table)) { display: none !important; } /* sections qui ne sont qu'un formulaire d'ajout (le formulaire d'une section a tableau est masque plus haut) */
@@ -54,6 +54,8 @@ table.releve input.num { text-align: right; }
 table.releve input[type="text"]:has(+ .valeur-impression), table.releve select:has(+ .valeur-impression) { display: none !important; }
 .valeur-impression { display: block !important; padding: 0 .2rem; white-space: normal; overflow-wrap: anywhere; color: var(--encre); }
 .valeur-impression.num { text-align: right; }
+/* Revenu sans taux : le jumeau imprime un tiret, sans le signe % */
+table.releve .champ-taux:has(input:placeholder-shown)::after { content: none; }
 table.releve tr.palier .valeur-impression { display: inline !important; white-space: nowrap; overflow-wrap: normal; } /* « a partir de » et la date restent sur une ligne */
 table.releve td { padding-top: .25rem; padding-bottom: .25rem; }
 table.releve td.c-impact, table.releve td.c-calc, table.releve td.c-rbt { white-space: normal; }
