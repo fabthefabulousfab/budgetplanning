@@ -54,6 +54,8 @@ table.releve input.num { text-align: right; }
 table.releve input[type="text"]:has(+ .valeur-impression), table.releve select:has(+ .valeur-impression) { display: none !important; }
 .valeur-impression { display: block !important; padding: 0 .2rem; white-space: normal; overflow-wrap: anywhere; color: var(--encre); }
 .valeur-impression.num { text-align: right; }
+/* Revenu sans taux : le jumeau imprime un tiret, sans le signe % */
+table.releve .champ-taux:has(input:placeholder-shown)::after { content: none; }
 table.releve tr.palier .valeur-impression { display: inline !important; white-space: nowrap; overflow-wrap: normal; } /* « a partir de » et la date restent sur une ligne */
 table.releve td { padding-top: .25rem; padding-bottom: .25rem; }
 table.releve td.c-impact, table.releve td.c-calc, table.releve td.c-rbt { white-space: normal; }

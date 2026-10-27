@@ -218,3 +218,45 @@ test('changement de type vers le meme type: rien ne bouge', () => {
   const l = { type: 'revenu', libelle: 'x', taux_revalorisation: 4 };
   assert.deepStrictEqual(T.appliquerEdition(l, 'type', 'revenu', 'mensuel', 0.02), l);
 });
+
+// ---- revue 1 : precision, borne haute, impression ----
+test('migration: un taux global a plus de 3 decimales de pourcent est converti sans perte', async () => {
+  const d = fakeDir({
+    'donnees-courantes.yaml': 'mensuel:\n  - {type: revenu, categorie: A, libelle: x, montant: 1000, revalorise: true}\n',
+    'parametres.yaml': 'depart: "2026-10"\nhorizon_annees: 10\nrevalorisation: {taux: 0.0123456, mois: 1}\n',
+  });
+  const r = await store.loadAll(d);
+  assert.strictEqual(r.donnees.mensuel[0].taux_revalorisation, 1.23456);
+  const j = project(r.donnees, [], r.parametres).find((x) => x.ym === '2027-01');
+  assert.ok(Math.abs(j.revenus - 1000 * 1.0123456) < 1e-9);
+});
+
+test('changement de type: depense -> revenu conserve la precision de l inflation', () => {
+  const c = T.appliquerEdition({ type: 'depense', libelle: 'x', revalorise: true }, 'type', 'revenu', 'mensuel', 0.0123456);
+  assert.strictEqual(c.taux_revalorisation, 1.23456);
+});
+
+test('validation: taux_revalorisation au-dela de 1000 % refuse, 1000 accepte', () => {
+  const ok = { type: 'revenu', categorie: 'A', libelle: 'x', montant: 1000 };
+  store.validerLigne(Object.assign({}, ok, { taux_revalorisation: 1000 }), 'mensuel');
+  [1000.01, 1e300, 99999999999999999999].forEach((v) => {
+    assert.throws(() => store.validerLigne(Object.assign({}, ok, { taux_revalorisation: v }), 'mensuel'), /taux_revalorisation.*1000/, String(v));
+  });
+});
+
+test('fichier avec un taux demesure: refuse en nommant le fichier, jamais ecrase', async () => {
+  const bad = 'mensuel:\n  - {type: revenu, categorie: A, libelle: x, montant: 10, taux_revalorisation: 1e300}\n';
+  const d = fakeDir({ 'donnees-courantes.yaml': bad });
+  await assert.rejects(store.loadAll(d), /donnees-courantes\.yaml.*taux_revalorisation/);
+  assert.strictEqual(d.files.get('donnees-courantes.yaml'), bad);
+});
+
+test('impression: un taux vide imprime un tiret, pas le 0 d exemple', () => {
+  const { valeurAffichee } = require('../../js/impression.js');
+  const champ = (value, attrs) => ({ tagName: 'INPUT', type: 'text', value, getAttribute: (n) => (attrs[n] === undefined ? null : attrs[n]) });
+  assert.strictEqual(valeurAffichee(champ('', { placeholder: '0', 'data-vide-impression': '—' })), '—');
+  assert.strictEqual(valeurAffichee(champ('1.5', { placeholder: '0', 'data-vide-impression': '—' })), '1.5');
+  assert.strictEqual(valeurAffichee(champ('', { placeholder: '6-500' })), '6-500');
+  const css = require('fs').readFileSync(require('path').join(__dirname, '../../css/impression.css'), 'utf8');
+  assert.match(css, /\.champ-taux:has\(input:placeholder-shown\)::after\s*\{\s*content:\s*none/);
+});

@@ -73,7 +73,7 @@ Les lignes mensuelles, annuelles et exceptionnelles ont une catégorie choisie d
 
 ### Paliers
 
-Une ligne peut changer de montant à des dates précises. Le montant propre de la ligne s'applique de son `debut` (s'il y en a un) jusqu'au premier palier (exclu) ; chaque palier remplace tout le montant à partir de son `depuis` (inclus) jusqu'au palier suivant (exclu) ; le dernier palier court jusqu'à la `fin` de la ligne (incluse) ou sans limite. `debut` et `fin` bornent toujours l'ensemble. La revalorisation (`revalorise`) et le masquage (`actif: false`) s'appliquent à tous les paliers de la ligne.
+Une ligne peut changer de montant à des dates précises. Le montant propre de la ligne s'applique de son `debut` (s'il y en a un) jusqu'au premier palier (exclu) ; chaque palier remplace tout le montant à partir de son `depuis` (inclus) jusqu'au palier suivant (exclu) ; le dernier palier court jusqu'à la `fin` de la ligne (incluse) ou sans limite. `debut` et `fin` bornent toujours l'ensemble. La revalorisation (le taux `taux_revalorisation` d'un revenu, ou la case `revalorise` d'une dépense, qui suit l'inflation) et le masquage (`actif: false`) s'appliquent à tous les paliers de la ligne.
 
 Un montant de palier à `0` (nombre `0` pour une ligne mensuelle, texte `0` pour les échéances) signifie « plus rien à partir de cette date » (jusqu'au palier suivant s'il y en a un) ; le tableau de bord se termine par le « Détail d'un mois par catégorie » (revenus et dépenses du mois choisi, par catégorie). La `fin` d'une ligne à paliers ne peut pas précéder son dernier palier (refusé à l'enregistrement ; avertissement à l'ouverture).
 

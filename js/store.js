@@ -75,6 +75,7 @@
       if (l.type !== 'revenu') throw new Error('« taux_revalorisation » n’existe que pour les revenus (une dépense se coche « revalorise » et suit l’inflation de parametres.yaml).');
       if (typeof t !== 'number' || !Number.isFinite(t)) throw new Error('« taux_revalorisation » doit être un nombre en % avec un point décimal (par exemple 1.5), pas « ' + t + ' ».');
       if (t <= -100) throw new Error('« taux_revalorisation » doit être supérieur à -100 (%).');
+      if (t > 1000) throw new Error('« taux_revalorisation » doit être au plus 1000 (%), pas « ' + t + ' ».');
     }
     if (l.actif != null && typeof l.actif !== 'boolean') throw new Error('« actif » doit valoir true ou false.');
     validerMois(l.debut, 'Début');
@@ -371,7 +372,7 @@
   // Modifie les lignes en place ; renvoie vrai si au moins une ligne a changé (le fichier n'est pas réécrit à l'ouverture).
   function migrerRevalorisation(lignes, parametres) {
     let change = false;
-    const taux = Math.round(parametres.revalorisation.taux * 100000) / 1000;
+    const taux = Number((parametres.revalorisation.taux * 100).toPrecision(12)); // fraction en %, sans arrondi visible (seul le bruit flottant disparaît)
     (lignes || []).forEach(function (l) {
       if (!l || l.type !== 'revenu' || !('revalorise' in l)) return;
       if (l.revalorise === true && l.taux_revalorisation == null && taux !== 0) l.taux_revalorisation = taux;

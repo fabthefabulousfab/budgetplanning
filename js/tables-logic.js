@@ -40,7 +40,7 @@
         copie.revalorise = typeof t === 'number' && t !== 0;
         delete copie.taux_revalorisation;
       } else if (valeur === 'revenu') {
-        if (ligne.revalorise === true && typeof inflation === 'number') copie.taux_revalorisation = Math.round(inflation * 100000) / 1000;
+        if (ligne.revalorise === true && typeof inflation === 'number') copie.taux_revalorisation = Number((inflation * 100).toPrecision(12));
         delete copie.revalorise;
       }
     } else if (champ === 'taux_revalorisation') {

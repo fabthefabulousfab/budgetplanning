@@ -161,7 +161,7 @@
   function cellReval(nature, index, ligne) {
     if (ligne.type !== 'revenu') return champCase(nature, index, ligne, true);
     const w = el('span', '', { class: 'champ-taux' });
-    w.appendChild(champTexte(nature, index, ligne, 'taux_revalorisation', 'Revalorisation (%)', { inputmode: 'decimal', placeholder: '0', class: 'num' }));
+    w.appendChild(champTexte(nature, index, ligne, 'taux_revalorisation', 'Revalorisation (%)', { inputmode: 'decimal', placeholder: '0', 'data-vide-impression': '—', class: 'num' }));
     return w;
   }
 
